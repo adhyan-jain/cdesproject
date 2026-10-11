@@ -1,11 +1,38 @@
-// Replays one compiler trace on STRATA in fixed-buffer mode.
+// Replays one compiler trace on STRATA (or, with -DTABLE_ARENA, on the conventional arena
+// table) in fixed-buffer mode.
 // The same file is built for the host (to obtain the expected checksum) and for a
 // bare-metal Cortex-M3 (QEMU mps2-an385, 64 KiB RAM, no heap, no operating system).
 #include <stdint.h>
 #include <string.h>
 
 #include "../../include/strata/strata.hpp"
+#include "../../benchmarks/baselines/arena_chain.hpp"
 #include "trace_data.h"
+
+// One interface over the two bounded tables.
+#ifdef TABLE_ARENA
+struct Tab {
+    arena_chain::Table t;
+    Tab(void* b, size_t n) : t(b, n) {}
+    bool enter() { return t.enter_scope(); }
+    void leave() { t.exit_scope(); }
+    int declare(const char* s, size_t n, int32_t v) { return t.declare(s, n, v); }
+    bool resolve(const char* s, size_t n, int32_t* v) { return t.resolve(s, n, v); }
+    uint32_t peak() const { return (uint32_t)t.peak_used_bytes(); }
+};
+#define TABLE_NAME "arena_chain"
+#else
+struct Tab {
+    strata::Table t;
+    Tab(void* b, size_t n) : t(b, n) {}
+    bool enter() { return t.enter_scope() == strata::kOk; }
+    void leave() { t.exit_scope(); }
+    int declare(const char* s, size_t n, int32_t v) { return t.declare(s, n, v); }
+    bool resolve(const char* s, size_t n, int32_t* v) { return t.resolve(s, n, v); }
+    uint32_t peak() const { return (uint32_t)t.stats().peak_used_bytes; }
+};
+#define TABLE_NAME "STRATA"
+#endif
 
 #ifndef BUFFER_BYTES
 #define BUFFER_BYTES 24576
@@ -18,20 +45,20 @@ inline void* operator new(size_t, void* p, int) noexcept { return p; }   // plac
 
 static Result replay() {
     Result r = {2166136261u, 0, 0, 0, 0, 0};
-    alignas(strata::Table) static unsigned char room[sizeof(strata::Table)];
-    strata::Table* t = new (room, 0) strata::Table(g_buffer, sizeof g_buffer);
+    alignas(Tab) static unsigned char room[sizeof(Tab)];
+    Tab* t = new (room, 0) Tab(g_buffer, sizeof g_buffer);
     int32_t seq = 0;
     for (uint32_t i = 0; i < kOps; ++i) {
         const char* nm = kNames[kName[i]];
         switch (kKind[i]) {
         case 0:
-            if (t->stats().peak_used_bytes > r.peak_used) r.peak_used = (uint32_t)t->stats().peak_used_bytes;
-            t->~Table();
-            t = new (room, 0) strata::Table(g_buffer, sizeof g_buffer);
+            if (t->peak() > r.peak_used) r.peak_used = t->peak();
+            t->~Tab();
+            t = new (room, 0) Tab(g_buffer, sizeof g_buffer);
             seq = 0;
             break;
-        case 1: if (t->enter_scope() != strata::kOk) ++r.refused; break;
-        case 2: t->exit_scope(); break;
+        case 1: if (!t->enter()) ++r.refused; break;
+        case 2: t->leave(); break;
         case 3: {
             int s = t->declare(nm, strlen(nm), seq++);
             if (s < 0) ++r.refused;
@@ -49,8 +76,8 @@ static Result replay() {
         }
         }
     }
-    if (t->stats().peak_used_bytes > r.peak_used) r.peak_used = (uint32_t)t->stats().peak_used_bytes;
-    t->~Table();
+    if (t->peak() > r.peak_used) r.peak_used = t->peak();
+    t->~Tab();
     return r;
 }
 
@@ -82,7 +109,7 @@ int main() {
     Result r = replay();
     uint32_t* p = &_stack_bottom;
     while (p < &_stack_top && *p == 0xA5A5A5A5u) ++p;   // first word the stack ever touched
-    put("STRATA on bare-metal Cortex-M3 (QEMU mps2-an385)\n");
+    put(TABLE_NAME " on bare-metal Cortex-M3 (QEMU mps2-an385)\n");
     put_u("operations          ", kOps);
     put_u("declares            ", r.declares);
     put_u("lookups             ", r.lookups);
@@ -94,7 +121,7 @@ int main() {
     put_u("static RAM bytes    ", (uint32_t)((char*)&_ebss - (char*)&_sbss) + (uint32_t)((char*)&_edata - (char*)&_sdata));
     put_u("checksum            ", r.checksum);
     put_u("expected (host run) ", EXPECTED_CHECKSUM);
-    put(r.checksum == EXPECTED_CHECKSUM && r.refused == 0 ? "RESULT: PASS\n" : "RESULT: FAIL\n");
+    put(r.refused ? "RESULT: DOES NOT FIT\n" : (r.checksum == EXPECTED_CHECKSUM ? "RESULT: PASS\n" : "RESULT: FAIL\n"));
     semihost(0x18, (void*)0x20026);                     // SYS_EXIT, ADP_Stopped_ApplicationExit
     for (;;) {}
 }

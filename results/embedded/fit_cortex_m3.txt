@@ -1,0 +1,44 @@
+compiler: arm-none-eabi-g++ (15:10.3-2021.07-4) 10.3.1 20210621 (release)
+emulator: QEMU emulator version 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6.31)
+machine: mps2-an385 (Cortex-M3); RAM limited to 64 KiB; no heap, no OS
+
+== freertos  buffer 49152 bytes  table STRATA
+refused operations  0
+peak used bytes     45008
+RESULT: PASS
+
+== freertos  buffer 49152 bytes  table ARENA
+refused operations  420
+peak used bytes     49152
+RESULT: DOES NOT FIT
+
+== freertos  buffer 57344 bytes  table STRATA
+refused operations  0
+peak used bytes     45008
+RESULT: PASS
+
+== freertos  buffer 57344 bytes  table ARENA
+refused operations  0
+peak used bytes     54892
+RESULT: PASS
+
+== lua  buffer 40960 bytes  table STRATA
+refused operations  0
+peak used bytes     36776
+RESULT: PASS
+
+== lua  buffer 40960 bytes  table ARENA
+refused operations  2214
+peak used bytes     40960
+RESULT: DOES NOT FIT
+
+== cjson  buffer 32768 bytes  table STRATA
+refused operations  0
+peak used bytes     30704
+RESULT: PASS
+
+== cjson  buffer 32768 bytes  table ARENA
+refused operations  822
+peak used bytes     31272
+RESULT: DOES NOT FIT
+

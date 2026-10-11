@@ -5,6 +5,13 @@
 //       replays without a single refused operation, for packed and raw names, and the
 //       replay time with 1x, 1.25x, 2x and 4x that buffer.
 //
+//   budget --mode units --trace FILE --name LABEL --out FILE.csv
+//       The same bisection for every translation unit separately, for STRATA (packed)
+//       and for the conventional arena table: how much buffer each unit needs.
+//
+//   budget --mode minbuf --trace FILE --name LABEL --out FILE.csv
+//       Only the minimum buffers of the whole trace for both tables (no timing).
+//
 //   budget --mode worstcase --out FILE.csv
 //       Lookup cost when every key is forced into one probe cluster, against the normal
 //       hash, for growing table sizes. Shows the unprotected worst case honestly.
@@ -19,6 +26,8 @@
 struct Outcome { bool ok; size_t refused, peak_used; double ns; };
 
 // Replays the trace on a table living in `buf`; a new table per translation unit.
+static size_t g_begin = 0, g_end = static_cast<size_t>(-1);   // operation range to replay (one unit, or everything)
+
 static Outcome replay_fixed(const Trace& tr, uint32_t* buf, size_t bytes, int variant, bool timed) {
     const bool pack = variant != 0, sparse = variant == 2;   // 0 raw, 1 packed, 2 packed + sparse index
     Outcome o = {true, 0, 0, 0};
@@ -26,7 +35,7 @@ static Outcome replay_fixed(const Trace& tr, uint32_t* buf, size_t bytes, int va
     strata::Table* t = new (room) strata::Table(buf, bytes, pack, sparse);
     int32_t seq = 0, sink = 0;
     Clock::time_point t0 = Clock::now();
-    for (size_t i = 0; i < tr.ops.size(); ++i) {
+    for (size_t i = g_begin; i < tr.ops.size() && i < g_end; ++i) {
         const Op& op = tr.ops[i];
         const std::string& nm = tr.names[op.name];
         switch (op.kind) {
@@ -59,7 +68,7 @@ static Outcome replay_arena(const Trace& tr, uint32_t* buf, size_t bytes, bool t
     arena_chain::Table* t = new (room) arena_chain::Table(buf, bytes);
     int32_t seq = 0, sink = 0;
     Clock::time_point t0 = Clock::now();
-    for (size_t i = 0; i < tr.ops.size(); ++i) {
+    for (size_t i = g_begin; i < tr.ops.size() && i < g_end; ++i) {
         const Op& op = tr.ops[i];
         const std::string& nm = tr.names[op.name];
         switch (op.kind) {
@@ -124,6 +133,43 @@ static int mode_budget(const std::string& path, const std::string& name, const s
     return 0;
 }
 
+// Smallest buffer (64-byte resolution) for the current operation range.
+static size_t min_buffer(const Trace& tr, uint32_t* buf, size_t max_bytes, int variant) {
+    size_t lo = 64, hi = max_bytes;
+    if (!replay_any(tr, buf, hi, variant, false).ok) return 0;
+    while (hi - lo > 64) {
+        size_t mid = ((lo + hi) / 2) & ~static_cast<size_t>(63);
+        if (mid <= lo) mid = lo + 64;
+        if (replay_any(tr, buf, mid, variant, false).ok) hi = mid; else lo = mid;
+    }
+    return hi;
+}
+
+static int mode_units(const std::string& path, const std::string& name, const std::string& out, bool whole) {
+    Trace tr;
+    if (!load_trace(path, tr)) { std::fprintf(stderr, "cannot load %s\n", path.c_str()); return 2; }
+    const size_t kMax = 32u << 20;
+    std::vector<uint32_t> buf(kMax / 4);
+    FILE* f = std::fopen(out.c_str(), "a");
+    if (!f) return 3;
+    if (std::ftell(f) == 0) std::fprintf(f, "trace,unit,operations,declares,strata_min_bytes,arena_chain_min_bytes\n");
+    std::vector<size_t> starts(1, 0);
+    if (!whole) for (size_t i = 0; i < tr.ops.size(); ++i) if (tr.ops[i].kind == OP_UNIT) starts.push_back(i + 1);
+    starts.push_back(tr.ops.size() + 1);
+    for (size_t u = 0; u + 1 < starts.size(); ++u) {
+        g_begin = starts[u];
+        g_end = whole ? tr.ops.size() : starts[u + 1] - 1;
+        size_t decl = 0;
+        for (size_t i = g_begin; i < g_end && i < tr.ops.size(); ++i) decl += tr.ops[i].kind == OP_DECLARE;
+        size_t a = min_buffer(tr, buf.data(), kMax, 1), b = min_buffer(tr, buf.data(), kMax, 3);
+        std::fprintf(f, "%s,%zu,%zu,%zu,%zu,%zu\n", name.c_str(), u, (g_end < tr.ops.size() ? g_end : tr.ops.size()) - g_begin, decl, a, b);
+    }
+    g_begin = 0;
+    g_end = static_cast<size_t>(-1);
+    std::fclose(f);
+    return 0;
+}
+
 static int mode_worstcase(const std::string& out) {
     FILE* f = std::fopen(out.c_str(), "a");
     if (!f) return 3;
@@ -173,6 +219,8 @@ int main(int argc, char** argv) {
     if (out.empty()) { std::fprintf(stderr, "--out is required\n"); return 2; }
     if (mode == "budget") return mode_budget(path, name.empty() ? path : name, out, reps);
     if (mode == "worstcase") return mode_worstcase(out);
-    std::fprintf(stderr, "--mode budget|worstcase\n");
+    if (mode == "units") return mode_units(path, name.empty() ? path : name, out, false);
+    if (mode == "minbuf") return mode_units(path, name.empty() ? path : name, out, true);
+    std::fprintf(stderr, "--mode budget|units|minbuf|worstcase\n");
     return 2;
 }
