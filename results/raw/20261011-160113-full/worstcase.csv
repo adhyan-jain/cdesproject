@@ -1,0 +1,11 @@
+live_names,hash,ns_per_lookup_hit,ns_per_lookup_miss,ns_per_declare
+16,normal,9.2,8.5,89.8
+16,all_keys_one_cluster,13.3,16.4,118.1
+64,normal,11.1,9.5,126.4
+64,all_keys_one_cluster,32.9,59.5,195.2
+256,normal,11.2,9.4,83.0
+256,all_keys_one_cluster,117.4,234.1,356.4
+1024,normal,12.6,10.4,74.4
+1024,all_keys_one_cluster,402.6,809.3,1517.4
+4096,normal,15.2,21.8,60.0
+4096,all_keys_one_cluster,1584.7,3302.4,4830.5

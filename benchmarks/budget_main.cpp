@@ -18,10 +18,11 @@
 struct Outcome { bool ok; size_t refused, peak_used; double ns; };
 
 // Replays the trace on a table living in `buf`; a new table per translation unit.
-static Outcome replay_fixed(const Trace& tr, uint32_t* buf, size_t bytes, bool pack, bool timed) {
+static Outcome replay_fixed(const Trace& tr, uint32_t* buf, size_t bytes, int variant, bool timed) {
+    const bool pack = variant != 0, sparse = variant == 2;   // 0 raw, 1 packed, 2 packed + sparse index
     Outcome o = {true, 0, 0, 0};
     alignas(strata::Table) unsigned char room[sizeof(strata::Table)];
-    strata::Table* t = new (room) strata::Table(buf, bytes, pack);
+    strata::Table* t = new (room) strata::Table(buf, bytes, pack, sparse);
     int32_t seq = 0, sink = 0;
     Clock::time_point t0 = Clock::now();
     for (size_t i = 0; i < tr.ops.size(); ++i) {
@@ -35,7 +36,7 @@ static Outcome replay_fixed(const Trace& tr, uint32_t* buf, size_t bytes, bool p
         default:
             if (!timed && t->stats().peak_used_bytes > o.peak_used) o.peak_used = t->stats().peak_used_bytes;
             t->~Table();
-            t = new (room) strata::Table(buf, bytes, pack);
+            t = new (room) strata::Table(buf, bytes, pack, sparse);
             seq = 0;
             break;
         }
@@ -58,26 +59,27 @@ static int mode_budget(const std::string& path, const std::string& name, const s
     FILE* f = std::fopen(out.c_str(), "a");
     if (!f) return 3;
     if (std::ftell(f) == 0) std::fprintf(f, "trace,names,min_buffer_bytes,peak_used_bytes_at_min,budget_factor,buffer_bytes,replay_ns_median,replay_ns_min,replay_ns_max,reps\n");
-    for (int pack = 1; pack >= 0; --pack) {
+    static const char* kVariant[] = {"raw", "packed", "packed_sparse"};
+    for (int pack = 2; pack >= 0; --pack) {
         size_t lo = 128, hi = kMax;                       // lo fails (or is too small), hi must pass
-        if (!replay_fixed(tr, buf.data(), hi, pack != 0, false).ok) { std::fprintf(stderr, "does not fit in 64 MiB\n"); return 4; }
+        if (!replay_fixed(tr, buf.data(), hi, pack, false).ok) { std::fprintf(stderr, "does not fit in 64 MiB\n"); return 4; }
         while (hi - lo > 64) {
             size_t mid = ((lo + hi) / 2) & ~static_cast<size_t>(63);
             if (mid <= lo) mid = lo + 64;
-            if (replay_fixed(tr, buf.data(), mid, pack != 0, false).ok) hi = mid; else lo = mid;
+            if (replay_fixed(tr, buf.data(), mid, pack, false).ok) hi = mid; else lo = mid;
         }
-        size_t used = replay_fixed(tr, buf.data(), hi, pack != 0, false).peak_used;
+        size_t used = replay_fixed(tr, buf.data(), hi, pack, false).peak_used;
         const double factors[] = {1.0, 1.25, 2.0, 4.0};
         for (int k = 0; k < 4; ++k) {
             size_t bytes = (static_cast<size_t>(static_cast<double>(hi) * factors[k]) + 63) & ~static_cast<size_t>(63);
-            if (!replay_fixed(tr, buf.data(), bytes, pack != 0, false).ok) {   // sizing is not perfectly monotonic: say so
-                std::fprintf(f, "%s,%s,%zu,%zu,%.2f,%zu,REFUSED,,,%d\n", name.c_str(), pack ? "packed" : "raw", hi, used, factors[k], bytes, reps);
+            if (!replay_fixed(tr, buf.data(), bytes, pack, false).ok) {   // sizing is not perfectly monotonic: say so
+                std::fprintf(f, "%s,%s,%zu,%zu,%.2f,%zu,REFUSED,,,%d\n", name.c_str(), kVariant[pack], hi, used, factors[k], bytes, reps);
                 continue;
             }
             std::vector<double> ns;
-            for (int r = -2; r < reps; ++r) { double v = replay_fixed(tr, buf.data(), bytes, pack != 0, true).ns; if (r >= 0) ns.push_back(v); }
+            for (int r = -2; r < reps; ++r) { double v = replay_fixed(tr, buf.data(), bytes, pack, true).ns; if (r >= 0) ns.push_back(v); }
             std::sort(ns.begin(), ns.end());
-            std::fprintf(f, "%s,%s,%zu,%zu,%.2f,%zu,%.0f,%.0f,%.0f,%d\n", name.c_str(), pack ? "packed" : "raw", hi, used,
+            std::fprintf(f, "%s,%s,%zu,%zu,%.2f,%zu,%.0f,%.0f,%.0f,%d\n", name.c_str(), kVariant[pack], hi, used,
                          factors[k], bytes, ns[ns.size() / 2], ns.front(), ns.back(), reps);
         }
     }

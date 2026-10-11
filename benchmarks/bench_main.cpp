@@ -192,6 +192,7 @@ int main(int argc, char** argv) {
     RUN(Strata)
     RUN(StrataRaw)
     RUN(StrataNoShrink)
+    RUN(StrataSparse)
     RUN(ScopeMapStack)
     RUN(StdUndoLog)
 #ifdef CDES_HAVE_PHMAP

@@ -67,11 +67,12 @@ struct Options {
     size_t max_bytes;      // growable mode: hard budget (0 = unlimited)
     bool pack_names;       // 6-bit packing of identifier characters (false: raw bytes)
     bool shrink;           // growable mode: give memory back when usage drops
+    bool sparse_index;     // keep the index at most 1/2 full instead of 3/4: faster probes, more bytes per name
     AllocFn alloc;         // default: malloc
     FreeFn free;           // default: free
     ReallocFn realloc;     // default: realloc, or alloc + copy + free when only alloc/free are given
     void* user;
-    Options() : initial_bytes(1024), max_bytes(0), pack_names(true), shrink(true),
+    Options() : initial_bytes(1024), max_bytes(0), pack_names(true), shrink(true), sparse_index(false),
                 alloc(0), free(0), realloc(0), user(0) {}
 };
 
@@ -132,11 +133,12 @@ public:
     // ---- construction ---------------------------------------------------
     // Fixed mode. `buffer` must be aligned for uint32_t and outlive the table.
     // At most 64 MiB of it is used.
-    Table(void* buffer, size_t bytes, bool pack_names = true)
+    Table(void* buffer, size_t bytes, bool pack_names = true, bool sparse_index = false)
         : w_(static_cast<uint32_t*>(buffer)),
           cap_(bytes / 4 > kMaxWords ? static_cast<uint32_t>(kMaxWords) : static_cast<uint32_t>(bytes / 4)),
           fixed_(true) {
         opt_.pack_names = pack_names;
+        opt_.sparse_index = sparse_index;
         init_hooks();
         valid_ = w_ != 0 && cap_ >= kMinWords;
         if (valid_) reset_layout();
@@ -456,7 +458,8 @@ private:
     // On failure nothing has changed.
     bool ensure(uint32_t words, uint32_t new_idents) {
         uint32_t idx = idx_;
-        while (static_cast<uint64_t>(nident_ + new_idents) * 4 > static_cast<uint64_t>(idx) * 3) idx *= 2;
+        const uint64_t num = opt_.sparse_index ? 2 : 3;   // maximum load factor num/4
+        while (static_cast<uint64_t>(nident_ + new_idents) * 4 > static_cast<uint64_t>(idx) * num) idx *= 2;
         if (idx == idx_ && free_words() >= words) return true;
         uint64_t need = static_cast<uint64_t>(idx) + itop_ + undo_ + words;
         if (need <= cap_) return relocate(cap_, idx);  // index grows inside the buffer
@@ -474,8 +477,9 @@ private:
         if (floor < kMinWords) floor = kMinWords;
         if (cap_ <= floor || static_cast<uint64_t>(used) * 4 > cap_) return;
         uint32_t idx = idx_;
-        // halve the index while it would stay at most 3/8 full
-        while (idx > kInitialIndex && static_cast<uint64_t>(nident_) * 16 <= static_cast<uint64_t>(idx) * 3) idx /= 2;
+        // halve the index while it would stay at most half of its maximum load
+        const uint64_t num = opt_.sparse_index ? 2 : 3;
+        while (idx > kInitialIndex && static_cast<uint64_t>(nident_) * 16 <= static_cast<uint64_t>(idx) * num) idx /= 2;
         uint32_t cap = cap_;
         while (cap / 2 >= floor && static_cast<uint64_t>(idx + itop_ + undo_) * 2 <= cap / 2) cap /= 2;
         if (cap < cap_) relocate(cap, idx);

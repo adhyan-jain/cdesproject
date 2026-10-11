@@ -1,0 +1,12 @@
+run: results/raw/20261011-160113-full
+date_utc: 2026-10-11T16:01:38Z
+git_commit: 8169bf54ad5b03604e46fc300d2cdd6e4237e2e2
+compiler: g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+flags: -std=c++14 -O2
+kernel: Linux 6.18.33.2-microsoft-standard-WSL2
+cpu: Intel(R) Core(TM) Ultra 7 258V
+libc: ldd (Ubuntu GLIBC 2.35-0ubuntu3.15) 2.35
+pinning: taskset -c 2
+repetitions: 15 (+2 warm-up) whole-trace replays; 3 per-operation latency replays
+metis: 7b3dacfa5405ec3e6a03b718f485b473d779123d
+phmap: v1.4.1

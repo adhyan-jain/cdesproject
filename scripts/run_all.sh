@@ -53,7 +53,7 @@ $PIN ./build/budget --mode worstcase --out "$RUN/worstcase.csv"
 # a linear scan), so it is left out there; every other table runs on all four.
 if [ -d third_party/metis/results ]; then
   echo "== regex-extracted traces of the earlier work (supplemental)"
-  ALL="strata,strata_raw,strata_noshrink,scope_map_stack,std_undo_log,swiss_undo_log,swiss_interned,metis_x,metis_scope_maps"
+  ALL="strata,strata_raw,strata_noshrink,strata_sparse,scope_map_stack,std_undo_log,swiss_undo_log,swiss_interned,metis_x,metis_scope_maps"
   for n in FreeRTOS Arduino; do
     echo "  $n"
     $PIN ./build/bench --trace "third_party/metis/results/corpus_events_$n.txt" --name "$n" --reps 5 --summary "$RUN/legacy_summary.csv" --raw "$RUN/legacy_replays.csv"

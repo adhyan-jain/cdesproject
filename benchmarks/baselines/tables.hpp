@@ -31,29 +31,31 @@ namespace tables {
 inline void* counted_alloc(size_t n, void*) { return mem::alloc(n); }
 inline void counted_free(void* p, void*) { mem::dealloc(p); }
 inline void* counted_realloc(void* p, size_t, size_t n, void*) { return mem::resize(p, n); }
-inline strata::Options strata_options(bool pack, bool shrink) {
+inline strata::Options strata_options(bool pack, bool shrink, bool sparse) {
     strata::Options o;
     o.pack_names = pack;
     o.shrink = shrink;
+    o.sparse_index = sparse;
     o.alloc = counted_alloc;
     o.free = counted_free;
     o.realloc = counted_realloc;
     return o;
 }
-template <bool Pack, bool Shrink>
+template <bool Pack, bool Shrink, bool Sparse>
 struct StrataT {
     strata::Table t;
-    StrataT() : t(strata_options(Pack, Shrink)) {}
-    static const char* id() { return !Shrink ? "strata_noshrink" : Pack ? "strata" : "strata_raw"; }
+    StrataT() : t(strata_options(Pack, Shrink, Sparse)) {}
+    static const char* id() { return Sparse ? "strata_sparse" : !Shrink ? "strata_noshrink" : Pack ? "strata" : "strata_raw"; }
     bool enter() { return t.enter_scope() == strata::kOk; }
     bool exit() { return t.exit_scope() == strata::kOk; }
     int declare(const std::string& s, int32_t v) { return t.declare(s.data(), s.size(), v); }
     bool resolve(const std::string& s, int32_t* v) const { return t.resolve(s.data(), s.size(), v); }
     size_t used_peak() const { return t.stats().peak_used_bytes; }   // bytes actually occupied inside the buffer
 };
-typedef StrataT<true, true> Strata;            // default configuration
-typedef StrataT<false, true> StrataRaw;        // ablation: names stored as raw bytes
-typedef StrataT<true, false> StrataNoShrink;   // ablation: the buffer is never given back
+typedef StrataT<true, true, false> Strata;            // default configuration
+typedef StrataT<false, true, false> StrataRaw;        // ablation: names stored as raw bytes
+typedef StrataT<true, false, false> StrataNoShrink;   // ablation: the buffer is never given back
+typedef StrataT<true, true, true> StrataSparse;       // option: index at most half full
 
 // ---- conventional: one hash map per open scope ------------------------------------
 struct ScopeMapStack {

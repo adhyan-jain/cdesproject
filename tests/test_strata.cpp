@@ -176,9 +176,10 @@ static void test_invalid_scope_ops() {
 
 // 5, 8, 10, 12: random operation sequences against the reference model, with index
 // rebuilds, buffer growth and shrinking happening along the way
-static void test_random(int style, bool pack, size_t initial_bytes, int steps, int pool_size, int max_depth) {
+static void test_random(int style, bool pack, size_t initial_bytes, int steps, int pool_size, int max_depth, bool sparse = false) {
     strata::Options o;
     o.pack_names = pack;
+    o.sparse_index = sparse;
     o.initial_bytes = initial_bytes;
     Table t(o);
     ReferenceModel ref;
@@ -364,6 +365,7 @@ int main() {
     test_random(2, true, 128, 100000, 300, 40);    // long names, deep nesting
     test_random(3, true, 4096, 300000, 5000, 8);   // mixed, many live names
     test_random(0, true, 64, 100000, 12, 60);      // heavy shadowing of very few names
+    test_random(3, true, 64, 200000, 3000, 10, true);   // sparse index option
     test_reclamation();
     test_fixed_capacity();
     test_allocation_failure();
