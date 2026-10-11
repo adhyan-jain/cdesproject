@@ -10,3 +10,4 @@ pinning: taskset -c 2
 repetitions: 31 (+2 warm-up) whole-trace replays; 3 per-operation latency replays
 metis: 7b3dacfa5405ec3e6a03b718f485b473d779123d
 phmap: v1.4.1
+extra experiments: git 2d8672b, 2026-10-11T17:41:01Z, all

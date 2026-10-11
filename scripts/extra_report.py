@@ -78,9 +78,10 @@ def build(run, md, macro, table, esc):
              int((u.red > 0).sum()), len(u)))
         best = fit[fit.compiler == "TinyCC"].sort_values("only STRATA fits", ascending=False).iloc[0]
         A("\nReading: the saving decides whether a unit fits only when the budget falls between the two requirements. "
-          "At %d KiB that is the case for %d of the %d TinyCC units; at most budgets it is the case for few or none. "
+          "At %d KiB that is the case for %d of the %d TinyCC units, the largest count among the tested sizes; at 64 KiB and above it is the case for at most %d. "
           "The reduction therefore matters for a design with a hard table budget near the workload's need, and not otherwise.\n"
-          % (best["buffer KiB"], best["only STRATA fits"], best["units"]))
+          % (best["buffer KiB"], best["only STRATA fits"], best["units"],
+             int(fit[(fit.compiler == "TinyCC") & (fit["buffer KiB"] >= 64)]["only STRATA fits"].max())))
         macro("UnitsN", len(t)); macro("UnitRedMed", "%.0f" % t.red.median()); macro("UnitRedMin", "%.0f" % t.red.min()); macro("UnitRedMax", "%.0f" % t.red.max())
         macro("FitBestKiB", int(best["buffer KiB"])); macro("FitBestOnly", int(best["only STRATA fits"]))
         macro("FitBestStrata", int(best["fit in STRATA"])); macro("FitBestArena", int(best["fit in arena+chains"]))
@@ -155,19 +156,27 @@ def build(run, md, macro, table, esc):
             tv.to_csv(os.path.join("results", "summary", run, "sweep.csv"), index=False)
             A("Replay time of STRATA against the conventional table on the same traces (paired rounds; positive = STRATA faster):\n")
             A(tv.round(1).to_markdown(index=False))
-            cross = {}
+            by_len = []
             for L, g in tv.groupby("L"):
-                fast = g[g["CI low"] > 0].sigma
-                cross[L] = fast.min() if len(fast) else None
-            A("\nSmallest sigma at which STRATA is established faster: " + "; ".join(
-                "L = %d: %s" % (L, ("sigma = %.2f" % v) if v is not None else "never in the tested range") for L, v in cross.items()) + ".")
-            A("\nDecision rule supported by these data: at sigma = 1 (ordinary C as compiled by TinyCC and chibicc) the conventional table is the faster choice and STRATA "
-              "saves %s%% of the buffer; the saving grows with shadowing to %.0f%% at sigma = 8, and STRATA also becomes the faster table once shadowing is "
-              "substantial (see the crossover values above). Name length changes the saving at sigma = 1 through word rounding.\n"
-              % (rng(s1.mem_red, "%.0f"), sw[sw.sigma == 8.0].mem_red.max()))
-            vals = [v for v in cross.values() if v is not None]
-            macro("CrossMin", ("%.2f" % min(vals)) if vals else "none"); macro("CrossMax", ("%.2f" % max(vals)) if vals else "none")
-            macro("CrossNever", sum(1 for v in cross.values() if v is None))
+                by_len.append({"L": int(L), "sweep points": len(g), "STRATA established faster": int((g["CI low"] > 0).sum()),
+                               "STRATA established slower": int((g["CI high"] < 0).sum()),
+                               "time red. % min": g["time red. %"].min(), "time red. % max": g["time red. %"].max()})
+            bl = pd.DataFrame(by_len)
+            A("\nBy name length:\n")
+            A(bl.round(1).to_markdown(index=False))
+            short = bl[bl.L == bl.L.min()].iloc[0]
+            rest = bl[bl.L != bl.L.min()]
+            A("\nReading. **Memory** behaves as the model says: the saving is %s%% at sigma = 1 (it depends on name length and on where the number of names falls "
+              "between two index sizes; the compiler traces, with mixed lengths, show 16-18%%) and grows monotonically with shadowing to %.0f%% at sigma = 8. "
+              "**Time does not follow shadowing.** It follows name length: with %d-character names STRATA is established faster at %d of %d shadowing factors; "
+              "with longer names it is established slower at %d of %d points and faster at %d. We found no shadowing factor from which STRATA is reliably the faster "
+              "table. The individual time values are not monotone in sigma, which we attribute to cache and index-size effects that the sweep does not control; "
+              "only the sign pattern by name length is consistent.\n"
+              % (rng(s1.mem_red, "%.0f"), sw[sw.sigma == 8.0].mem_red.max(), short.L, short["STRATA established faster"], short["sweep points"],
+                 int(rest["STRATA established slower"].sum()), int(rest["sweep points"].sum()), int(rest["STRATA established faster"].sum())))
+            macro("SweepShortL", int(short.L)); macro("SweepShortFaster", int(short["STRATA established faster"])); macro("SweepShortN", int(short["sweep points"]))
+            macro("SweepLongSlower", int(rest["STRATA established slower"].sum())); macro("SweepLongFaster", int(rest["STRATA established faster"].sum()))
+            macro("SweepLongN", int(rest["sweep points"].sum()))
             piv = tv.pivot(index="sigma", columns="L", values="memory red. %")
             pt = tv.pivot(index="sigma", columns="L", values="time red. %")
             table("TabSweep", ["$\\sigma$"] + ["mem. $L{=}%d$" % c for c in piv.columns] + ["time $L{=}%d$" % c for c in pt.columns],
@@ -205,10 +214,19 @@ def build(run, md, macro, table, esc):
           % ct.rep.nunique())
         A(ce.round(2).to_markdown(index=False))
         crss["d"] = (crss.orig_peak_rss_kb - crss.strata_peak_rss_kb) / crss.orig_peak_rss_kb * 100
-        A("\nReading: replacing chibicc's per-scope hash maps changes whole-compiler time by %s%% (STRATA) and %s%% (arena) and peak memory by a median of %.2f%% per unit. "
+        ci = lambda text: (float(text[1:].split(",")[0]), float(text.split(",")[1][:-1]))
+        s_slow = [r["project"] for r in rows if ci(r["CI"])[1] < 0]
+        s_fast = [r["project"] for r in rows if ci(r["CI"])[0] > 0]
+        a_slow = [r["project"] for r in rows if ci(r["CI "])[1] < 0]
+        a_fast = [r["project"] for r in rows if ci(r["CI "])[0] > 0]
+        A("\nReading: replacing chibicc's per-scope hash maps changes whole-compiler time by %s%% with STRATA (established slower on %s; established faster on %s) "
+          "and by %s%% with the arena table (established slower on %s; faster on %s), and peak memory by a median of %.2f%% per unit. "
           "Symbol-table work is a small part of this compiler's time and its memory is dominated by tokens and syntax trees that it never frees, "
-          "so the choice of table is nearly invisible end to end. The comparison between the tables themselves is in the replay below.\n"
-          % (rng(ce["time red. % STRATA"]), rng(ce["time red. % arena"]), crss.d.median()))
+          "so neither table gives an end-to-end benefit here, and STRATA costs one to four percent of compile time on the larger projects. "
+          "Both builds also keep file-scope declarations in a second table to answer chibicc's global lookups, which adds work the original does not do.\n"
+          % (rng(ce["time red. % STRATA"]), ", ".join(s_slow) or "no project", ", ".join(s_fast) or "no project",
+             rng(ce["time red. % arena"]), ", ".join(a_slow) or "no project", ", ".join(a_fast) or "no project", crss.d.median()))
+        macro("ChibiStrataSlowN", len(s_slow)); macro("ChibiArenaEstN", len(a_slow) + len(a_fast)); macro("ChibiProjects", len(rows))
         macro("ChibiUnits", ok); macro("ChibiAll", len(cu)); macro("ChibiSame", int(cu.strata_identical_asm.sum()))
         macro("ChibiTimeMin", "%.1f" % ce["time red. % STRATA"].min()); macro("ChibiTimeMax", "%.1f" % ce["time red. % STRATA"].max())
         macro("ChibiArenaTimeMin", "%.1f" % ce["time red. % arena"].min()); macro("ChibiArenaTimeMax", "%.1f" % ce["time red. % arena"].max())
@@ -233,8 +251,17 @@ def build(run, md, macro, table, esc):
             A("**Replay of chibicc's own scope calls** (%d table/trace pairs, %d with a wrong or refused result; `scope_map_stack` is chibicc's own design):\n" % (len(s), bad))
             A(cr.round(1).to_markdown(index=False))
             sig = (s.drop_duplicates("trace").peak_live_decls / s.drop_duplicates("trace").peak_live_distinct)
-            A("\nShadowing factor at the peak on these traces: %s. STRATA against the conventional table: %s%% (time reduction, range over traces); against chibicc's own design: %s%%.\n"
-              % (rng(sig, "%.3f"), rng(cr["time red. % vs arena_chain"]), rng(cr["time red. % vs scope_map_stack"])))
+            A("\nShadowing factor at the peak on these traces: %s. STRATA against the conventional table: %s%% (established slower on %d of %d traces, faster on %d); "
+              "against chibicc's own per-scope maps: %s%% (established faster on %d, slower on %d).\n"
+              % (rng(sig, "%.3f"), rng(cr["time red. % vs arena_chain"]),
+                 int(((cr["est. arena_chain"] == "yes") & (cr["time red. % vs arena_chain"] < 0)).sum()), len(cr),
+                 int(((cr["est. arena_chain"] == "yes") & (cr["time red. % vs arena_chain"] > 0)).sum()),
+                 rng(cr["time red. % vs scope_map_stack"]),
+                 int(((cr["est. scope_map_stack"] == "yes") & (cr["time red. % vs scope_map_stack"] > 0)).sum()),
+                 int(((cr["est. scope_map_stack"] == "yes") & (cr["time red. % vs scope_map_stack"] < 0)).sum())))
+            macro("ChibiVsArenaSlowN", int(((cr["est. arena_chain"] == "yes") & (cr["time red. % vs arena_chain"] < 0)).sum()))
+            macro("ChibiVsMapFastN", int(((cr["est. scope_map_stack"] == "yes") & (cr["time red. % vs scope_map_stack"] > 0)).sum()))
+            macro("ChibiTraces", len(cr))
             macro("ChibiVsArenaMin", "%.0f" % cr["time red. % vs arena_chain"].min()); macro("ChibiVsArenaMax", "%.0f" % cr["time red. % vs arena_chain"].max())
             macro("ChibiVsMapMin", "%.0f" % cr["time red. % vs scope_map_stack"].min()); macro("ChibiVsMapMax", "%.0f" % cr["time red. % vs scope_map_stack"].max())
             macro("ChibiPairsBad", bad); macro("ChibiPairs", len(s))

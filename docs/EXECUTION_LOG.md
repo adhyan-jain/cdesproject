@@ -47,3 +47,11 @@ One working session, 11 October 2026. Times are omitted; the order is exact.
 * METIS code is fetched, never copied.
 * Licence of this repository: MIT, copyright in both authors' names; to be confirmed by them.
 * The 85% target was treated as a hypothesis and is reported as met or not met per metric.
+
+## Third round: "when does it pay off" (2026-10-11)
+
+- Instrumented a second compiler, chibicc (commit 90d1f7f), as a trace source and as an integration target (`tools/chibicc/`). First integration attempt refused empty names, so its first memory and timing numbers were discarded; fixed and rerun. Assembly identical to the original on 158 of 158 units for both back ends.
+- Added per-unit and whole-trace minimum-buffer modes to the budget tool; `scripts/gen_sweep.py`, `scripts/run_extra.sh`, `scripts/extra_report.py`.
+- Emulated "does it fit" run for both bounded tables (`tools/embedded/fit.sh`): STRATA fits and the arena table does not at 48 KiB (freertos), 40 KiB (lua), 32 KiB (cjson); both fit freertos at 56 KiB.
+- The first draft of the paper claimed a shadowing factor at which STRATA becomes faster. The sweep data contradicted it, so the claim was removed and replaced by what was measured (time follows name length).
+- Paper rewritten around the question "when does the compact design pay off"; sections 13-15 of docs/RESULTS.md are generated from the new data.

@@ -15,6 +15,7 @@ pinning: taskset -c 2
 repetitions: 31 (+2 warm-up) whole-trace replays; 3 per-operation latency replays
 metis: 7b3dacfa5405ec3e6a03b718f485b473d779123d
 phmap: v1.4.1
+extra experiments: git 2d8672b, 2026-10-11T17:41:01Z, all
 ```
 
 Reduction always means `(baseline - STRATA) / baseline x 100`. A negative reduction means STRATA is worse. Time reductions are medians of per-round reductions (each round replays every table once, in rotating order) with a 95% bootstrap interval; "established" means the interval excludes zero.
@@ -326,3 +327,151 @@ Version 1: run `20261011-161306-final`. Changes since: slot recorded in the undo
 ## 12. Run-to-run variation
 
 Two complete runs of identical version-1 code are kept (`20261011-160113-full`, `20261011-161306-final`): 189 of 208 table/trace pairs have the same peak heap to within 64 bytes; their median replay times differ by a median of 4.8% and by up to 73%. In the present run the interquartile range of the 31 rounds is 15.6% of the median (median over pairs; maximum 39%). This is why time comparisons here are made on rounds paired within one run and stated with intervals.
+
+## 13. Does the saving let a workload fit? Per translation unit
+
+For every translation unit of every compiler trace, the smallest buffer (64-byte resolution) with which each bounded table replays the unit without a refusal. Source: `units.csv` (`budget --mode units`).
+
+| compiler   |   buffer KiB |   units |   fit in STRATA |   fit in arena+chains |   only STRATA fits |
+|:-----------|-------------:|--------:|----------------:|----------------------:|-------------------:|
+| TinyCC     |            4 |     169 |               0 |                     0 |                  0 |
+| TinyCC     |            8 |     169 |               2 |                     1 |                  1 |
+| TinyCC     |           16 |     169 |              51 |                    28 |                 23 |
+| TinyCC     |           24 |     169 |              90 |                    83 |                  7 |
+| TinyCC     |           32 |     169 |             107 |                   100 |                  7 |
+| TinyCC     |           48 |     169 |             132 |                   113 |                 19 |
+| TinyCC     |           64 |     169 |             147 |                   146 |                  1 |
+| TinyCC     |           96 |     169 |             167 |                   165 |                  2 |
+| TinyCC     |          128 |     169 |             167 |                   167 |                  0 |
+| TinyCC     |          192 |     169 |             169 |                   169 |                  0 |
+| chibicc    |            4 |     158 |               0 |                     0 |                  0 |
+| chibicc    |            8 |     158 |               4 |                     2 |                  2 |
+| chibicc    |           16 |     158 |              55 |                    34 |                 21 |
+| chibicc    |           24 |     158 |              84 |                    82 |                  2 |
+| chibicc    |           32 |     158 |             103 |                    96 |                  7 |
+| chibicc    |           48 |     158 |             125 |                   108 |                 17 |
+| chibicc    |           64 |     158 |             140 |                   139 |                  1 |
+| chibicc    |           96 |     158 |             157 |                   154 |                  3 |
+| chibicc    |          128 |     158 |             157 |                   157 |                  0 |
+| chibicc    |          192 |     158 |             158 |                   158 |                  0 |
+
+Per-unit reduction of STRATA against the conventional table: TinyCC traces median 16.8% (range 2.0 to 18.1%, 169 units); chibicc traces median 16.7% (range 1.5 to 18.1%, 158 units). STRATA needs the smaller buffer on 327 of 327 units.
+
+Reading: the saving decides whether a unit fits only when the budget falls between the two requirements. At 16 KiB that is the case for 23 of the 169 TinyCC units, the largest count among the tested sizes; at 64 KiB and above it is the case for at most 2. The reduction therefore matters for a design with a hard table budget near the workload's need, and not otherwise.
+
+On the emulated Cortex-M3 (64 KiB RAM, `tools/embedded/fit.sh`, log `results/embedded/fit_cortex_m3.txt`), same trace and same static buffer for both tables:
+
+| trace    |   buffer bytes | table        |   refused operations | result       |
+|:---------|---------------:|:-------------|---------------------:|:-------------|
+| freertos |          49152 | STRATA       |                    0 | PASS         |
+| freertos |          49152 | arena+chains |                  420 | DOES NOT FIT |
+| freertos |          57344 | STRATA       |                    0 | PASS         |
+| freertos |          57344 | arena+chains |                    0 | PASS         |
+| lua      |          40960 | STRATA       |                    0 | PASS         |
+| lua      |          40960 | arena+chains |                 2214 | DOES NOT FIT |
+| cjson    |          32768 | STRATA       |                    0 | PASS         |
+| cjson    |          32768 | arena+chains |                  822 | DOES NOT FIT |
+
+## 14. When does the saving grow? Shadowing factor and name length
+
+Synthetic traces (`scripts/gen_sweep.py`): 4 096 live declarations at the peak, built from 4 096 / sigma distinct names declared in nested scopes (sigma = live declarations per distinct live name), names of exactly L characters, five lookups per declaration. The compiler traces sit at sigma = 1.00.
+
+Memory model (bytes; N live declarations, D distinct names, L name length, d open scopes):
+
+```
+STRATA       = D * (8 + 4*ceil(L/5)) + 4*index(D) + 4*D + 12*(N - D) + 8*d + 4     index(D): smallest 16*2^k with D <= 0.75*index
+arena+chains = N * (16 + 4*ceil(L/4)) + 4*buckets(N) + 4*d + 4                  buckets(N): smallest 16*2^k >= N
+```
+
+Reduction of STRATA's minimum buffer against the conventional table, % (measured):
+
+|   sigma |   L = 6 |   L = 12 |   L = 24 |
+|--------:|--------:|---------:|---------:|
+|     1   |     0   |      0   |      9.1 |
+|     1.2 |     5.7 |      7.5 |     18.2 |
+|     1.5 |    23.8 |     25   |     33.3 |
+|     2   |    28.6 |     31.2 |     40.9 |
+|     3   |    40.4 |     43.7 |     53   |
+|     4   |    42.8 |     46.9 |     56.8 |
+|     8   |    50   |     54.7 |     64.7 |
+
+Model against measurement over the 21 sweep points: STRATA error -0.09 to 1.81% (median |error| 0.05%); conventional table error -0.05 to -0.02% (median |error| 0.04%).
+
+Replay time of STRATA against the conventional table on the same traces (paired rounds; positive = STRATA faster):
+
+|   sigma |   L |   memory red. % |   time red. % |   CI low |   CI high | STRATA faster   |
+|--------:|----:|----------------:|--------------:|---------:|----------:|:----------------|
+|     1   |   6 |             0   |          16.4 |      8.8 |      21.2 | yes             |
+|     1.2 |   6 |             5.7 |          25.5 |     23.1 |      28.6 | yes             |
+|     1.5 |   6 |            23.8 |          23.7 |     15.9 |      28.5 | yes             |
+|     2   |   6 |            28.6 |          32.5 |     30.7 |      37.5 | yes             |
+|     3   |   6 |            40.4 |          22   |     16.6 |      25.5 | yes             |
+|     4   |   6 |            42.8 |          31.5 |     20.2 |      34.6 | yes             |
+|     8   |   6 |            50   |          32   |     30.4 |      32.9 | yes             |
+|     1   |  12 |             0   |         -25.9 |    -32.1 |     -17.9 | no              |
+|     1.2 |  12 |             7.5 |          -6.6 |    -10.8 |      -2.9 | no              |
+|     1.5 |  12 |            25   |         -35.9 |    -39   |     -27.5 | no              |
+|     2   |  12 |            31.2 |         -15.1 |    -21   |     -12.3 | no              |
+|     3   |  12 |            43.7 |         -27.4 |    -31.5 |     -23.8 | no              |
+|     4   |  12 |            46.9 |          10.6 |      8.6 |      11.9 | yes             |
+|     8   |  12 |            54.7 |         -10.3 |    -11.1 |       4.9 | not established |
+|     1   |  24 |             9.1 |         -40.1 |    -42.8 |     -35.4 | no              |
+|     1.2 |  24 |            18.2 |           6.6 |      4.6 |       8.2 | yes             |
+|     1.5 |  24 |            33.3 |         -29   |    -31.7 |     -24   | no              |
+|     2   |  24 |            40.9 |         -26.6 |    -31.2 |     -18.6 | no              |
+|     3   |  24 |            53   |         -32.7 |    -36.8 |     -28.1 | no              |
+|     4   |  24 |            56.8 |         -33.5 |    -36.6 |     -31.1 | no              |
+|     8   |  24 |            64.7 |         -24.3 |    -37.9 |     -15.4 | no              |
+
+By name length:
+
+|   L |   sweep points |   STRATA established faster |   STRATA established slower |   time red. % min |   time red. % max |
+|----:|---------------:|----------------------------:|----------------------------:|------------------:|------------------:|
+|   6 |              7 |                           7 |                           0 |              16.4 |              32.5 |
+|  12 |              7 |                           1 |                           5 |             -35.9 |              10.6 |
+|  24 |              7 |                           1 |                           6 |             -40.1 |               6.6 |
+
+Reading. **Memory** behaves as the model says: the saving is 0 to 9% at sigma = 1 (it depends on name length and on where the number of names falls between two index sizes; the compiler traces, with mixed lengths, show 16-18%) and grows monotonically with shadowing to 65% at sigma = 8. **Time does not follow shadowing.** It follows name length: with 6-character names STRATA is established faster at 7 of 7 shadowing factors; with longer names it is established slower at 11 of 14 points and faster at 2. We found no shadowing factor from which STRATA is reliably the faster table. The individual time values are not monotone in sigma, which we attribute to cache and index-size effects that the sweep does not control; only the sign pattern by name length is consistent.
+
+## 15. A second compiler, used two ways: chibicc
+
+chibicc (commit `90d1f7f`, MIT) resolves identifiers by string with one hash map per open scope, so, unlike TinyCC, it is a compiler in which a string-keyed scoped table is on the real resolution path. `tools/chibicc/` patches it to log its scope calls and to route its variable scopes through STRATA or the conventional arena table.
+
+```
+chibicc: https://github.com/rui314/chibicc commit 90d1f7f (MIT), patched by tools/chibicc/apply_patch.py
+builds: cc -std=c11 -O2; back ends g++ -std=c++14 -O2 -fno-exceptions -fno-rtti
+rounds: 21 (+1 warm-up); in each round every build compiles all units of a project, order rotated
+kernel: Linux 6.18.33.2-microsoft-standard-WSL2
+host cc: cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+```
+
+**Integration correctness.** The unmodified chibicc compiles 158 of the 170 translation units of seven projects. For those, the STRATA build produces assembly identical to the original on 158 and the arena build on 158 (after normalising the path of the compiler's own headers).
+
+**End to end.** Whole-project compile time (`-S`, 21 interleaved rounds, positive reduction = faster than the original) and the largest peak resident set size over a project's units:
+
+| project   |   units |   compile s (original) |   STRATA |   arena |   time red. % STRATA | CI           |   time red. % arena | CI          |   max peak RSS MB (original) |   STRATA  |   arena  |
+|:----------|--------:|-----------------------:|---------:|--------:|---------------------:|:-------------|--------------------:|:------------|-----------------------------:|----------:|---------:|
+| cjson     |       2 |                   0.1  |     0.1  |    0.1  |                 0.46 | [-5.6, 4.2]  |                0.62 | [-2.0, 3.5] |                        45.96 |     45.86 |    45.86 |
+| littlefs  |       1 |                   0.02 |     0.02 |    0.02 |                -0.14 | [-5.7, 7.1]  |                1.97 | [-2.6, 7.5] |                        13.53 |     13.6  |    13.53 |
+| zlib      |      12 |                   0.31 |     0.31 |    0.3  |                 0.82 | [-3.1, 3.9]  |                2.76 | [-0.4, 4.5] |                        40.15 |     39.97 |    39.96 |
+| lua       |      34 |                   1.15 |     1.2  |    1.15 |                -3.55 | [-5.7, -0.8] |               -1.43 | [-3.0, 0.9] |                       133.2  |    132.99 |   133.01 |
+| freertos  |       7 |                   2.3  |     2.49 |    2.45 |                -3.71 | [-8.5, 3.6]  |               -2.19 | [-5.1, 5.2] |                        22.97 |     22.91 |    22.91 |
+| mbedtls   |     101 |                   5.72 |     5.79 |    5.71 |                -1.74 | [-2.9, -0.6] |                0.31 | [-1.0, 1.4] |                       296.56 |    296.54 |   296.54 |
+| sqlite    |       1 |                   1.04 |     1.06 |    1.05 |                -1.56 | [-2.5, -0.5] |               -0.14 | [-3.0, 1.2] |                       526.55 |    523.15 |   523.19 |
+
+Reading: replacing chibicc's per-scope hash maps changes whole-compiler time by -3.7 to 0.8% with STRATA (established slower on lua, mbedtls, sqlite; established faster on no project) and by -2.2 to 2.8% with the arena table (established slower on no project; faster on no project), and peak memory by a median of 0.14% per unit. Symbol-table work is a small part of this compiler's time and its memory is dominated by tokens and syntax trees that it never frees, so neither table gives an end-to-end benefit here, and STRATA costs one to four percent of compile time on the larger projects. Both builds also keep file-scope declarations in a second table to answer chibicc's global lookups, which adds work the original does not do.
+
+**Replay of chibicc's own scope calls** (84 table/trace pairs, 0 with a wrong or refused result; `scope_map_stack` is chibicc's own design):
+
+| trace            |   units |   operations |   peak live decls |   peak live distinct |   time red. % vs scope_map_stack | est. scope_map_stack   |   time red. % vs arena_chain | est. arena_chain   |   time red. % vs metis_x | est. metis_x   |   time red. % vs swiss_interned | est. swiss_interned   |
+|:-----------------|--------:|-------------:|------------------:|---------------------:|---------------------------------:|:-----------------------|-----------------------------:|:-------------------|-------------------------:|:---------------|--------------------------------:|:----------------------|
+| chibicc_cjson    |       2 |        19637 |              1044 |                 1044 |                              9.8 | yes                    |                        -41.1 | yes                |                    -13.7 | yes            |                           -25.2 | yes                   |
+| chibicc_freertos |       7 |        26083 |               515 |                  515 |                             20.1 | yes                    |                        -31.4 | yes                |                      4.2 | yes            |                           -14.9 | yes                   |
+| chibicc_littlefs |       1 |         2998 |               469 |                  469 |                            -11.8 | yes                    |                        -48.9 | yes                |                    -13.9 | yes            |                           -24.6 | yes                   |
+| chibicc_lua      |      34 |       213276 |              1341 |                 1341 |                              6.9 | no                     |                        -11.2 | no                 |                     -7.3 | yes            |                           -29.5 | yes                   |
+| chibicc_mbedtls  |     101 |      1306707 |              2287 |                 2287 |                             -1.1 | no                     |                        -10.6 | yes                |                      1.2 | no             |                           -33.4 | yes                   |
+| chibicc_sqlite   |       1 |       262428 |              4768 |                 4768 |                             45.7 | yes                    |                          2   | no                 |                     14.3 | yes            |                            -3.3 | no                    |
+| chibicc_zlib     |      12 |        49842 |               555 |                  555 |                             26.1 | yes                    |                         -2   | no                 |                      0.9 | no             |                           -11.9 | yes                   |
+
+Shadowing factor at the peak on these traces: 1.000 to 1.000. STRATA against the conventional table: -48.9 to 2.0% (established slower on 4 of 7 traces, faster on 0); against chibicc's own per-scope maps: -11.8 to 45.7% (established faster on 4, slower on 1).
+

@@ -87,3 +87,12 @@
 * Why STRATA is slower than `arena_chain` (query packing, or open addressing against
   chains) was not separated experimentally.
 * The patch for TCC was applied to one commit only.
+
+## Added after the third review round (run 20261011-165103-v3, extra experiments)
+
+- **No C++ workloads.** Both instrumented compilers (TinyCC, chibicc) compile C only. The shadowing / name-length sweep covers heavier shadowing and longer names synthetically; no real C++ front end was traced.
+- **No real hardware.** The Cortex-M3 results come from QEMU (mps2-an385). They show that the code runs without a heap in 64 KiB and which table fits a given buffer; they contain no timing.
+- **The sweep found no time crossover.** We expected a shadowing factor beyond which STRATA is also the faster table. The data do not show one: time follows name length (faster with 6-character names, mostly slower with 12 and 24), and the values are not monotone in the shadowing factor. The cause was not isolated.
+- **End to end, neither table helps a hosted compiler.** In chibicc, STRATA is established slower on 3 of 7 projects (up to about 4%) and the arena table shows no established difference; peak memory is unchanged (median 0.14% per unit).
+- **The fit benefit is narrow.** The saving decides whether a translation unit fits only when the budget lies between the two tables' needs: at most 23 of 169 TinyCC units (at 16 KiB), and at most 2 at 64 KiB and above.
+- **chibicc integration detail.** Only variable scopes were replaced; file-scope declarations are mirrored in a second table instance to answer chibicc's global lookups, which adds work the original compiler does not do.
