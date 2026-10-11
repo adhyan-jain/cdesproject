@@ -81,5 +81,6 @@ typically and by tens of percent occasionally.
 | `20261011-160113-full` | commit `8169bf5` | first complete run; before the `sparse_index` option existed |
 | `20261011-161306-final` | commit `3aee381` | the run reported in `RESULTS.md` and the paper |
 
-The timestamps in the run names come from the clock inside WSL, which was behind real time
-during the session; the two runs were about two hours apart, not twelve minutes.
+The timestamps in the run names come from the clock inside WSL, which was not checked against
+real time. The twelve-minute gap they suggest is too short: the first run alone took longer
+than that.
