@@ -46,7 +46,7 @@ Severity: **C** correctness, **M** memory, **L** latency, **V** research validit
 
 * **Where:** `resolve` (252-278): the loop does not stop at the first match; it compares every entry with the same name and keeps the deepest scope.
 * **Effect:** O(s) name comparisons for a name with s live declarations.
-* **Evidence:** on the `shadow_heavy` trace METIS-X's lookup p95 and p99 are several times those of the tables that keep one entry per name (`docs/RESULTS.md`, section C).
+* **Evidence:** on the `shadow_heavy` trace METIS-X's lookup p95 is 108 ns against 40 ns for the new table, which keeps one entry per name (`docs/RESULTS.md`, section C).
 * **Fix:** the identifier record holds the innermost declaration; a lookup never looks at shadowed ones.
 
 ### D3. Rehash is not exception-safe and leaks (C, M) - confirmed by reading
@@ -60,7 +60,7 @@ Severity: **C** correctness, **M** memory, **L** latency, **V** research validit
 ### D4. Every name longer than 12 bytes costs a heap allocation (M, L) - confirmed
 
 * **Where:** `MetisXSlot::setName` (91-107), `new char[len]`.
-* **Evidence:** on the compiler traces METIS-X makes tens of thousands of allocator calls per trace, the new table a few hundred at most (`docs/RESULTS.md`, allocator-call table).
+* **Evidence:** on the eight compiler traces METIS-X makes between 2 774 and 255 849 allocator calls, the new table between 15 and 1 154 (`results/summary/20261011-161306-final/compiler_old_vs_new.csv`).
 * **Related false statement:** the header comment (line 17) says a 12-byte buffer "covers 93.4% of Zephyr names verbatim". Measured from the repository's own Zephyr trace, 49.7% of declarations and 22.7% of distinct names are at most 12 bytes.
 * **Fix:** names live in the table's own buffer, packed five characters per 32-bit word.
 
@@ -75,7 +75,7 @@ Severity: **C** correctness, **M** memory, **L** latency, **V** research validit
 
 * **Where:** `backwardShift` (417-431), called once per removed entry.
 * **Effect:** O(k x cluster length) per scope exit.
-* **Evidence:** measured exit latency in `docs/RESULTS.md`. On these workloads the cost is similar to the new table's, so this is a worst-case concern more than an average-case one.
+* **Evidence:** measured exit latency in `docs/RESULTS.md`. On the compiler traces METIS-X's scope exit is in fact *faster* per call than the new table's (p95 13-58% lower), so this is a worst-case concern, not a measured disadvantage.
 * **Fix:** names first seen in the closing scope are the newest index entries; their slots are simply emptied. Nothing is shifted.
 
 ### D7. One heap vector per scope, contrary to the header comment (M) - confirmed

@@ -1,0 +1,104 @@
+% References for paper/main.tex.
+% Entries marked VERIFIED were checked against a publisher page, the project's own
+% site or its source code during this project. Entries marked STANDARD are well-known
+% books or papers cited for a technique, not for a number; their bibliographic details
+% were not re-checked and must be confirmed by the authors before submission.
+
+% status: STANDARD
+@book{aho2006,
+  author    = {Alfred V. Aho and Monica S. Lam and Ravi Sethi and Jeffrey D. Ullman},
+  title     = {Compilers: Principles, Techniques, and Tools},
+  edition   = {2nd},
+  publisher = {Addison-Wesley},
+  year      = {2006}
+}
+% status: STANDARD
+@book{appel1998,
+  author    = {Andrew W. Appel},
+  title     = {Modern Compiler Implementation in {C}},
+  publisher = {Cambridge University Press},
+  year      = {1998}
+}
+% status: VERIFIED: page retrieved October 2026
+@misc{llvmsht,
+  author       = {{LLVM Project}},
+  title        = {{ScopedHashTable.h}, {LLVM} {ADT} library},
+  howpublished = {\url{https://llvm.org/doxygen/ScopedHashTable_8h_source.html}}
+}
+% status: VERIFIED: file headers retrieved October 2026
+@misc{clangident,
+  author       = {{LLVM Project}},
+  title        = {{IdentifierTable.cpp} and {IdentifierResolver.h}, {Clang}},
+  howpublished = {\url{https://github.com/llvm/llvm-project/tree/main/clang}}
+}
+% status: VERIFIED: source code read and instrumented
+@misc{tcc,
+  author       = {Fabrice Bellard and {TinyCC contributors}},
+  title        = {{Tiny C Compiler}},
+  howpublished = {\url{https://repo.or.cz/tinycc.git}, commit 43c7708}
+}
+% status: STANDARD
+@inproceedings{celis1985,
+  author    = {Pedro Celis and Per-{\AA}ke Larson and J. Ian Munro},
+  title     = {Robin {Hood} Hashing},
+  booktitle = {Proc. 26th Annual Symposium on Foundations of Computer Science (FOCS)},
+  year      = {1985}
+}
+% status: VERIFIED: institutional publication record
+@inproceedings{bender2021,
+  author    = {Michael A. Bender and Bradley C. Kuszmaul and William Kuszmaul},
+  title     = {Linear Probing Revisited: Tombstones Mark the Demise of Primary Clustering},
+  booktitle = {Proc. 62nd IEEE Annual Symposium on Foundations of Computer Science (FOCS)},
+  pages     = {1171--1182},
+  year      = {2021},
+  doi       = {10.1109/FOCS52979.2021.00115}
+}
+% status: STANDARD
+@misc{swisstables,
+  author       = {{Abseil}},
+  title        = {Swiss Tables Design Notes},
+  howpublished = {\url{https://abseil.io/about/design/swisstables}}
+}
+% status: VERIFIED: tag v1.4.1 fetched and compiled
+@misc{phmap,
+  author       = {Gregory Popovitch},
+  title        = {The Parallel Hashmap, version 1.4.1},
+  howpublished = {\url{https://github.com/greg7mdp/parallel-hashmap}}
+}
+% status: VERIFIED: page retrieved October 2026; a primary DEC manual should replace this entry
+@misc{radix50,
+  author       = {{Wikipedia contributors}},
+  title        = {{DEC RADIX 50}},
+  howpublished = {\url{https://en.wikipedia.org/wiki/DEC_RADIX_50}}
+}
+% status: STANDARD
+@book{knuth3,
+  author    = {Donald E. Knuth},
+  title     = {The Art of Computer Programming, Volume 3: Sorting and Searching},
+  edition   = {2nd},
+  publisher = {Addison-Wesley},
+  year      = {1998}
+}
+% status: STANDARD
+@article{hanson1990,
+  author  = {David R. Hanson},
+  title   = {Fast Allocation and Deallocation of Memory Based on Object Lifetimes},
+  journal = {Software: Practice and Experience},
+  volume  = {20},
+  number  = {1},
+  pages   = {5--12},
+  year    = {1990}
+}
+% status: STANDARD
+@misc{murmur3,
+  author       = {Austin Appleby},
+  title        = {{MurmurHash3}, {SMHasher}},
+  howpublished = {\url{https://github.com/aappleby/smhasher}}
+}
+% status: VERIFIED: audited for this work
+@misc{metis,
+  author       = {Adhyan Jain and Shubhi Singh},
+  title        = {{METIS}: symbol-table research repository, commit 7b3dacf},
+  howpublished = {\url{https://github.com/adhyan-jain/Metis}},
+  year         = {2026}
+}

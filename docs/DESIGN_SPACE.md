@@ -66,7 +66,7 @@ index at the bottom, identifier records growing up, undo stack growing down.
 | Scope exit | pop undo entries; empty the index slots of names first seen in the scope (they are the newest keys, so no tombstones and no shifting) |
 | Worst case | linear probing: a full cluster scan if the hash is defeated (measured in experiment D); table rebuild when the index doubles |
 | Allocation | none in fixed mode; O(log n) reallocs in growable mode |
-| Complexity | moderate; one 450-line header |
+| Complexity | moderate; one header of about 550 lines |
 | Embedded fit | good: caller-supplied buffer, explicit `kNoMemory`, strong failure guarantee, 32-bit arithmetic only |
 | Prior art | C + open addressing + 6-bit character packing (cf. DEC RADIX-50) + two-ended stack allocation |
 | Hypothesis | **H1** it needs less memory than every other candidate on compiler-generated traces; **H2** it does so without being slower than METIS-X end to end; **H3** it runs a whole translation unit from a fixed buffer with no allocator |
@@ -81,11 +81,13 @@ cannot be added to C without replacing its containers, which is what D is.
 
 | Option | Outcome |
 |---|---|
-| Separate binding record per declaration (12 B) with a chain through shadowed bindings | first version; replaced. Storing the innermost declaration in the identifier record and saving only *hidden* declarations on the undo stack cut the minimum buffer for `sqlite3.c` from 177.7 KiB to 143.7 KiB (-19%) and removed one memory access from every lookup. |
-| Initial index sized as 1/16 of the buffer | replaced by a fixed 16-slot start that doubles in place; a large initial index wasted memory in tight fixed buffers. |
+| Separate binding record per declaration (12 B) with a chain through shadowed bindings | first version; replaced by storing the innermost declaration in the identifier record and saving only *hidden* declarations on the undo stack. This also removes one memory access from every lookup. |
+| Initial index sized as 1/16 of the buffer | replaced by a fixed 16-slot start that doubles in place; a large initial index wasted memory in tight fixed buffers. Together with the previous change this cut the minimum buffer for `sqlite3.c` from 177 728 to 143 744 bytes (-19%); the two changes were not measured separately. |
 | Buffer growth by doubling with a fresh allocation | replaced by 1.5x growth through `realloc`; doubling held two full copies at the peak. |
 | 6-bit name packing | kept; measured against raw names (ablation `strata_raw`). The saving is modest because names are only part of a record. |
 | Shrinking on scope exit | kept as the default; measured against `strata_noshrink`. It costs time when a large scope is re-entered repeatedly. |
+| Maximum index load 1/2 instead of 3/4 | kept as an option (`sparse_index`, off by default): fewer probes, more index memory. Measured as variant `strata_sparse`. |
+| Triangular instead of linear probing | tried in a scratch build: no consistent gain on four traces; dropped. |
 | Non-power-of-two index (to hold the load factor near 0.75 at all times) | not done: estimated saving under 5%, at the cost of a multiply per probe start. |
 | Prefix compression of names (front coding) | not done: the earlier project measured that reconstruction on the lookup path costs more than it saves (SymTabV3). |
 | Robin Hood displacement in the index | not done: it would break the "newest keys can simply be emptied" property, which needs keys to stay where they were inserted. |
