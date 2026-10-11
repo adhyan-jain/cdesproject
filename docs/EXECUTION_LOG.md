@@ -22,7 +22,9 @@ One working session, 11 October 2026. Times are omitted; the order is exact.
 | 16 | Added `sparse_index` as an option (default off) and a fourth STRATA variant in the benchmarks | 1 177 892 checks pass. |
 | 17 | Second full run (`-final`, commit `3aee381`) | The run reported in `RESULTS.md`. |
 | 18 | Related-work search | The undo-stack scheme is in Appel's textbook and LLVM; 6-bit packing has the RADIX-50 precedent; one intended citation (Cook and LeBlanc 1983) could not be confirmed and was dropped. Novelty self-assessment 4.5/10, not the 8/10 goal. |
-| 19 | Documents, paper, repository | See the final sections of `README.md`. |
+| 19 | Documents and paper draft | `docs/RESULTS.md` and `paper/generated.tex` are generated from the CSVs by `scripts/make_report.py`. Paper: 4 pages, compiles with pdflatex + bibtex. |
+| 20 | Clean-checkout check | Cloned the repository into an empty directory, ran `scripts/test.sh` (1 177 892 checks, 0 failed, both builds), `scripts/fetch_third_party.sh` and `REPS=2 scripts/run_all.sh`. The pipeline completed; correctness results were identical to the reported run (88/88 compiler pairs, 42/42 legacy pairs, and METIS-X on `deep_shadow_400` the only failing synthetic pair). That short run is not stored. |
+| 21 | Repository created and pushed; collaborator invited | See the project's final report. |
 
 ## Things tried and not kept
 
