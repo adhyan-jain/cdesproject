@@ -1,0 +1,538 @@
+// STRATA - a budgeted, stack-disciplined scoped symbol table.  C++14, header only.
+//
+// All state lives in ONE contiguous buffer of 32-bit words:
+//
+//   word 0                                                               word cap
+//   | index (open addressing) | identifier stack ->   free   <- undo stack |
+//
+//   index       one word per slot: 8-bit fingerprint | 24-bit identifier reference
+//   identifier  [value][meta][name words...]     one record per DISTINCT visible name;
+//               it holds the innermost declaration of that name directly
+//   undo entry  [ident ref]                      a declaration of a name not visible before
+//               [ident ref|S][value][meta bits]  a declaration that shadows: the hidden
+//                                                declaration is saved here
+//   scope mark  [identifier-stack top at entry][previous mark]   pushed on the undo stack
+//
+// Why this shape:
+//   * A lookup ends in the identifier record: no second hop to a declaration record, and
+//     the cost does not depend on how deeply the name is shadowed.
+//   * A declaration that shadows nothing costs one identifier record plus 4 bytes.
+//   * Identifier characters [A-Za-z0-9_] are packed five to a word (6 bits each); the query
+//     is packed once and compared word by word, so stored names are never unpacked.
+//   * Scopes are strictly LIFO, so everything a scope added sits on top of the two stacks.
+//     Leaving a scope pops them; the index entries of names first seen in that scope are
+//     the most recently inserted ones, and in linear probing the most recently inserted
+//     keys can be removed by simply emptying their slots (no tombstones, no shifting).
+//   * References are relative (identifiers: from the start of their region; undo entries:
+//     from the end of the buffer), so growing the index or the buffer moves two blocks and
+//     rebuilds the index without patching any stored reference.
+//
+// Modes:
+//   fixed     Table(buffer, bytes): never allocates; when the buffer is full declare()/
+//             enter_scope() return kNoMemory and leave the table unchanged.
+//   growable  Table(options): grows the buffer on demand (up to options.max_bytes) and
+//             gives memory back when less than a quarter is in use. A failed allocation
+//             leaves the table unchanged.
+// No exceptions are thrown and none are needed. Not thread-safe.
+//
+// Limits: names 1..255 bytes; scope depth <= 16383; buffer <= 64 MiB; type tag 0..255.
+#ifndef STRATA_STRATA_HPP
+#define STRATA_STRATA_HPP
+
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+
+namespace strata {
+
+enum Status {
+    kOk = 0,           // new declaration stored
+    kRedeclared = 1,   // same name already declared in the current scope: value/type replaced
+    kNoMemory = -1,    // buffer or budget exhausted; nothing was changed
+    kNameTooLong = -2, // more than kMaxNameLen bytes
+    kEmptyName = -3,
+    kNoScope = -4,     // exit_scope() at the outermost scope
+    kTooDeep = -5      // more than kMaxDepth open scopes
+};
+
+enum { kMaxNameLen = 255, kMaxNameWords = 64, kMaxDepth = 16383, kMarkWords = 2 };
+
+typedef void* (*AllocFn)(size_t bytes, void* user);
+typedef void (*FreeFn)(void* p, void* user);
+typedef void* (*ReallocFn)(void* p, size_t old_bytes, size_t new_bytes, void* user);  // 0 on failure, old block kept
+
+struct Options {
+    size_t initial_bytes;  // growable mode: first buffer size
+    size_t max_bytes;      // growable mode: hard budget (0 = unlimited)
+    bool pack_names;       // 6-bit packing of identifier characters (false: raw bytes)
+    bool shrink;           // growable mode: give memory back when usage drops
+    AllocFn alloc;         // default: malloc
+    FreeFn free;           // default: free
+    ReallocFn realloc;     // default: realloc, or alloc + copy + free when only alloc/free are given
+    void* user;
+    Options() : initial_bytes(1024), max_bytes(0), pack_names(true), shrink(true),
+                alloc(0), free(0), realloc(0), user(0) {}
+};
+
+struct Stats {
+    size_t capacity_bytes;   // current buffer size
+    size_t used_bytes;       // index + identifier stack + undo stack
+    size_t peak_used_bytes;  // high-water mark of used_bytes
+    size_t index_bytes, ident_bytes, undo_bytes;
+    size_t live_declarations, live_identifiers, depth;
+    size_t rebuilds;         // index or buffer relocations so far
+};
+
+// A name prepared for lookup: packed (or raw) words, key bits of the meta word, hash.
+struct Key {
+    uint32_t w[kMaxNameWords];
+    uint32_t n;     // number of words
+    uint32_t meta;  // n | raw << 7 | (len & 3) << 8
+    uint32_t hash;
+};
+
+namespace detail {
+// 0 = not an identifier character; otherwise a 6-bit code 1..63.
+inline const uint8_t* code_table() {
+    static uint8_t t[256];
+    static bool ready = false;
+    if (!ready) {
+        uint8_t c = 1;
+        for (int ch = 'a'; ch <= 'z'; ++ch) t[ch] = c++;
+        for (int ch = 'A'; ch <= 'Z'; ++ch) t[ch] = c++;
+        for (int ch = '0'; ch <= '9'; ++ch) t[ch] = c++;
+        t[static_cast<unsigned char>('_')] = c;  // 63
+        ready = true;
+    }
+    return t;
+}
+inline uint32_t rotl(uint32_t x, int r) { return (x << r) | (x >> (32 - r)); }
+// MurmurHash3 x86_32 (Austin Appleby, public domain) over whole words.
+inline uint32_t hash_words(const uint32_t* w, uint32_t n, uint32_t seed) {
+    uint32_t h = seed;
+    for (uint32_t i = 0; i < n; ++i) {
+        uint32_t k = w[i] * 0xcc9e2d51u;
+        k = rotl(k, 15) * 0x1b873593u;
+        h = rotl(h ^ k, 13) * 5u + 0xe6546b64u;
+    }
+    h ^= n * 4u;
+    h ^= h >> 16; h *= 0x85ebca6bu;
+    h ^= h >> 13; h *= 0xc2b2ae35u;
+    h ^= h >> 16;
+    return h;
+}
+inline void* default_alloc(size_t n, void*) { return std::malloc(n); }
+inline void default_free(void* p, void*) { std::free(p); }
+inline void* default_realloc(void* p, size_t, size_t n, void*) { return std::realloc(p, n); }
+}  // namespace detail
+
+class Table {
+public:
+    // ---- construction ---------------------------------------------------
+    // Fixed mode. `buffer` must be aligned for uint32_t and outlive the table.
+    // At most 64 MiB of it is used.
+    Table(void* buffer, size_t bytes, bool pack_names = true)
+        : w_(static_cast<uint32_t*>(buffer)),
+          cap_(bytes / 4 > kMaxWords ? static_cast<uint32_t>(kMaxWords) : static_cast<uint32_t>(bytes / 4)),
+          fixed_(true) {
+        opt_.pack_names = pack_names;
+        init_hooks();
+        valid_ = w_ != 0 && cap_ >= kMinWords;
+        if (valid_) reset_layout();
+    }
+    // Growable mode.
+    explicit Table(const Options& o = Options()) : w_(0), cap_(0), fixed_(false), opt_(o) {
+        init_hooks();
+        size_t words = o.initial_bytes / 4;
+        if (words < kMinWords) words = kMinWords;
+        if (words > kMaxWords) words = kMaxWords;
+        if (o.max_bytes && words * 4 > o.max_bytes) words = o.max_bytes / 4;
+        valid_ = false;
+        if (words >= kMinWords) {
+            w_ = static_cast<uint32_t*>(opt_.alloc(words * 4, opt_.user));
+            if (w_) { cap_ = static_cast<uint32_t>(words); valid_ = true; reset_layout(); }
+        }
+    }
+    ~Table() { if (!fixed_ && w_) opt_.free(w_, opt_.user); }
+
+    bool valid() const { return valid_; }  // false: no usable buffer; every call returns kNoMemory
+
+    // ---- scopes -----------------------------------------------------------
+    Status enter_scope() {
+        if (!valid_) return kNoMemory;
+        if (depth_ >= kMaxDepth) return kTooDeep;
+        if (!ensure(kMarkWords, 0)) return kNoMemory;
+        undo_ += kMarkWords;
+        uint32_t* m = w_ + cap_ - undo_;
+        m[0] = itop_;
+        m[1] = mark_;
+        mark_ = undo_;
+        ++depth_;
+        touch();
+        return kOk;
+    }
+
+    Status exit_scope() {
+        if (!valid_) return kNoMemory;
+        if (mark_ == 0) return kNoScope;
+        // 1. undo this scope's declarations, newest first
+        while (undo_ > mark_) {
+            const uint32_t* e = w_ + cap_ - undo_;
+            if (e[0] & kShadowBit) {           // restore the declaration this one was hiding
+                uint32_t* rec = ident(e[0] & kRefMask);
+                rec[0] = e[1];
+                rec[1] = (rec[1] & kKeyBits) | e[2];
+                undo_ -= 3;
+            } else {
+                undo_ -= 1;                    // the name itself goes away in step 2
+            }
+            --ndecl_;
+        }
+        const uint32_t* m = w_ + cap_ - mark_;
+        uint32_t saved_itop = m[0];
+        mark_ = m[1];
+        undo_ -= kMarkWords;
+        --depth_;
+        // 2. un-intern the names first seen in this scope. They are the newest index
+        //    entries, so their slots can simply be emptied. Slots are located first
+        //    (pass A, stored in the now dead value word) and emptied afterwards (pass B),
+        //    because emptying one slot could cut the probe path to another.
+        if (itop_ > saved_itop) {
+            for (uint32_t r = saved_itop; r < itop_;) {
+                uint32_t* rec = ident(r);
+                uint32_t n = rec[1] & kWordsMask;
+                uint32_t h = detail::hash_words(rec + 2, n, rec[1] & kKeyBits);
+                uint32_t want = slot_word(h, r);
+                uint32_t i = home(h);
+                while (w_[i] != want) i = (i + 1) & (idx_ - 1);
+                rec[0] = i;
+                r += 2 + n;
+            }
+            for (uint32_t r = saved_itop; r < itop_;) {
+                uint32_t* rec = ident(r);
+                w_[rec[0]] = 0;
+                --nident_;
+                r += 2 + (rec[1] & kWordsMask);
+            }
+            itop_ = saved_itop;
+        }
+        if (!fixed_ && opt_.shrink) maybe_shrink();
+        return kOk;
+    }
+
+    // ---- declarations -------------------------------------------------------
+    Status declare(const char* name, size_t len, int32_t value, uint8_t type = 0) {
+        if (!valid_) return kNoMemory;
+        Key k;
+        Status s = make_key(name, len, k);
+        if (s != kOk) return s;
+        const uint32_t tag = static_cast<uint32_t>(type) << kTypeShift | depth_ << kDepthShift;
+        uint32_t ref = find(k);
+        if (ref) {
+            uint32_t* rec = ident(ref);
+            if ((rec[1] >> kDepthShift) == depth_) {   // already declared in the current scope
+                rec[0] = static_cast<uint32_t>(value);
+                rec[1] = (rec[1] & kKeyBits) | tag;
+                return kRedeclared;
+            }
+            if (!ensure(3, 0)) return kNoMemory;
+            rec = ident(ref);                          // ensure() may have moved the buffer
+            undo_ += 3;
+            uint32_t* e = w_ + cap_ - undo_;
+            e[0] = ref | kShadowBit;
+            e[1] = rec[0];
+            e[2] = rec[1] & ~static_cast<uint32_t>(kKeyBits);
+            rec[0] = static_cast<uint32_t>(value);
+            rec[1] = (rec[1] & kKeyBits) | tag;
+            ++ndecl_;
+            touch();
+            return kOk;
+        }
+        // new name: reserve everything first so that failure changes nothing
+        if (itop_ + 2 + k.n > kRefMask) return kNoMemory;
+        if (!ensure(2 + k.n + 1, 1)) return kNoMemory;
+        ref = itop_;
+        uint32_t* rec = ident(ref);
+        rec[0] = static_cast<uint32_t>(value);
+        rec[1] = k.meta | tag;
+        std::memcpy(rec + 2, k.w, k.n * 4);
+        itop_ += 2 + k.n;
+        ++nident_;
+        index_insert(k.hash, ref);
+        undo_ += 1;
+        w_[cap_ - undo_] = ref;
+        ++ndecl_;
+        touch();
+        return kOk;
+    }
+    // NUL-terminated convenience forms (named differently to avoid overload ambiguity)
+    Status declare_cstr(const char* name, int32_t value, uint8_t type = 0) {
+        return declare(name, std::strlen(name), value, type);
+    }
+
+    // Innermost visible declaration of `name`. Returns false when there is none.
+    bool resolve(const char* name, size_t len, int32_t* value = 0, uint8_t* type = 0) const {
+        if (!valid_) return false;
+        Key k;
+        if (make_key(name, len, k) != kOk) return false;
+        uint32_t ref = find(k);
+        if (!ref) return false;
+        const uint32_t* rec = ident(ref);
+        if (value) *value = static_cast<int32_t>(rec[0]);
+        if (type) *type = static_cast<uint8_t>(rec[1] >> kTypeShift);
+        return true;
+    }
+    bool resolve_cstr(const char* name, int32_t* value = 0, uint8_t* type = 0) const {
+        return resolve(name, std::strlen(name), value, type);
+    }
+    // True when `name` is declared in the current (innermost) scope itself.
+    bool declared_in_current_scope(const char* name, size_t len) const {
+        Key k;
+        if (!valid_ || make_key(name, len, k) != kOk) return false;
+        uint32_t ref = find(k);
+        return ref && (ident(ref)[1] >> kDepthShift) == depth_;
+    }
+
+    // ---- introspection ------------------------------------------------------
+    size_t depth() const { return depth_; }
+    size_t size() const { return ndecl_; }
+    Stats stats() const {
+        Stats s;
+        s.capacity_bytes = static_cast<size_t>(cap_) * 4;
+        s.index_bytes = static_cast<size_t>(idx_) * 4;
+        s.ident_bytes = static_cast<size_t>(itop_) * 4;
+        s.undo_bytes = static_cast<size_t>(undo_) * 4;
+        s.used_bytes = s.index_bytes + s.ident_bytes + s.undo_bytes;
+        s.peak_used_bytes = static_cast<size_t>(peak_) * 4;
+        s.live_declarations = ndecl_;
+        s.live_identifiers = nident_;
+        s.depth = depth_;
+        s.rebuilds = rebuilds_;
+        return s;
+    }
+    // Structural self-check used by the tests: every identifier is reachable through the
+    // index, the undo stack parses back to the scope marks, counters match. O(n).
+    bool check_invariants() const {
+        if (!valid_) return false;
+        if (idx_ + itop_ + undo_ > cap_ || (idx_ & (idx_ - 1))) return false;
+        uint32_t idents = 0, used = 0, r = 1;
+        for (uint32_t i = 0; i < idx_; ++i) if (w_[i]) ++used;
+        while (r < itop_) {
+            const uint32_t* rec = ident(r);
+            uint32_t n = rec[1] & kWordsMask;
+            if (n == 0 || n > kMaxNameWords || (rec[1] >> kDepthShift) > depth_) return false;
+            uint32_t h = detail::hash_words(rec + 2, n, rec[1] & kKeyBits);
+            uint32_t i = home(h), steps = 0;
+            while (w_[i] != slot_word(h, r)) {
+                if (w_[i] == 0 || ++steps > idx_) return false;  // unreachable from its home slot
+                i = (i + 1) & (idx_ - 1);
+            }
+            ++idents;
+            r += 2 + n;
+        }
+        if (r != itop_ || idents != nident_ || used != nident_) return false;
+        uint32_t decls = 0, marks = 0, fresh = 0;
+        for (uint32_t pos = undo_, mark = mark_; pos > 0;) {
+            const uint32_t* e = w_ + cap_ - pos;
+            if (pos == mark) { mark = e[1]; pos -= kMarkWords; ++marks; continue; }
+            if ((e[0] & kRefMask) == 0 || (e[0] & kRefMask) >= itop_) return false;
+            if (e[0] & kShadowBit) { if (pos < 3) return false; pos -= 3; } else { pos -= 1; ++fresh; }
+            ++decls;
+        }
+        return decls == ndecl_ && marks == depth_ && fresh == nident_;
+    }
+
+    // Packs (or copies) a name and hashes it. Public so tests can inspect the encoding.
+    Status make_key(const char* name, size_t len, Key& k) const {
+        if (len == 0) return kEmptyName;
+        if (len > kMaxNameLen) return kNameTooLong;
+        const uint8_t* code = detail::code_table();
+        const unsigned char* s = reinterpret_cast<const unsigned char*>(name);
+        uint32_t n = 0, raw = 0;
+        if (opt_.pack_names) {
+            size_t i = 0;
+            for (; i + 5 <= len; i += 5) {
+                uint32_t a = code[s[i]], b = code[s[i + 1]], c = code[s[i + 2]], d = code[s[i + 3]], e = code[s[i + 4]];
+                if (!(a && b && c && d && e)) { raw = 1; break; }
+                k.w[n++] = a | b << 6 | c << 12 | d << 18 | e << 24;
+            }
+            if (!raw && i < len) {
+                uint32_t word = 0;
+                for (int sh = 0; i < len; ++i, sh += 6) {
+                    uint32_t a = code[s[i]];
+                    if (!a) { raw = 1; break; }
+                    word |= a << sh;
+                }
+                k.w[n++] = word;
+            }
+        } else {
+            raw = 1;
+        }
+        uint32_t tail = 0;
+        if (raw) {
+            n = static_cast<uint32_t>((len + 3) / 4);
+            k.w[n - 1] = 0;
+            std::memcpy(k.w, name, len);
+            tail = static_cast<uint32_t>(len & 3);   // raw names can end in NUL bytes: keep the length
+        }
+        // packed names need no length: a code is never 0, so the padding is unambiguous
+        k.n = n;
+        k.meta = n | raw << 7 | tail << 8;
+        k.hash = detail::hash_words(k.w, n, k.meta);
+        return kOk;
+    }
+
+#ifdef STRATA_TEST_HOOKS
+    // Forces every key into one home slot (worst-case clustering) when set.
+    static bool& degenerate_hash() { static bool on = false; return on; }
+#endif
+
+private:
+    // meta word of an identifier record:
+    //   bits 0-6 name words | 7 raw | 8-9 raw length mod 4 | 10-17 type | 18-31 scope depth
+    enum : uint32_t {
+        kRefMask = 0x00FFFFFFu, kShadowBit = 0x01000000u, kMinWords = 32, kMaxWords = 0x00FFFFFFu,
+        kWordsMask = 0x7Fu, kKeyBits = 0x3FFu, kTypeShift = 10, kDepthShift = 18, kInitialIndex = 16
+    };
+
+    Table(const Table&);
+    Table& operator=(const Table&);
+
+    void init_hooks() {
+        if (!opt_.alloc && !opt_.free && !opt_.realloc) opt_.realloc = detail::default_realloc;
+        if (!opt_.alloc) opt_.alloc = detail::default_alloc;
+        if (!opt_.free) opt_.free = detail::default_free;
+        idx_ = itop_ = undo_ = mark_ = peak_ = 0;
+        ndecl_ = nident_ = depth_ = rebuilds_ = 0;
+    }
+    void reset_layout() {
+        idx_ = kInitialIndex;
+        std::memset(w_, 0, static_cast<size_t>(idx_) * 4);
+        itop_ = 1;  // reference 0 means "none"
+        undo_ = mark_ = 0;
+        ndecl_ = nident_ = depth_ = 0;
+        touch();
+    }
+    uint32_t* ident(uint32_t ref) { return w_ + idx_ + ref; }
+    const uint32_t* ident(uint32_t ref) const { return w_ + idx_ + ref; }
+    uint32_t free_words() const { return cap_ - idx_ - itop_ - undo_; }
+    void touch() { uint32_t u = idx_ + itop_ + undo_; if (u > peak_) peak_ = u; }
+
+    static uint32_t slot_word(uint32_t h, uint32_t ref) {
+        uint32_t fp = h >> 24;
+        return (fp ? fp : 1u) << 24 | ref;
+    }
+    uint32_t home(uint32_t h) const {
+#ifdef STRATA_TEST_HOOKS
+        if (degenerate_hash()) return 0;
+#endif
+        return h & (idx_ - 1);
+    }
+
+    uint32_t find(const Key& k) const {
+        uint32_t fp = k.hash >> 24;
+        if (!fp) fp = 1;
+        const uint32_t mask = idx_ - 1;
+        for (uint32_t i = home(k.hash);; i = (i + 1) & mask) {
+            uint32_t s = w_[i];
+            if (s == 0) return 0;
+            if ((s >> 24) != fp) continue;
+            const uint32_t* rec = ident(s & kRefMask);
+            if ((rec[1] & kKeyBits) != k.meta) continue;
+            uint32_t j = 0;
+            while (j < k.n && rec[2 + j] == k.w[j]) ++j;
+            if (j == k.n) return s & kRefMask;
+        }
+    }
+    void index_insert(uint32_t h, uint32_t ref) {
+        const uint32_t mask = idx_ - 1;
+        uint32_t i = home(h);
+        while (w_[i]) i = (i + 1) & mask;
+        w_[i] = slot_word(h, ref);
+    }
+
+    // Makes room for `words` more stack words and `new_idents` more index entries.
+    // On failure nothing has changed.
+    bool ensure(uint32_t words, uint32_t new_idents) {
+        uint32_t idx = idx_;
+        while (static_cast<uint64_t>(nident_ + new_idents) * 4 > static_cast<uint64_t>(idx) * 3) idx *= 2;
+        if (idx == idx_ && free_words() >= words) return true;
+        uint64_t need = static_cast<uint64_t>(idx) + itop_ + undo_ + words;
+        if (need <= cap_) return relocate(cap_, idx);  // index grows inside the buffer
+        if (fixed_) return false;
+        uint64_t cap = static_cast<uint64_t>(cap_) + cap_ / 2;   // grow by half, or to what is needed
+        if (cap < need) cap = need;
+        if (cap > kMaxWords) cap = kMaxWords;
+        if (opt_.max_bytes && cap * 4 > opt_.max_bytes) cap = opt_.max_bytes / 4;
+        if (cap < need) return false;
+        return relocate(static_cast<uint32_t>(cap), idx);
+    }
+    void maybe_shrink() {
+        uint32_t used = idx_ + itop_ + undo_;
+        uint32_t floor = static_cast<uint32_t>(opt_.initial_bytes / 4);
+        if (floor < kMinWords) floor = kMinWords;
+        if (cap_ <= floor || static_cast<uint64_t>(used) * 4 > cap_) return;
+        uint32_t idx = idx_;
+        // halve the index while it would stay at most 3/8 full
+        while (idx > kInitialIndex && static_cast<uint64_t>(nident_) * 16 <= static_cast<uint64_t>(idx) * 3) idx /= 2;
+        uint32_t cap = cap_;
+        while (cap / 2 >= floor && static_cast<uint64_t>(idx + itop_ + undo_) * 2 <= cap / 2) cap /= 2;
+        if (cap < cap_) relocate(cap, idx);
+    }
+    // Moves to a buffer of `cap` words with `idx` index slots (in place when cap == cap_).
+    // Identifier and undo references are relative, so only the index is rebuilt; names
+    // are re-inserted oldest first, which keeps the "newest keys can be emptied" property.
+    bool relocate(uint32_t cap, uint32_t idx) {
+        const size_t ib = static_cast<size_t>(itop_) * 4, ub = static_cast<size_t>(undo_) * 4;
+        if (cap > cap_) {            // grow: extend the block, then slide the two stacks outwards
+            uint32_t* nw = resize_block(cap);
+            if (!nw) return false;
+            w_ = nw;
+            std::memmove(w_ + cap - undo_, w_ + cap_ - undo_, ub);
+            if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
+        } else if (cap < cap_) {     // shrink: slide the stacks inwards, then give the tail back
+            if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
+            std::memmove(w_ + cap - undo_, w_ + cap_ - undo_, ub);
+            uint32_t* nw = resize_block(cap);
+            if (nw) w_ = nw;         // if the allocator refuses, the larger block is simply kept
+        } else if (idx != idx_) {
+            std::memmove(w_ + idx, w_ + idx_, ib);
+        }
+        cap_ = cap;
+        idx_ = idx;
+        std::memset(w_, 0, static_cast<size_t>(idx_) * 4);
+        for (uint32_t r = 1; r < itop_;) {
+            const uint32_t* rec = ident(r);
+            uint32_t n = rec[1] & kWordsMask;
+            index_insert(detail::hash_words(rec + 2, n, rec[1] & kKeyBits), r);
+            r += 2 + n;
+        }
+        ++rebuilds_;
+        touch();
+        return true;
+    }
+    uint32_t* resize_block(uint32_t cap) {
+        const size_t ob = static_cast<size_t>(cap_) * 4, nb = static_cast<size_t>(cap) * 4;
+        if (opt_.realloc) return static_cast<uint32_t*>(opt_.realloc(w_, ob, nb, opt_.user));
+        uint32_t* nw = static_cast<uint32_t*>(opt_.alloc(nb, opt_.user));
+        if (!nw) return 0;
+        std::memcpy(nw, w_, ob < nb ? ob : nb);
+        opt_.free(w_, opt_.user);
+        return nw;
+    }
+
+    uint32_t* w_;
+    uint32_t cap_;       // buffer size in words
+    uint32_t idx_;       // index slots (power of two)
+    uint32_t itop_;      // identifier stack top, words from the start of its region
+    uint32_t undo_;      // undo stack size in words (grows down from the end)
+    uint32_t mark_;      // current scope mark (undo-stack reference), 0 at the outermost scope
+    uint32_t peak_;
+    uint32_t ndecl_, nident_, depth_, rebuilds_;
+    bool fixed_, valid_;
+    Options opt_;
+};
+
+}  // namespace strata
+#endif

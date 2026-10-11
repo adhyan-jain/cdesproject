@@ -1,0 +1,9 @@
+project	version	source	units_ok	units_failed	events
+cjson	v1.7.18	https://github.com/DaveGamble/cJSON	2	0	20875
+littlefs	v2.9.3	https://github.com/littlefs-project/littlefs	2	0	21082
+zlib	v1.3.1	https://github.com/madler/zlib	15	0	58064
+lua	5.4.7	https://www.lua.org/ftp/lua-5.4.7.tar.gz	34	0	188510
+freertos	V11.1.0	https://github.com/FreeRTOS/FreeRTOS-Kernel	9	0	37877
+mbedtls	v3.6.2	https://github.com/Mbed-TLS/mbedtls	105	3	983009
+tinycc	43c7708	https://repo.or.cz/tinycc.git	1	0	89139
+sqlite	3.46.0	https://www.sqlite.org/2024/sqlite-amalgamation-3460000.zip	1	0	268965
