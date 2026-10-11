@@ -19,6 +19,8 @@ The brief's engineering target of an 85% reduction is tested as stated, with the
 | `strata` | this project, default options | `include/strata/strata.hpp` |
 | `strata_raw` | ablation: names stored as raw bytes | same, `pack_names = false` |
 | `strata_noshrink` | ablation: buffer never given back | same, `shrink = false` |
+| `strata_sparse` | option: index at most half full | same, `sparse_index = true` |
+| `arena_chain` | conventional allocator-free table: chained hash table over an entry arena in one buffer, one entry per declaration, unpacked names; same storage discipline as STRATA (caller buffer or `realloc` growth, refusal without state change) | `benchmarks/baselines/arena_chain.hpp` |
 | `metis_x` | previous implementation, unmodified | METIS `include/metis_x.hpp` @ `7b3dacf` |
 | `metis_arena_lp` | previous arena baseline, unmodified | METIS `include/historical/embedded_conventional_symbol_table.hpp` |
 | `metis_scope_maps` | previous map-per-scope baseline, unmodified | METIS `include/historical/conventional_symbol_table.hpp` |
@@ -84,10 +86,15 @@ Each (trace, table) pair gets four passes (`benchmarks/bench_main.cpp`):
    is loaded. All `operator new` calls and STRATA's allocator calls go through a counter that
    uses `malloc_usable_size`. Reported: peak bytes, final bytes, allocator calls.
    A `realloc` that returns a different address is charged as if old and new block coexisted.
-3. **Replay time (primary time metric).** 2 warm-up + 15 measured replays of the whole
-   trace, one `steady_clock` interval per replay, including table construction and
-   destruction at unit boundaries. Reported: median, min, max, and a 95% percentile-bootstrap
-   interval of the median (2 000 resamples).
+3. **Replay time (primary time metric).** 2 warm-up + 31 measured *rounds*. In each round
+   every table replays the whole trace once (one `steady_clock` interval per replay,
+   table construction and destruction included); the starting table rotates from round to
+   round. Slow drifts of the machine therefore hit all tables alike, and the samples of one
+   round form pairs. For two tables A and B we compute `(A - B) / A x 100` per round and
+   report the median with a 95% percentile-bootstrap interval (2 000 resamples). A
+   difference is called *established* when the interval excludes zero. Per-table medians
+   and interquartile ranges are also stored. (The first two runs in `results/raw/` used 15
+   back-to-back repetitions per table instead.)
 4. **Per-operation latency (secondary).** Three replays with a TSC read (`rdtscp`) before and
    after every operation; the median cost of an empty interval is measured at start-up and
    subtracted; p50/p95/p99 and mean per operation kind; the median of the three replays is
@@ -98,7 +105,19 @@ Fixed-buffer experiment (`benchmarks/budget_main.cpp`): bisection to 64 bytes fo
 smallest buffer with which the whole trace replays without a refused operation, for packed
 and raw names; then 9 timed replays at 1x, 1.25x, 2x and 4x that size.
 
+The same bisection is run for `arena_chain`, which gives the memory comparison between the
+two bounded tables without the quantisation of growth steps.
+
 Worst case: every key forced into one probe cluster (test hook), sizes 16 to 4 096.
+
+Emulated target (`tools/embedded/run.sh`): STRATA is compiled for a bare-metal Cortex-M3
+(`arm-none-eabi-g++ -Os`, no exceptions, no RTTI) with a linker script that limits RAM to
+64 KiB, and run under QEMU (`mps2-an385`). A trace is embedded in flash; the program
+replays it from a static buffer of the measured minimum size (rounded up to 1 KiB), with
+`malloc`/`free`/`realloc` stubs that fail, and prints a checksum of all results, the
+number of refused operations, the peak buffer use and the stack depth (measured by
+painting the stack). The checksum is compared with the same program built for the host.
+No timing is taken from the emulator.
 
 ## 5. Derived quantities
 
@@ -114,13 +133,16 @@ commits of this repository and of the two fetched baselines.
 
 ## 7. Correctness tests
 
-`tests/test_strata.cpp`, built at `-O2` and with `-fsanitize=address,undefined`:
+`docs/CORRECTNESS.md` gives the argument; `tests/test_strata.cpp`, built at `-O2` and with
+`-fsanitize=address,undefined`, checks it:
 scoping and shadowing, redeclaration policy, name rules (empty, 255, 256 bytes, embedded NUL,
 non-identifier bytes), record layout, all keys in one cluster, invalid scope operations and
 the depth limit, six randomised runs of 100 000-300 000 operations against the reference
 model with invariants checked along the way, reclamation and shrinking, fixed-buffer
-exhaustion, an allocator that fails after *k* calls for k = 1..10, a growable budget, and
-5 000-deep shadowing.
+exhaustion, an allocator that fails after *k* calls for k = 1..10, a growable budget,
+5 000-deep shadowing, a state digest that must be unchanged after every refused operation
+(30 configurations, also with all keys in one probe cluster), and scope exit across index
+rebuilds. 1 856 579 checks in total.
 
 ## 8. What the methodology cannot show
 

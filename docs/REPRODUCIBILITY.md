@@ -22,7 +22,7 @@ bash scripts/test.sh
 bash scripts/fetch_third_party.sh        # METIS @ 7b3dacf, parallel-hashmap v1.4.1
 
 # 3. everything: build, unpack traces, generate synthetic traces, run all experiments
-bash scripts/run_all.sh mylabel          # REPS=15 CORE=2 by default
+bash scripts/run_all.sh mylabel          # REPS=31 rounds, CORE=2 by default
 #    -> results/raw/<UTC timestamp>-mylabel/
 
 # 4. tables and figures
@@ -31,8 +31,10 @@ python3 scripts/analyze.py results/raw/<run>
 #    -> results/summary/<run>/tables.md, *.csv, fig_*.png, fig_*.pdf
 ```
 
-Expected duration on the development machine: tests about 1 minute, full pipeline about 25
-minutes (most of it the old arena baseline).
+Expected duration on the development machine: tests about 2 minutes, full pipeline about 45
+minutes (most of it the old arena baseline). The emulated target run is separate:
+`bash tools/embedded/run.sh` (needs `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`,
+`libstdc++-arm-none-eabi-newlib`, `qemu-system-arm`).
 
 Without step 2 the pipeline still runs; the METIS and Swiss-table baselines are left out
 and the old-versus-new tables are not produced.
@@ -79,7 +81,9 @@ typically and by tens of percent occasionally.
 | Run | Code | Note |
 |---|---|---|
 | `20261011-160113-full` | commit `8169bf5` | first complete run; before the `sparse_index` option existed |
-| `20261011-161306-final` | commit `3aee381` | the run reported in `RESULTS.md` and the paper |
+| `20261011-161306-final` | commit `3aee381` | second run of the same table code (version 1) |
+| `20261011-163944-v2` | commit `e511819` | version 2 of the table (fast scope exit, delayed shrinking) |
+| `20261011-165103-v3` | commit `8786eac` | **the run reported in `RESULTS.md` and the paper**: adds `arena_chain`, 31 interleaved rounds |
 
 The timestamps in the run names come from the clock inside WSL, which was not checked against
 real time. The twelve-minute gap they suggest is too short: the first run alone took longer

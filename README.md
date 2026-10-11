@@ -1,55 +1,76 @@
-# cdesproject — STRATA
+# cdesproject — bounded-memory scoped symbol tables (STRATA)
 
 **Topic:** The Memory-Constrained Compressed Symbol Table for Embedded Compilers.
 
-STRATA is a scoped symbol table for C-like languages that keeps everything — the name
-interner, the declarations and the scope bookkeeping — in **one contiguous buffer** that
-the caller can supply. It never throws, it can run without an allocator, and when the buffer
-is full it says so and changes nothing.
+This repository studies symbol tables that live in **one fixed buffer**: no allocator, a
+defined "out of memory" result, nothing half-done. It contains two such tables, compares
+them with eight others on events logged by a real C compiler, and reports what was gained
+and what was not.
 
-It is the successor of METIS-X ([adhyan-jain/Metis](https://github.com/adhyan-jain/Metis)).
-It was rebuilt, not repaired; `docs/ARCHITECTURE_DECISION.md` explains why. METIS-X's code
-is not in this repository: it is fetched at a pinned commit and used as a baseline.
+* **STRATA** (`include/strata/strata.hpp`): each visible name stored once, packed; hidden
+  declarations on an undo stack.
+* **arena_chain** (`benchmarks/baselines/arena_chain.hpp`): the conventional design, a chained
+  hash table over an entry arena. Written as a strong baseline.
+
+It is the successor of METIS-X ([adhyan-jain/Metis](https://github.com/adhyan-jain/Metis)),
+rebuilt rather than repaired (`docs/ARCHITECTURE_DECISION.md`). METIS-X's code is fetched at
+a pinned commit and is not stored here.
 
 > Status: research artifact and paper draft. Not peer reviewed, not submitted, not integrated
-> into a compiler, not run on a microcontroller. See `docs/LIMITATIONS.md`.
+> into a compiler, run on an emulated microcontroller only. See `docs/LIMITATIONS.md`.
 
-## What was measured
+## Results at a glance
 
-Ten tables replayed the symbol-table calls that an instrumented Tiny C Compiler makes while
-compiling eight open-source projects (cJSON, littlefs, zlib, Lua, FreeRTOS-Kernel, Mbed TLS,
-TinyCC, SQLite). Run `20261011-161306-final`; all numbers below are in `docs/RESULTS.md`
-with their source files.
+Run `20261011-165103-v3`: 31 paired rounds, 12 tables, 8 compiler traces (cJSON, littlefs,
+zlib, Lua, FreeRTOS-Kernel, Mbed TLS, TinyCC, SQLite as compiled by an instrumented Tiny C
+Compiler). Every number is in `docs/RESULTS.md` with its source file.
 
-| | STRATA against METIS-X, across the 8 traces |
+### STRATA against the previous table (METIS-X)
+
+| Metric | Result across the 8 traces |
 |---|---|
 | Correctness | both agree with the reference model on all 8 |
 | Peak heap | 23% to 76% lower (median 58%) |
 | Allocator calls | 98.7% to 99.9% fewer |
-| Whole-trace replay time | 6% to 49% lower (median 21%); intervals overlap on 3 traces |
-| Declare latency (p95) | 20% to 63% lower |
-| Lookup latency (p95) | not improved (from 20% lower to 44% higher) |
-| Scope-exit latency (p95) | 13% to 58% **higher** |
+| Replay time | faster on 7 traces, slower on 1 (cJSON, 6%); median 11% faster |
+| Declare latency (p95) | 44% to 64% lower |
+| Scope-exit latency (p95) | 67% to 88% lower |
+| Lookup latency (p95) | not improved (lower on 3 of 8) |
 
-Fixed-buffer mode: a whole project replays from a buffer of 15.8 KiB (zlib) to 156.5 KiB
-(TinyCC), 27 to 36 bytes per live declaration.
+### STRATA against a conventional allocator-free table (arena_chain)
 
-What did **not** work out:
+| Metric | Result |
+|---|---|
+| Smallest fixed buffer | STRATA 16% to 18% smaller on every trace |
+| Replay time, compiler traces | STRATA **slower** on 7 of 8 (median 30%) |
+| Replay time, synthetic traces | STRATA faster on 5 of 9 (shadowing, scope churn, short names), slower on 3 |
 
-* The 85% reduction target was met for allocator calls only. For memory it was reached only
-  against one baseline (an interning Swiss-table map), in fixed-buffer mode, on 2 of 8 traces.
-* That interning map is faster than STRATA on 7 of 8 traces (median 16%); STRATA's peak heap
-  is 44–83% lower than its.
-* On a synthetic trace with a 10 000-declaration scope entered 20 times STRATA is 30% slower
-  than METIS-X unless shrinking is turned off.
-* Timings on the development laptop move by 10–20% between runs.
-* The algorithm is the textbook undo-stack symbol table. Our own novelty assessment is
-  4.5/10 (`docs/RELATED_WORK.md`), not the 8/10 the project aimed for.
+### What this means
 
-One finding about the old code: METIS-X refuses declarations when a single name is shadowed
-about 250 levels deep (149 of 400 refused in our test). STRATA and all other baselines do not.
+| Question | Answer from the data |
+|---|---|
+| Where does the gain over METIS-X come from? | Mostly from keeping everything in one allocation-free arena. The conventional table alone is 55–77% below METIS-X's peak heap and 11–36% faster. |
+| What does STRATA's own design add? | About one sixth less memory, lookups whose cost does not grow with shadowing, and wins on shadow-heavy workloads; it costs time on ordinary C code. |
+| How much memory does a project need? | 15.8 KiB (zlib) to 156.5 KiB (TinyCC): 27–36 bytes per live declaration. |
+| Does it run on a small 32-bit target? | Under emulation: 5 traces on a bare-metal Cortex-M3 (QEMU) with 64 KiB RAM, no heap, 792 bytes of stack, about 2.6 KB of code, same results as the PC. Not on hardware. |
+| Was the 85% target met? | For allocator calls, yes, on every trace. Scope-exit latency reaches it on 1 of 8 traces (range 67–88%). For memory against METIS-X, no (best 76% heap, 81% fixed buffer). |
+| Is it novel? | Not as an algorithm. Our own assessment is about 4.5/10 (`docs/RELATED_WORK.md`). |
 
-## How it works
+One finding about the old code: METIS-X refuses declarations when one name is shadowed about
+250 levels deep (149 of 400 refused in our test). No other table does.
+
+### What changed after review
+
+| Review point | What was done | Outcome |
+|---|---|---|
+| Scope exit 13–58% slower than METIS-X | Undo entries record the index slot; exit empties it directly | now 67–88% faster than METIS-X |
+| 30% slowdown on a large repeated scope | Shrinking waits for 64 calm scope exits | now about 2x faster than METIS-X there |
+| Timing confidence | 31 interleaved rounds, paired differences, bootstrap intervals | all 8 comparisons with METIS-X are now established (7 faster, 1 slower) |
+| No allocator-free baseline | `arena_chain` added | showed that most of the gain is not specific to STRATA |
+| No embedded validation | bare-metal Cortex-M3 under QEMU | passes; still an emulator |
+| Guarantees not verified | state digest before/after every refused operation, 30 configurations, adversarial collisions | `docs/CORRECTNESS.md`, 1 856 579 checks pass |
+
+## How STRATA works
 
 ```
  word 0                                                              end of buffer
@@ -58,13 +79,12 @@ about 250 levels deep (149 of 400 refused in our test). STRATA and all other bas
 
 * **Identifier record** — one per distinct visible name: value, type tag, scope depth, and the
   name packed five characters per 32-bit word. It holds the innermost declaration.
-* **Undo stack** — one word per declaration; three when it shadows (the hidden declaration is
-  saved there). A scope mark is two words.
-* **Scope exit** pops the undo stack and empties the index slots of names first seen in that
-  scope. They are the newest keys, so no tombstones and no shifting are needed.
-* **Fixed mode** `Table(buffer, bytes)`: no allocation, `kNoMemory` when full.
-  **Growable mode** `Table(options)`: grows through `realloc`, optional `max_bytes`, shrinks
-  when mostly empty.
+* **Undo stack** — one word per declaration (the name's index slot); three when it shadows
+  (the hidden declaration is saved there). A scope mark is two words.
+* **Scope exit** pops the undo stack and empties the recorded slots. Those keys are the
+  newest in the index, so no tombstones and no shifting are needed (`docs/CORRECTNESS.md`).
+* **Fixed mode** `Table(buffer, bytes)`: no allocation, `kNoMemory` when full, state unchanged.
+  **Growable mode** `Table(options)`: `realloc` growth, optional `max_bytes`, delayed shrinking.
 
 ```cpp
 #include "strata/strata.hpp"
@@ -83,19 +103,21 @@ t.resolve_cstr("count", &v);                     // v == 1
 
 Limits: names 1–255 bytes, scope depth 16 383, buffer 64 MiB, 32-bit value, 8-bit type tag.
 
-## Layout of the repository
+## Repository layout
 
 | Path | Contents |
 |---|---|
-| `include/strata/strata.hpp` | the table (C++14, header only, no dependencies) |
+| `include/strata/strata.hpp` | STRATA (C++14, header only, no dependencies) |
+| `benchmarks/baselines/` | `arena_chain.hpp` and the adapters for all compared tables |
+| `benchmarks/` | replay harness, fixed-buffer tool |
 | `tests/` | correctness tests and the independent reference model |
-| `benchmarks/` | harness, fixed-buffer tool, baseline adapters |
 | `tools/tcc-trace/` | patch and scripts that make Tiny C Compiler log its symbol-table calls |
+| `tools/embedded/` | bare-metal Cortex-M3 build and QEMU runner |
 | `workloads/traces/` | the eight compiler traces (gzip) and their manifest |
 | `scripts/` | `test.sh`, `fetch_third_party.sh`, `build.sh`, `run_all.sh`, `analyze.py`, `make_report.py`, `gen_synthetic.py` |
-| `results/raw/` | raw CSVs of two complete runs, with environment files |
-| `results/summary/` | tables and figures generated from them |
-| `docs/` | audit, decision, design space, related work, methodology, results, limitations, reproducibility, contributions, execution log |
+| `results/raw/`, `results/summary/` | raw CSVs of four complete runs; generated tables and figures |
+| `results/embedded/` | log of the emulated Cortex-M3 run |
+| `docs/` | audit, decision, design space, related work, methodology, correctness, results, limitations, reproducibility, contributions, execution log |
 | `paper/` | `main.tex`, `references.bib`, `generated.tex` (numbers), `main.pdf` |
 
 ## Build, test, reproduce
@@ -108,31 +130,16 @@ bash scripts/fetch_third_party.sh    # METIS @ 7b3dacf and parallel-hashmap v1.4
 bash scripts/run_all.sh mylabel      # all experiments -> results/raw/<timestamp>-mylabel/
 python3 scripts/analyze.py results/raw/<run>      # needs pandas, tabulate, matplotlib
 python3 scripts/make_report.py <run>              # docs/RESULTS.md + paper/generated.tex
+bash tools/embedded/run.sh           # optional: needs arm-none-eabi-g++ and qemu-system-arm
 ```
 
 Details and expected variation: `docs/REPRODUCIBILITY.md`.
 
-Test status at the reported commit: 1 177 892 checks, 0 failed, in both builds.
-
-## Relationship to METIS-X
-
-| | METIS-X | STRATA |
-|---|---|---|
-| Key | one slot per declaration | one record per name |
-| Names | in the slot up to 12 bytes, else a heap block | in the buffer, packed |
-| Shadowing | all declarations of a name in one probe cluster | hidden declarations on an undo stack |
-| Scope exit | backward shift per entry | pop two stacks, empty the newest slots |
-| Memory | grows, never shrinks, many allocations | one buffer; fixed or growable with a budget |
-| Failure | can throw; refuses past 250 equal-hash keys | status codes; state unchanged on failure |
-| Traces | regular expressions over source text | calls logged by a real compiler |
-
-The four traces of the METIS-X manuscript are still run, as a labelled supplement.
-
 ## Authors and how this was produced
 
-Shubhi Singh and Adhyan Jain (VIT Vellore). This repository was produced in one session by
-an AI coding assistant working in Shubhi Singh's environment; Adhyan Jain has not yet
-reviewed it. See `docs/CONTRIBUTIONS.md` before citing or submitting anything.
+Shubhi Singh and Adhyan Jain (VIT Vellore). This repository was produced by an AI coding
+assistant working in Shubhi Singh's environment; Adhyan Jain has not yet reviewed it. See
+`docs/CONTRIBUTIONS.md` before citing or submitting anything.
 
 ## Licence
 

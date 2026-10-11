@@ -139,30 +139,30 @@ Per-call TSC timing; the calibrated cost of one timed interval (16 ns here) is s
 
 ### Previous implementation (METIS-X) versus STRATA
 
-Reduction = (old - new) / old x 100; negative means STRATA is worse. 'intervals overlap = yes' means the 95% intervals of the two replay-time medians overlap, so the time difference is not established.
+Reduction = (old - new) / old x 100; negative means STRATA is worse. The replay reduction is the median of the per-round reductions (samples paired by round) with a 95% bootstrap interval; 'established = yes' means the interval excludes zero.
 
-| trace    |   peak heap KiB old |   new |   peak heap red. % |   allocs old |   allocs new |   allocs red. % |   replay ms old |   replay ms new |   replay red. % | intervals overlap   |   lookup p95 old |   lookup p95 new |   lookup p95 red. % |   declare p95 red. % |   exit p95 red. % |   old refused |
-|:---------|--------------------:|------:|-------------------:|-------------:|-------------:|----------------:|----------------:|----------------:|----------------:|:--------------------|-----------------:|-----------------:|--------------------:|---------------------:|------------------:|--------------:|
-| cjson    |               102.7 |  42.8 |               58.3 |         3604 |           22 |            99.4 |             0.7 |             0.7 |             6.6 | yes                 |             53.9 |             55.7 |                -3.3 |                 48.0 |             -58.5 |             0 |
-| freertos |               217.4 |  57.8 |               73.4 |         8282 |           81 |            99.0 |             1.9 |             1.4 |            24.3 | no                  |             58.7 |             55.7 |                 5.1 |                 58.2 |             -30.3 |             0 |
-| littlefs |               107.0 |  25.8 |               75.9 |         2774 |           19 |            99.3 |             0.8 |             0.6 |            23.0 | no                  |             53.3 |             55.1 |                -3.4 |                 58.9 |             -27.1 |             0 |
-| lua      |               106.8 |  64.2 |               39.9 |        40494 |          336 |            99.2 |            10.1 |             7.8 |            22.6 | no                  |             52.1 |             52.7 |                -1.2 |                 52.4 |             -38.0 |             0 |
-| mbedtls  |               234.5 | 144.3 |               38.5 |       255849 |         1154 |            99.5 |            60.1 |            44.9 |            25.3 | no                  |             70.3 |             75.1 |                -6.8 |                 48.8 |             -60.0 |             0 |
-| sqlite   |               451.1 | 194.7 |               56.8 |        22711 |           15 |            99.9 |             8.4 |             7.9 |             5.5 | yes                 |             57.5 |             55.7 |                 3.1 |                 54.3 |             -43.2 |             0 |
-| tinycc   |               423.1 | 324.5 |               23.3 |         9665 |           15 |            99.8 |             3.1 |             3.0 |             2.9 | yes                 |             51.5 |             61.8 |               -20.0 |                 53.1 |             -54.1 |             0 |
-| zlib     |                52.6 |  17.2 |               67.3 |        10412 |          133 |            98.7 |             2.5 |             1.6 |            37.3 | no                  |             58.7 |             48.4 |                17.5 |                 62.3 |             -24.0 |             0 |
+| trace    |   peak heap KiB old |   new |   peak heap red. % |   allocs old |   allocs new |   allocs red. % |   replay ms old |   replay ms new |   replay red. % |   CI low |   CI high | established   |   lookup p95 old |   lookup p95 new |   lookup p95 red. % |   declare p95 red. % |   exit p95 red. % |   old refused |
+|:---------|--------------------:|------:|-------------------:|-------------:|-------------:|----------------:|----------------:|----------------:|----------------:|---------:|----------:|:--------------|-----------------:|-----------------:|--------------------:|---------------------:|------------------:|--------------:|
+| cjson    |               102.7 |  42.8 |               58.3 |         3604 |           22 |            99.4 |             0.7 |             0.7 |             9.7 |    -23.8 |      21.3 | no            |             53.9 |             55.7 |                -3.3 |                 48.0 |             -58.5 |             0 |
+| freertos |               217.4 |  57.8 |               73.4 |         8282 |           81 |            99.0 |             1.9 |             1.4 |            24.2 |     17.8 |      28.6 | yes           |             58.7 |             55.7 |                 5.1 |                 58.2 |             -30.3 |             0 |
+| littlefs |               107.0 |  25.8 |               75.9 |         2774 |           19 |            99.3 |             0.8 |             0.6 |            18.8 |     15.7 |      36.9 | yes           |             53.3 |             55.1 |                -3.4 |                 58.9 |             -27.1 |             0 |
+| lua      |               106.8 |  64.2 |               39.9 |        40494 |          336 |            99.2 |            10.1 |             7.8 |            26.1 |      6.9 |      45.5 | yes           |             52.1 |             52.7 |                -1.2 |                 52.4 |             -38.0 |             0 |
+| mbedtls  |               234.5 | 144.3 |               38.5 |       255849 |         1154 |            99.5 |            60.1 |            44.9 |            22.8 |     16.1 |      29.9 | yes           |             70.3 |             75.1 |                -6.8 |                 48.8 |             -60.0 |             0 |
+| sqlite   |               451.1 | 194.7 |               56.8 |        22711 |           15 |            99.9 |             8.4 |             7.9 |             8.6 |     -1.0 |      21.0 | no            |             57.5 |             55.7 |                 3.1 |                 54.3 |             -43.2 |             0 |
+| tinycc   |               423.1 | 324.5 |               23.3 |         9665 |           15 |            99.8 |             3.1 |             3.0 |             2.3 |    -10.2 |      13.5 | no            |             51.5 |             61.8 |               -20.0 |                 53.1 |             -54.1 |             0 |
+| zlib     |                52.6 |  17.2 |               67.3 |        10412 |          133 |            98.7 |             2.5 |             1.6 |            35.9 |     18.7 |      43.2 | yes           |             58.7 |             48.4 |                17.5 |                 62.3 |             -24.0 |             0 |
 
 ### STRATA against every baseline (range over the traces of this section)
 
-| baseline                  |   traces |   peak heap red. % min |   median |   max |   replay time red. % min |   median  |   max  |
-|:--------------------------|---------:|-----------------------:|---------:|------:|-------------------------:|----------:|-------:|
-| METIS-X (previous)        |        8 |                   23.3 |     57.6 |  75.9 |                      2.9 |      22.8 |   37.3 |
-| old arena table           |        8 |                   26.6 |     56.1 |  62.4 |                     48.6 |      68.5 |   90.2 |
-| old scope maps            |        8 |                   44.6 |     59.2 |  72.0 |                     26.5 |      43.1 |   55.4 |
-| map per scope             |        8 |                   23.6 |     41.0 |  61.2 |                     14.0 |      34.4 |   50.5 |
-| std map + undo log        |        8 |                   41.1 |     61.4 |  71.5 |                      5.1 |       9.8 |   26.8 |
-| Swiss node map + undo log |        8 |                   27.8 |     55.0 |  68.8 |                     -0.8 |      13.0 |   43.2 |
-| Swiss flat map, interned  |        8 |                   43.6 |     72.7 |  82.7 |                    -36.8 |     -18.8 |   -4.0 |
+| baseline                  |   traces |   faster (established) |   slower (established) |   peak heap red. % min |   median |   max |   replay time red. % min |   median  |   max  |
+|:--------------------------|---------:|-----------------------:|-----------------------:|-----------------------:|---------:|------:|-------------------------:|----------:|-------:|
+| METIS-X (previous)        |        8 |                      5 |                      0 |                   23.3 |     57.6 |  75.9 |                      2.3 |      20.8 |   35.9 |
+| old arena table           |        8 |                      8 |                      0 |                   26.6 |     56.1 |  62.4 |                     48.4 |      68.1 |   89.7 |
+| old scope maps            |        8 |                      8 |                      0 |                   44.6 |     59.2 |  72.0 |                     25.5 |      40.5 |   56.7 |
+| map per scope             |        8 |                      7 |                      0 |                   23.6 |     41.0 |  61.2 |                     13.6 |      33.0 |   50.2 |
+| std map + undo log        |        8 |                      5 |                      0 |                   41.1 |     61.4 |  71.5 |                      4.7 |       9.9 |   26.5 |
+| Swiss node map + undo log |        8 |                      5 |                      0 |                   27.8 |     55.0 |  68.8 |                     -1.9 |      13.8 |   36.5 |
+| Swiss flat map, interned  |        8 |                      0 |                      8 |                   43.6 |     72.7 |  82.7 |                    -32.8 |     -17.0 |  -10.3 |
 
 ## B. Fixed-buffer mode
 
@@ -332,31 +332,31 @@ Per-call TSC timing; the calibrated cost of one timed interval (18 ns here) is s
 
 ### Previous implementation (METIS-X) versus STRATA
 
-Reduction = (old - new) / old x 100; negative means STRATA is worse. 'intervals overlap = yes' means the 95% intervals of the two replay-time medians overlap, so the time difference is not established.
+Reduction = (old - new) / old x 100; negative means STRATA is worse. The replay reduction is the median of the per-round reductions (samples paired by round) with a 95% bootstrap interval; 'established = yes' means the interval excludes zero.
 
-| trace           |   peak heap KiB old |    new |   peak heap red. % |   allocs old |   allocs new |   allocs red. % |   replay ms old |   replay ms new |   replay red. % | intervals overlap   |   lookup p95 old |   lookup p95 new |   lookup p95 red. % |   declare p95 red. % |   exit p95 red. % |   old refused |
-|:----------------|--------------------:|-------:|-------------------:|-------------:|-------------:|----------------:|----------------:|----------------:|----------------:|:--------------------|-----------------:|-----------------:|--------------------:|---------------------:|------------------:|--------------:|
-| big_scope_exit  |               868.2 |  486.6 |               44.0 |       104082 |          199 |            99.8 |            20.8 |            28.4 |           -36.8 | no                  |              0.0 |              0.0 |               nan   |                 50.1 |              25.5 |             0 |
-| deep_nesting    |                57.1 |   21.7 |               62.0 |       103095 |           14 |           100.0 |            19.5 |            14.8 |            24.1 | no                  |             61.2 |             55.7 |                 9.0 |                 64.2 |              -2.2 |             0 |
-| deep_shadow_400 |                40.1 |   11.5 |               71.3 |          268 |           11 |            95.9 |             0.5 |             0.0 |            97.1 | no                  |            503.3 |             20.0 |                96.0 |                 96.3 |              93.0 |           149 |
-| dense_50k       |              6972.3 | 2462.9 |               64.7 |        26613 |           21 |            99.9 |            24.4 |            19.2 |            21.5 | no                  |            308.2 |            225.3 |                26.9 |                 68.1 |             nan   |             0 |
-| long_ids        |               297.1 |  273.7 |                7.9 |       130673 |           20 |           100.0 |            43.7 |            27.7 |            36.7 | no                  |            259.8 |            109.0 |                58.0 |                 70.4 |              37.0 |             0 |
-| lookup_heavy    |                53.6 |   25.8 |               52.0 |        16720 |           10 |            99.9 |            11.5 |            19.4 |           -67.8 | no                  |             61.8 |             66.0 |                -6.8 |                 51.0 |             -26.0 |             0 |
-| scope_churn     |                 6.4 |    3.9 |               39.0 |       119411 |            4 |           100.0 |            18.2 |            16.0 |            12.4 | no                  |             48.5 |             51.5 |                -6.2 |                 51.2 |             -38.9 |             0 |
-| shadow_heavy    |                26.7 |    5.0 |               81.5 |        73820 |           93 |            99.9 |            24.5 |            10.7 |            56.1 | no                  |            128.4 |             41.2 |                67.9 |                 76.1 |              81.2 |             0 |
-| short_ids       |               200.8 |   64.2 |               68.0 |        43608 |           12 |           100.0 |            16.4 |            12.1 |            26.1 | no                  |             52.7 |             46.6 |                11.6 |                 65.2 |              15.9 |             0 |
+| trace           |   peak heap KiB old |    new |   peak heap red. % |   allocs old |   allocs new |   allocs red. % |   replay ms old |   replay ms new |   replay red. % |   CI low |   CI high | established   |   lookup p95 old |   lookup p95 new |   lookup p95 red. % |   declare p95 red. % |   exit p95 red. % |   old refused |
+|:----------------|--------------------:|-------:|-------------------:|-------------:|-------------:|----------------:|----------------:|----------------:|----------------:|---------:|----------:|:--------------|-----------------:|-----------------:|--------------------:|---------------------:|------------------:|--------------:|
+| big_scope_exit  |               868.2 |  486.6 |               44.0 |       104082 |          199 |            99.8 |            20.8 |            28.4 |           -32.0 |    -40.1 |     -19.9 | yes           |              0.0 |              0.0 |               nan   |                 50.1 |              25.5 |             0 |
+| deep_nesting    |                57.1 |   21.7 |               62.0 |       103095 |           14 |           100.0 |            19.5 |            14.8 |            25.2 |     17.7 |      27.7 | yes           |             61.2 |             55.7 |                 9.0 |                 64.2 |              -2.2 |             0 |
+| deep_shadow_400 |                40.1 |   11.5 |               71.3 |          268 |           11 |            95.9 |             0.5 |             0.0 |            97.1 |     96.8 |      97.5 | yes           |            503.3 |             20.0 |                96.0 |                 96.3 |              93.0 |           149 |
+| dense_50k       |              6972.3 | 2462.9 |               64.7 |        26613 |           21 |            99.9 |            24.4 |            19.2 |            20.3 |     15.8 |      32.6 | yes           |            308.2 |            225.3 |                26.9 |                 68.1 |             nan   |             0 |
+| long_ids        |               297.1 |  273.7 |                7.9 |       130673 |           20 |           100.0 |            43.7 |            27.7 |            35.5 |     33.4 |      45.6 | yes           |            259.8 |            109.0 |                58.0 |                 70.4 |              37.0 |             0 |
+| lookup_heavy    |                53.6 |   25.8 |               52.0 |        16720 |           10 |            99.9 |            11.5 |            19.4 |           -61.6 |    -86.6 |     -54.0 | yes           |             61.8 |             66.0 |                -6.8 |                 51.0 |             -26.0 |             0 |
+| scope_churn     |                 6.4 |    3.9 |               39.0 |       119411 |            4 |           100.0 |            18.2 |            16.0 |            13.7 |      2.6 |      25.1 | yes           |             48.5 |             51.5 |                -6.2 |                 51.2 |             -38.9 |             0 |
+| shadow_heavy    |                26.7 |    5.0 |               81.5 |        73820 |           93 |            99.9 |            24.5 |            10.7 |            53.5 |     48.7 |      60.6 | yes           |            128.4 |             41.2 |                67.9 |                 76.1 |              81.2 |             0 |
+| short_ids       |               200.8 |   64.2 |               68.0 |        43608 |           12 |           100.0 |            16.4 |            12.1 |            25.9 |     20.7 |      31.9 | yes           |             52.7 |             46.6 |                11.6 |                 65.2 |              15.9 |             0 |
 
 ### STRATA against every baseline (range over the traces of this section)
 
-| baseline                  |   traces |   peak heap red. % min |   median |   max |   replay time red. % min |   median  |   max  |
-|:--------------------------|---------:|-----------------------:|---------:|------:|-------------------------:|----------:|-------:|
-| METIS-X (previous)        |        9 |                    7.9 |     62.0 |  81.5 |                    -67.8 |      24.1 |   97.1 |
-| old arena table           |        9 |                   10.9 |     95.3 |  99.8 |                    -54.1 |      65.4 |   99.3 |
-| old scope maps            |        9 |                   10.9 |     59.9 |  88.8 |                     18.2 |      50.9 |   90.0 |
-| map per scope             |        9 |                   -9.7 |     42.8 |  87.3 |                     -0.3 |      56.7 |   89.6 |
-| std map + undo log        |        9 |                   -1.5 |     48.8 |  64.4 |                    -41.1 |      16.8 |   25.3 |
-| Swiss node map + undo log |        9 |                   -1.3 |     39.2 |  59.8 |                    -46.7 |       2.5 |   34.7 |
-| Swiss flat map, interned  |        9 |                  -12.5 |     58.2 |  94.0 |                   -113.8 |     -38.4 |   23.4 |
+| baseline                  |   traces |   faster (established) |   slower (established) |   peak heap red. % min |   median |   max |   replay time red. % min |   median  |   max  |
+|:--------------------------|---------:|-----------------------:|-----------------------:|-----------------------:|---------:|------:|-------------------------:|----------:|-------:|
+| METIS-X (previous)        |        9 |                      7 |                      2 |                    7.9 |     62.0 |  81.5 |                    -61.6 |      25.2 |   97.1 |
+| old arena table           |        9 |                      8 |                      1 |                   10.9 |     95.3 |  99.8 |                    -53.1 |      66.0 |   99.3 |
+| old scope maps            |        9 |                      9 |                      0 |                   10.9 |     59.9 |  88.8 |                     22.2 |      48.5 |   90.1 |
+| map per scope             |        9 |                      7 |                      0 |                   -9.7 |     42.8 |  87.3 |                     -1.8 |      56.0 |   89.6 |
+| std map + undo log        |        9 |                      6 |                      2 |                   -1.5 |     48.8 |  64.4 |                    -39.0 |      16.7 |   25.8 |
+| Swiss node map + undo log |        9 |                      3 |                      3 |                   -1.3 |     39.2 |  59.8 |                    -46.7 |       2.6 |   34.5 |
+| Swiss flat map, interned  |        9 |                      1 |                      6 |                  -12.5 |     58.2 |  94.0 |                   -108.6 |     -38.9 |   23.2 |
 
 ## D. Worst-case clustering
 
@@ -469,24 +469,24 @@ Per-call TSC timing; the calibrated cost of one timed interval (18 ns here) is s
 
 ### Previous implementation (METIS-X) versus STRATA
 
-Reduction = (old - new) / old x 100; negative means STRATA is worse. 'intervals overlap = yes' means the 95% intervals of the two replay-time medians overlap, so the time difference is not established.
+Reduction = (old - new) / old x 100; negative means STRATA is worse. The replay reduction is the median of the per-round reductions (samples paired by round) with a 95% bootstrap interval; 'established = yes' means the interval excludes zero.
 
-| trace    |   peak heap KiB old |    new |   peak heap red. % |   allocs old |   allocs new |   allocs red. % |   replay ms old |   replay ms new |   replay red. % | intervals overlap   |   lookup p95 old |   lookup p95 new |   lookup p95 red. % |   declare p95 red. % |   exit p95 red. % |   old refused |
-|:---------|--------------------:|-------:|-------------------:|-------------:|-------------:|----------------:|----------------:|----------------:|----------------:|:--------------------|-----------------:|-----------------:|--------------------:|---------------------:|------------------:|--------------:|
-| Arduino  |               877.0 |  292.0 |               66.7 |        19804 |           16 |            99.9 |             8.0 |             4.2 |            46.9 | no                  |             93.3 |             54.5 |                41.6 |                 70.8 |              12.1 |             0 |
-| ESP-IDF  |             15375.6 | 7480.9 |               51.3 |       629511 |           24 |           100.0 |           194.6 |           130.5 |            32.9 | no                  |             82.4 |             74.5 |                 9.6 |                 54.7 |              -8.7 |             0 |
-| FreeRTOS |               937.7 |  292.0 |               68.9 |        32473 |           16 |           100.0 |            11.9 |             9.5 |            19.8 | yes                 |             68.4 |             63.0 |                 7.9 |                 43.8 |             -27.5 |             0 |
-| Zephyr   |              7572.0 | 1870.3 |               75.3 |       664319 |           25 |           100.0 |           184.1 |           120.9 |            34.3 | no                  |             78.1 |             73.9 |                 5.4 |                 52.2 |             -20.1 |             0 |
+| trace    |   peak heap KiB old |    new |   peak heap red. % |   allocs old |   allocs new |   allocs red. % |   replay ms old |   replay ms new |   replay red. % |   CI low |   CI high | established   |   lookup p95 old |   lookup p95 new |   lookup p95 red. % |   declare p95 red. % |   exit p95 red. % |   old refused |
+|:---------|--------------------:|-------:|-------------------:|-------------:|-------------:|----------------:|----------------:|----------------:|----------------:|---------:|----------:|:--------------|-----------------:|-----------------:|--------------------:|---------------------:|------------------:|--------------:|
+| Arduino  |               877.0 |  292.0 |               66.7 |        19804 |           16 |            99.9 |             8.0 |             4.2 |            48.7 |     10.4 |      50.3 | yes           |             93.3 |             54.5 |                41.6 |                 70.8 |              12.1 |             0 |
+| ESP-IDF  |             15375.6 | 7480.9 |               51.3 |       629511 |           24 |           100.0 |           194.6 |           130.5 |            32.9 |     14.5 |      36.7 | yes           |             82.4 |             74.5 |                 9.6 |                 54.7 |              -8.7 |             0 |
+| FreeRTOS |               937.7 |  292.0 |               68.9 |        32473 |           16 |           100.0 |            11.9 |             9.5 |            20.2 |     -9.5 |      27.1 | no            |             68.4 |             63.0 |                 7.9 |                 43.8 |             -27.5 |             0 |
+| Zephyr   |              7572.0 | 1870.3 |               75.3 |       664319 |           25 |           100.0 |           184.1 |           120.9 |            34.3 |     31.5 |      40.5 | yes           |             78.1 |             73.9 |                 5.4 |                 52.2 |             -20.1 |             0 |
 
 ### STRATA against every baseline (range over the traces of this section)
 
-| baseline                  |   traces |   peak heap red. % min |   median |   max |   replay time red. % min |   median  |   max  |
-|:--------------------------|---------:|-----------------------:|---------:|------:|-------------------------:|----------:|-------:|
-| METIS-X (previous)        |        4 |                   51.3 |     67.8 |  75.3 |                     19.8 |      33.6 |   46.9 |
-| old arena table           |        2 |                   62.4 |     68.6 |  74.8 |                     93.0 |      93.4 |   93.7 |
-| old scope maps            |        4 |                   61.3 |     61.9 |  67.7 |                     25.2 |      54.1 |   64.1 |
-| map per scope             |        4 |                   44.5 |     46.0 |  55.0 |                     34.7 |      54.3 |   65.1 |
-| std map + undo log        |        4 |                   55.2 |     57.2 |  64.1 |                     16.5 |      33.9 |   64.0 |
-| Swiss node map + undo log |        4 |                   46.9 |     52.6 |  58.7 |                     -5.3 |      22.5 |   48.0 |
-| Swiss flat map, interned  |        4 |                   75.3 |     79.1 |  90.2 |                     -6.4 |      15.7 |   32.2 |
+| baseline                  |   traces |   faster (established) |   slower (established) |   peak heap red. % min |   median |   max |   replay time red. % min |   median  |   max  |
+|:--------------------------|---------:|-----------------------:|-----------------------:|-----------------------:|---------:|------:|-------------------------:|----------:|-------:|
+| METIS-X (previous)        |        4 |                      3 |                      0 |                   51.3 |     67.8 |  75.3 |                     20.2 |      33.6 |   48.7 |
+| old arena table           |        2 |                      2 |                      0 |                   62.4 |     68.6 |  74.8 |                     92.8 |      93.2 |   93.7 |
+| old scope maps            |        4 |                      3 |                      0 |                   61.3 |     61.9 |  67.7 |                     29.5 |      55.1 |   64.9 |
+| map per scope             |        4 |                      4 |                      0 |                   44.5 |     46.0 |  55.0 |                     31.8 |      53.8 |   64.6 |
+| std map + undo log        |        4 |                      3 |                      0 |                   55.2 |     57.2 |  64.1 |                     20.0 |      34.5 |   63.7 |
+| Swiss node map + undo log |        4 |                      3 |                      0 |                   46.9 |     52.6 |  58.7 |                     -9.0 |      23.0 |   48.1 |
+| Swiss flat map, interned  |        4 |                      2 |                      0 |                   75.3 |     79.1 |  90.2 |                     -2.8 |      17.0 |   32.2 |
 

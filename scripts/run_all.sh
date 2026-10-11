@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."
 LABEL="${1:-full}"
-REPS="${REPS:-15}"
+REPS="${REPS:-31}"
 CORE="${CORE:-2}"
 RUN="results/raw/$(date -u +%Y%m%d-%H%M%S)-$LABEL"
 PIN=""
@@ -26,7 +26,7 @@ python3 scripts/gen_synthetic.py build/synthetic > /dev/null
   echo "cpu: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^ //')"
   echo "libc: $(ldd --version | head -1)"
   echo "pinning: ${PIN:-none}"
-  echo "repetitions: $REPS (+2 warm-up) whole-trace replays; 3 per-operation latency replays"
+  echo "rounds: $REPS (+2 warm-up); in each round every table replays the trace once, order rotated; 3 per-operation latency replays"
   echo "metis: $(git -C third_party/metis rev-parse HEAD 2>/dev/null || echo absent)"
   echo "phmap: $(git -C third_party/phmap describe --tags 2>/dev/null || echo absent)"
 } > "$RUN/environment.txt"
@@ -53,7 +53,7 @@ $PIN ./build/budget --mode worstcase --out "$RUN/worstcase.csv"
 # a linear scan), so it is left out there; every other table runs on all four.
 if [ -d third_party/metis/results ]; then
   echo "== regex-extracted traces of the earlier work (supplemental)"
-  ALL="strata,strata_raw,strata_noshrink,strata_sparse,scope_map_stack,std_undo_log,swiss_undo_log,swiss_interned,metis_x,metis_scope_maps"
+  ALL="strata,strata_raw,strata_noshrink,strata_sparse,arena_chain,scope_map_stack,std_undo_log,swiss_undo_log,swiss_interned,metis_x,metis_scope_maps"
   for n in FreeRTOS Arduino; do
     echo "  $n"
     $PIN ./build/bench --trace "third_party/metis/results/corpus_events_$n.txt" --name "$n" --reps 5 --summary "$RUN/legacy_summary.csv" --raw "$RUN/legacy_replays.csv"

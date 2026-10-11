@@ -24,7 +24,14 @@ One working session, 11 October 2026. Times are omitted; the order is exact.
 | 18 | Related-work search | The undo-stack scheme is in Appel's textbook and LLVM; 6-bit packing has the RADIX-50 precedent; one intended citation (Cook and LeBlanc 1983) could not be confirmed and was dropped. Novelty self-assessment 4.5/10, not the 8/10 goal. |
 | 19 | Documents and paper draft | `docs/RESULTS.md` and `paper/generated.tex` are generated from the CSVs by `scripts/make_report.py`. Paper: 4 pages, compiles with pdflatex + bibtex. |
 | 20 | Clean-checkout check | Cloned the repository into an empty directory, ran `scripts/test.sh` (1 177 892 checks, 0 failed, both builds), `scripts/fetch_third_party.sh` and `REPS=2 scripts/run_all.sh`. The pipeline completed; correctness results were identical to the reported run (88/88 compiler pairs, 42/42 legacy pairs, and METIS-X on `deep_shadow_400` the only failing synthetic pair). That short run is not stored. |
-| 21 | Repository created and pushed; collaborator invited | See the project's final report. |
+| 21 | Repository created (private) and pushed; `adhyan-jain` invited with write access | Invitation pending at the time of writing. |
+| 22 | Version 2 of the table | Slot recorded in the undo entry (scope exit without re-hashing), shrinking delayed by 64 calm scope exits, hash computed in the packing loop. Run `20261011-163944-v2` kept. |
+| 23 | External review received (six points) | Addressed in steps 24-28; summary in `RESULTS.md`, section 2. |
+| 24 | Conventional allocator-free baseline `arena_chain` | Agrees with the reference model on every trace. It turned out to be faster than STRATA on ordinary C traces and only 16-18% larger: most of the gain over METIS-X is not specific to STRATA. Reported as such. |
+| 25 | Timing protocol changed | 31 rounds, tables interleaved in rotating order, paired differences with bootstrap intervals. |
+| 26 | Guarantee tests and written argument | `state_digest()`; all-or-nothing checked in 30 configurations including adversarial collisions; `docs/CORRECTNESS.md`. 1 856 579 checks pass. |
+| 27 | Emulated embedded target | First attempt to install the cross toolchain raced with another package installation and had to be repeated. Bare-metal Cortex-M3 under QEMU, 64 KiB RAM: five traces pass with host-identical results. |
+| 28 | Final run `20261011-165103-v3` | Reported in `RESULTS.md` and the paper; the paper's claim was narrowed to the decomposition. |
 
 ## Things tried and not kept
 

@@ -33,8 +33,13 @@ be confirmed in our search and is therefore **not** cited in the paper.
 Established, and used as is: the undo-stack algorithm (#2, #3), interning (#4), linear
 probing, fingerprints (#7), character packing (#10), stack allocation (#12, #13), the hash (#14).
 
-Specific to this project:
+Specific to this project (narrowed after review; none of these is a new algorithm):
 
+0. **A measured decomposition.** Against the previous table, how much is gained by
+   allocation-free arena storage alone (a conventional chained table: 55-77% less memory,
+   11-36% less time) and how much by interning, undo entries and packed names on top of it
+   (a further 16-18% less memory, but more time on ordinary C traces). We found no published
+   measurement of this split on compiler-generated events.
 1. **The combination under a hard memory budget.** One caller-supplied buffer holds the
    interner, the scope mechanism and the declarations, with relative references so the index
    can grow in place, a defined `kNoMemory` result and a tested strong failure guarantee.
@@ -68,10 +73,10 @@ Scale per criterion: 0-2 none, 3-4 minor, 5-6 solid incremental, 7-8 clearly new
 |---|---|---|
 | Problem significance | 4 | Symbol tables are rarely a compiler's memory or time bottleneck; the embedded self-hosted-compiler niche is small. |
 | Difference from closest implementations | 5 | Same algorithm as LLVM/Appel; different in being single-buffer, budgeted and failure-safe. |
-| Technical originality | 3 | Every mechanism has a named precedent (table above). The contribution is an engineering synthesis. |
-| Strength of experimental evidence | 6 | Real compiler events, ten tables, reference-checked, repeated runs with intervals, negative results reported; but one machine, replay only. |
-| Practical value for embedded compilers | 5 | A fixed-buffer mode with measured minimum sizes is directly usable; not demonstrated inside a compiler or on a target. |
-| **Overall** | **4.5 / 10** | |
+| Technical originality | 3 | Every mechanism has a named precedent (table above). The contribution is an engineering synthesis; the conventional baseline added after review shows that most of the gain is not specific to it. |
+| Strength of experimental evidence | 7 | Real compiler events, twelve tables including a strong allocator-free baseline, reference-checked, 31 interleaved rounds with paired intervals, negative results reported, emulated 32-bit target; but one machine, replay only, no hardware. |
+| Practical value for embedded compilers | 5 | Two usable fixed-buffer tables with measured minimum sizes and a stated memory/time trade-off; shown on an emulated Cortex-M3, not inside a compiler or on a device. |
+| **Overall** | **about 4.5 / 10** | Evidence improved after review; originality did not. |
 
 The brief set a development goal of 8/10. **It was not reached, and we do not think it can be
 reached honestly on this topic without the compiler integration and hardware results listed

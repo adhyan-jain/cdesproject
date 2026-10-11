@@ -71,6 +71,24 @@ index at the bottom, identifier records growing up, undo stack growing down.
 | Prior art | C + open addressing + 6-bit character packing (cf. DEC RADIX-50) + two-ended stack allocation |
 | Hypothesis | **H1** it needs less memory than every other candidate on compiler-generated traces; **H2** it does so without being slower than METIS-X end to end; **H3** it runs a whole translation unit from a fixed buffer with no allocator |
 
+## E. Conventional chained table over an entry arena (added after review, as a baseline)
+
+| Criterion | Assessment |
+|---|---|
+| Memory | per declaration: 16 B header + unpacked name; bucket array at load <= 1; per scope 4 B |
+| Lookup | hash, follow a chain comparing stored hashes, then names; innermost match first |
+| Insert | append and link at the chain head |
+| Scope exit | unlink and pop the scope's entries |
+| Allocation | none in fixed mode |
+| Embedded fit | good, same as D |
+| Prior art | the standard compiler design (lcc-style tables, TCC's symbol stacks) |
+| Measured | 16-18% more memory than D, faster than D on 7 of 8 compiler traces |
+
+E was implemented with D's storage discipline so that the comparison isolates the data
+structure. The result changes the selection rationale: **if time matters more than the last
+sixth of memory, E is the better choice for ordinary C code**; D is preferable when memory
+is the binding constraint or shadowing is heavy.
+
 ## Why D and not C
 
 C and D are the same algorithm. D exists because the three properties the topic asks for -
@@ -85,7 +103,8 @@ cannot be added to C without replacing its containers, which is what D is.
 | Initial index sized as 1/16 of the buffer | replaced by a fixed 16-slot start that doubles in place; a large initial index wasted memory in tight fixed buffers. Together with the previous change this cut the minimum buffer for `sqlite3.c` from 177 728 to 143 744 bytes (-19%); the two changes were not measured separately. |
 | Buffer growth by doubling with a fresh allocation | replaced by 1.5x growth through `realloc`; doubling held two full copies at the peak. |
 | 6-bit name packing | kept; measured against raw names (ablation `strata_raw`). The saving is modest because names are only part of a record. |
-| Shrinking on scope exit | kept as the default; measured against `strata_noshrink`. It costs time when a large scope is re-entered repeatedly. |
+| Shrinking on scope exit | kept as the default, but since version 2 only after 64 consecutive scope exits at low occupancy; the first version shrank at once and thrashed when a large scope was re-entered. |
+| Locating a dying name's slot by re-hashing it at scope exit | first version; replaced in version 2 by recording the slot in the undo entry. Scope-exit p95 fell by 77-86%; an index rebuild now re-hashes each name twice. |
 | Maximum index load 1/2 instead of 3/4 | kept as an option (`sparse_index`, off by default): fewer probes, more index memory. Measured as variant `strata_sparse`. |
 | Triangular instead of linear probing | tried in a scratch build: no consistent gain on four traces; dropped. |
 | Non-power-of-two index (to hold the load factor near 0.75 at all times) | not done: estimated saving under 5%, at the cost of a multiply per probe start. |

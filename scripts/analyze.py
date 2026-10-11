@@ -19,10 +19,10 @@ run = sys.argv[1].rstrip("/\\")
 out = os.path.join("results", "summary", os.path.basename(run))
 os.makedirs(out, exist_ok=True)
 NEW = "strata"
-ORDER = ["strata", "strata_raw", "strata_noshrink", "strata_sparse", "metis_x", "metis_arena_lp", "metis_scope_maps",
+ORDER = ["strata", "strata_raw", "strata_noshrink", "strata_sparse", "arena_chain", "metis_x", "metis_arena_lp", "metis_scope_maps",
          "scope_map_stack", "std_undo_log", "swiss_undo_log", "swiss_interned"]
 LABEL = {"strata": "STRATA", "strata_raw": "STRATA (raw names)", "strata_noshrink": "STRATA (no shrink)",
-         "strata_sparse": "STRATA (sparse index)",
+         "strata_sparse": "STRATA (sparse index)", "arena_chain": "arena + chains (allocator-free)",
          "metis_x": "METIS-X (previous)", "metis_arena_lp": "old arena table", "metis_scope_maps": "old scope maps",
          "scope_map_stack": "map per scope", "std_undo_log": "std map + undo log",
          "swiss_undo_log": "Swiss node map + undo log", "swiss_interned": "Swiss flat map, interned"}
@@ -39,6 +39,20 @@ def bootstrap_ci(values, n=2000, seed=7):
     v = list(values)
     meds = sorted(pd.Series([rng.choice(v) for _ in v]).median() for _ in range(n))
     return meds[int(0.025 * n)], meds[int(0.975 * n) - 1]
+
+
+def paired_reduction(raw, trace, base, new, n=2000, seed=11):
+    """Reduction of `new` against `base` from samples paired by round: per round
+    (base - new) / base x 100; returns (median, lo, hi) with a 95% bootstrap interval of the
+    median. Runs made before the interleaved design are paired by repetition index all the same."""
+    a = raw[(raw.trace == trace) & (raw.impl == base)].set_index("rep").replay_ns
+    b = raw[(raw.trace == trace) & (raw.impl == new)].set_index("rep").replay_ns
+    d = ((a - b) / a * 100).dropna().tolist()
+    if not d:
+        return float("nan"), float("nan"), float("nan")
+    rng = random.Random(seed)
+    meds = sorted(pd.Series([rng.choice(d) for _ in d]).median() for _ in range(n))
+    return pd.Series(d).median(), meds[int(0.025 * n)], meds[int(0.975 * n) - 1]
 
 
 def table(df, title, note=""):
@@ -137,8 +151,9 @@ def section(tag, heading):
             rows.append({"trace": tr,
                          "peak heap KiB old": a.peak_bytes / 1024, "new": b.peak_bytes / 1024, "peak heap red. %": reduction(a.peak_bytes, b.peak_bytes),
                          "allocs old": a.allocs, "allocs new": b.allocs, "allocs red. %": reduction(a.allocs, b.allocs),
-                         "replay ms old": ta.median_ms, "replay ms new": tb.median_ms, "replay red. %": reduction(ta.median_ms, tb.median_ms),
-                         "intervals overlap": "yes" if not (tb.ci_hi_ms < ta.ci_lo_ms or ta.ci_hi_ms < tb.ci_lo_ms) else "no",
+                         "replay ms old": ta.median_ms, "replay ms new": tb.median_ms, "replay red. %": paired_reduction(raw, tr, base, NEW)[0],
+                         "CI low": paired_reduction(raw, tr, base, NEW)[1], "CI high": paired_reduction(raw, tr, base, NEW)[2],
+                         "established": "yes" if paired_reduction(raw, tr, base, NEW)[1] > 0 or paired_reduction(raw, tr, base, NEW)[2] < 0 else "no",
                          "lookup p95 old": a.lookup_p95_ns, "lookup p95 new": b.lookup_p95_ns, "lookup p95 red. %": reduction(a.lookup_p95_ns, b.lookup_p95_ns),
                          "declare p95 red. %": reduction(a.declare_p95_ns, b.declare_p95_ns),
                          "exit p95 red. %": reduction(a.exit_p95_ns, b.exit_p95_ns),
@@ -146,16 +161,18 @@ def section(tag, heading):
         ovn = pd.DataFrame(rows)
         ovn.to_csv(os.path.join(out, tag + "_old_vs_new.csv"), index=False)
         table(ovn, "Previous implementation (METIS-X) versus STRATA",
-              "Reduction = (old - new) / old x 100; negative means STRATA is worse. 'intervals overlap = yes' means the "
-              "95% intervals of the two replay-time medians overlap, so the time difference is not established.")
+              "Reduction = (old - new) / old x 100; negative means STRATA is worse. The replay reduction is the median of the "
+              "per-round reductions (samples paired by round) with a 95% bootstrap interval; 'established = yes' means the "
+              "interval excludes zero.")
         others = [i for i in ORDER if i in set(s["impl"]) and not i.startswith("strata")]
         rows = []
         for im in others:
             r = {"baseline": LABEL[im]}
             have = [tr for tr in traces if len(s[(s.trace == tr) & (s.impl == im)])]   # a baseline may be absent on some traces
             heap = [reduction(s[(s.trace == tr) & (s.impl == im)].peak_bytes.iloc[0], s[(s.trace == tr) & (s.impl == NEW)].peak_bytes.iloc[0]) for tr in have]
-            tim = [reduction(rt[(rt.trace == tr) & (rt.impl == im)].median_ms.iloc[0], rt[(rt.trace == tr) & (rt.impl == NEW)].median_ms.iloc[0]) for tr in have]
-            r.update({"traces": len(have),"peak heap red. % min": min(heap), "median": pd.Series(heap).median(), "max": max(heap),
+            pr = [paired_reduction(raw, tr, im, NEW) for tr in have]
+            tim = [p[0] for p in pr]
+            r.update({"traces": len(have), "faster (established)": sum(1 for p in pr if p[1] > 0), "slower (established)": sum(1 for p in pr if p[2] < 0),"peak heap red. % min": min(heap), "median": pd.Series(heap).median(), "max": max(heap),
                       "replay time red. % min": min(tim), "median ": pd.Series(tim).median(), "max ": max(tim)})
             rows.append(r)
         allb = pd.DataFrame(rows)
@@ -220,6 +237,10 @@ if b is not None and got:
                "min buffer KiB (sparse index)": sp.min_buffer_bytes.iloc[0] / 1024 if len(sp) else float("nan"),
                "packing saves %": reduction(r.min_buffer_bytes, p.min_buffer_bytes),
                "bytes per live decl": p.min_buffer_bytes / s[s.trace == tr].peak_live_decls.iloc[0]}
+        ac = first[(first.trace == tr) & (first.names == "arena_chain")]
+        if len(ac):
+            row["arena + chains min buffer KiB"] = ac.min_buffer_bytes.iloc[0] / 1024
+            row["vs arena + chains, red. %"] = reduction(ac.min_buffer_bytes.iloc[0], p.min_buffer_bytes)
         for im in ("metis_x", "scope_map_stack", "std_undo_log", "swiss_interned"):
             if im in set(s["impl"]):
                 row["vs %s peak heap, red. %%" % LABEL[im]] = reduction(s[(s.trace == tr) & (s.impl == im)].peak_bytes.iloc[0], p.min_buffer_bytes)
