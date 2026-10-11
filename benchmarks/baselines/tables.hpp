@@ -15,6 +15,7 @@
 
 #include "../../include/strata/strata.hpp"
 #include "../common.hpp"
+#include "arena_chain.hpp"
 
 #ifdef CDES_HAVE_PHMAP
 #include <parallel_hashmap/phmap.h>
@@ -56,6 +57,23 @@ typedef StrataT<true, true, false> Strata;            // default configuration
 typedef StrataT<false, true, false> StrataRaw;        // ablation: names stored as raw bytes
 typedef StrataT<true, false, false> StrataNoShrink;   // ablation: the buffer is never given back
 typedef StrataT<true, true, true> StrataSparse;       // option: index at most half full
+
+// ---- conventional allocator-free design: chained table over an entry arena ----------
+inline void* arena_realloc(void* p, size_t n) {
+    if (!p) return mem::alloc(n);
+    if (n == 0) { mem::dealloc(p); return 0; }
+    return mem::resize(p, n);
+}
+struct ArenaChain {
+    arena_chain::Table t;
+    ArenaChain() : t(arena_realloc) {}
+    static const char* id() { return "arena_chain"; }
+    size_t used_peak() const { return t.peak_used_bytes(); }
+    bool enter() { return t.enter_scope(); }
+    bool exit() { return t.exit_scope(); }
+    int declare(const std::string& s, int32_t v) { return t.declare(s.data(), s.size(), v); }
+    bool resolve(const std::string& s, int32_t* v) const { return t.resolve(s.data(), s.size(), v); }
+};
 
 // ---- conventional: one hash map per open scope ------------------------------------
 struct ScopeMapStack {

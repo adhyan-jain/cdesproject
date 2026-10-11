@@ -37,6 +37,13 @@ def piv(df, value, cols, index="trace"):
     return p[[c for c in cols if c in p.columns]]
 
 
+def verdict(series):
+    """Plain statement of a reduction column: how many traces improved and the range."""
+    better = int((series > 0).sum())
+    word = "**Lower on every trace**" if better == len(series) else ("**Higher (worse) on every trace**" if better == 0 else "**Mixed**")
+    return "%s: lower on %d of %d traces, reduction %s%%" % (word, better, len(series), rng(series))
+
+
 def n_bad(df):
     return int(((df.wrong_lookups > 0) | (df.wrong_declares > 0) | (df.refused_declares > 0)).sum())
 
@@ -90,8 +97,9 @@ A("| 85%% target, allocator calls vs METIS-X | **Met on all traces** (%s%%). |" 
 A("| 85%% target, memory vs METIS-X | **Not met.** Best case %.1f%% (peak heap) and %.1f%% (fixed buffer against METIS-X's peak heap). |" % (heap.max(), fx_m.max()))
 A("| 85%% target, memory vs any baseline | Met only against the interning Swiss map, in fixed-buffer mode, on %d of %d traces (%s). |" % (len(met85_fixed), len(traces), ", ".join(met85_fixed)))
 A("| 85% target, any latency or time metric | **Not met.** |")
-A("| Lookup latency vs METIS-X | **Not improved**: p95 changes by %s%% across traces, both signs. |" % rng(ovn["lookup p95 red. %"]))
-A("| Scope-exit latency vs METIS-X | **Worse on every compiler trace**: p95 %s%%. |" % rng(ovn["exit p95 red. %"]))
+A("| Lookup latency p95 vs METIS-X | %s. |" % verdict(ovn["lookup p95 red. %"]))
+A("| Declare latency p95 vs METIS-X | %s. |" % verdict(ovn["declare p95 red. %"]))
+A("| Scope-exit latency p95 vs METIS-X | %s. |" % verdict(ovn["exit p95 red. %"]))
 A("| Speed vs the fastest baseline (`swiss_interned`) | STRATA is slower on %d of %d traces (replay time %s%%, median %.1f%%), with %s%% less peak heap. |"
   % (slower_than_swiss, len(traces), rng(pd.Series([sw["replay time red. % min"], sw["max "]])), sw["median "], rng(pd.Series([sw["peak heap red. % min"], sw["max"]]))))
 A("")
@@ -131,17 +139,17 @@ A("| Variant | Effect, measured |\n|---|---|")
 A("| Name packing (`strata` vs `strata_raw`) | minimum buffer %s%% smaller; replay time between %.1f%% slower and %.1f%% faster with packing (slower on %d of %d traces) |"
   % (rng(bud["packing saves %"]), -pack_time.min(), pack_time.max(), int((pack_time < 0).sum()), len(pack_time)))
 A("| Sparse index (`strata_sparse`, load <= 1/2) | replay time %s%% lower (median %.1f%%); minimum buffer %s%% larger |" % (rng(sparse_gain), sparse_gain.median(), rng(sparse_mem)))
-A("| No shrinking (`strata_noshrink`) | on `big_scope_exit` %.1f ns/op instead of %.1f; on compiler traces within noise |" % (big["strata_noshrink"], big["strata"]))
+A("| No shrinking (`strata_noshrink`) | on `big_scope_exit` %.1f ns/op against %.1f with shrinking; on compiler traces within noise |" % (big["strata_noshrink"], big["strata"]))
 A("")
 
 A("## C. Synthetic stress traces\n")
 A(sovn.round(1).to_markdown(index=False))
 A("\nNotes:\n")
 A("* `deep_shadow_400`: METIS-X refused %d of %d declarations and gave %d wrong lookup results (audit item D1). No other table failed." % (ds.refused_declares, ds.declares, ds.wrong_lookups))
-A("* `big_scope_exit`: STRATA is **slower** than METIS-X (%.1f vs %.1f ns/op) because it gives the buffer back after each large scope and regrows it; without shrinking it takes %.1f ns/op."
+A("* `big_scope_exit` (a 10 000-declaration scope entered 20 times): STRATA %.1f ns/op, METIS-X %.1f, STRATA without shrinking %.1f."
   % (big["strata"], big["metis_x"], big["strata_noshrink"]))
 worse = sovn[sovn["replay red. %"] < 0]
-A("* STRATA is slower than METIS-X on: %s." % ", ".join("%s (%.1f%%%s)" % (r["trace"], r["replay red. %"], ", intervals overlap" if r["intervals overlap"] == "yes" else "") for _, r in worse.iterrows()))
+A("* STRATA is slower than METIS-X on: %s." % (", ".join("%s (%.1f%%%s)" % (r["trace"], r["replay red. %"], ", intervals overlap" if r["intervals overlap"] == "yes" else "") for _, r in worse.iterrows()) or "no synthetic trace"))
 A("* `long_ids`: with 40-80 byte names the memory advantage over METIS-X shrinks to %.1f%%: names dominate and both store them once at the peak." % sovn[sovn.trace == "long_ids"]["peak heap red. %"].iloc[0])
 A("\nReplay time, ns per operation:\n")
 A(piv(srt, "ns_per_op", COLS + ["strata_sparse", "strata_noshrink"]).round(1).rename(columns=NAMES).reset_index().to_markdown(index=False))
@@ -159,22 +167,51 @@ A(lovn.round(1).to_markdown(index=False))
 A("\nThe METIS-X manuscript reported, for its own harness, peak heap of 25.1 MB (Zephyr) and 35.2 MB (ESP-IDF) for METIS-X; those figures "
   "included about 20 MB of harness data (audit item D11). Here METIS-X's own peak is %.1f MB and %.1f MB."
   % (ls[(ls.trace == "Zephyr") & (ls.impl == "metis_x")].peak_bytes.iloc[0] / 1e6, ls[(ls.trace == "ESP-IDF") & (ls.impl == "metis_x")].peak_bytes.iloc[0] / 1e6))
-A("\n## Two runs\n")
-first = os.path.join("results", "raw", "20261011-160113-full")
-if os.path.isdir(first):
-    a = pd.concat([pd.read_csv(os.path.join(first, t + "_summary.csv")) for t in ("compiler", "synthetic", "legacy")])
-    b = pd.concat([cs, ss, ls])
-    m = a.merge(b, on=["trace", "impl"], suffixes=("_1", "_2"))
+PREV = "20261011-161306-final"
+if run != PREV and os.path.isdir(os.path.join("results", "raw", PREV)):
+    A("\n## STRATA version 1 against version 2\n")
+    A("Version 1 is the table as first reported (run `%s`, commit `3aee381`). Version 2 (this run) changes three things: "
+      "the undo entry of a first declaration stores its index slot, so scope exit empties the slot directly instead of re-hashing the name; "
+      "the buffer is given back only after 64 consecutive scope exits at low occupancy; and the hash is computed in the packing loop. "
+      "The two versions were measured in different runs, so differences of a few percent are within run-to-run variation.\n" % PREV)
+    p_cs = pd.read_csv(os.path.join("results", "raw", PREV, "compiler_summary.csv"))
+    p_rt = pd.read_csv(os.path.join("results", "summary", PREV, "compiler_replay_time.csv"))
+    p_bud = pd.read_csv(os.path.join("results", "summary", PREV, "budget_min_buffer.csv")).set_index("trace")
+    rows = []
+    for tr in traces:
+        a = p_cs[(p_cs.trace == tr) & (p_cs.impl == "strata")].iloc[0]
+        b = cs[(cs.trace == tr) & (cs.impl == "strata")].iloc[0]
+        ta = p_rt[(p_rt.trace == tr) & (p_rt.impl == "strata")].ns_per_op.iloc[0]
+        tb = rt[(rt.trace == tr) & (rt.impl == "strata")].ns_per_op.iloc[0]
+        rows.append({"trace": tr, "replay ns/op v1": ta, "v2": tb, "red. %": (ta - tb) / ta * 100,
+                     "exit p95 v1": a.exit_p95_ns, "exit p95 v2": b.exit_p95_ns, "exit red. %": (a.exit_p95_ns - b.exit_p95_ns) / a.exit_p95_ns * 100,
+                     "lookup p95 v1": a.lookup_p95_ns, "lookup p95 v2": b.lookup_p95_ns,
+                     "declare p95 v1": a.declare_p95_ns, "declare p95 v2": b.declare_p95_ns,
+                     "peak heap KiB v1": a.peak_bytes / 1024, "peak heap KiB v2": b.peak_bytes / 1024,
+                     "min buffer KiB v1": p_bud.loc[tr, "min buffer KiB (packed)"],
+                     "min buffer KiB v2": bud.set_index("trace").loc[tr, "min buffer KiB (packed)"]})
+    v12 = pd.DataFrame(rows)
+    v12.to_csv(os.path.join(S, "strata_v1_vs_v2.csv"), index=False)
+    A(v12.round(1).to_markdown(index=False))
+    p_srt = pd.read_csv(os.path.join("results", "summary", PREV, "synthetic_replay_time.csv"))
+    pb = p_srt[p_srt.trace == "big_scope_exit"].set_index("impl").ns_per_op
+    A("\n`big_scope_exit`: STRATA %.1f ns/op in version 1, %.1f in version 2 (METIS-X: %.1f and %.1f in the two runs).\n"
+      % (pb["strata"], big["strata"], pb["metis_x"], big["metis_x"]))
+A("\n## Run-to-run variation\n")
+R1, R2 = "20261011-160113-full", "20261011-161306-final"
+if os.path.isdir(os.path.join("results", "raw", R1)) and os.path.isdir(os.path.join("results", "raw", R2)):
+    def both(name):
+        return pd.concat([pd.read_csv(os.path.join("results", "raw", name, t + "_summary.csv")) for t in ("compiler", "synthetic", "legacy")])
+    m = both(R1).merge(both(R2), on=["trace", "impl"], suffixes=("_1", "_2"))
     same_mem = int((abs(m.peak_bytes_1 - m.peak_bytes_2) <= 64).sum())
     dt = (abs(m.replay_ns_median_1 - m.replay_ns_median_2) / m.replay_ns_median_1 * 100)
-    A("`results/raw/` also holds an earlier complete run (`20261011-160113-full`, made before the `sparse_index` option existed). "
-      "Of the %d table/trace pairs present in both runs, %d have the same peak heap to within 64 bytes. "
-      "Median replay times differ between the runs by a median of %.1f%% and by up to %.0f%%. "
-      "The slowdown against METIS-X on `lookup_heavy` was %.1f%% in the first run and is %.1f%% here, so that particular result was largely noise. "
-      "Timing statements in this document should be read with that variation in mind."
-      % (len(m), same_mem, dt.median(), dt.max(),
-         -pd.read_csv(os.path.join("results", "summary", "20261011-160113-full", "synthetic_old_vs_new.csv")).set_index("trace").loc["lookup_heavy", "replay red. %"],
-         -sovn[sovn.trace == "lookup_heavy"]["replay red. %"].iloc[0]))
+    lh = lambda r: -pd.read_csv(os.path.join("results", "summary", r, "synthetic_old_vs_new.csv")).set_index("trace").loc["lookup_heavy", "replay red. %"]
+    A("`results/raw/` holds two complete runs of the same version-1 table code (`%s` and `%s`). "
+      "Of the %d table/trace pairs present in both, %d have the same peak heap to within 64 bytes. "
+      "Their median replay times differ by a median of %.1f%% and by up to %.0f%%. "
+      "For example, version 1 was %.1f%% slower than METIS-X on `lookup_heavy` in the first of them and %.1f%% slower in the second. "
+      "Timing statements in this document should be read with that variation in mind; memory and correctness results do not vary."
+      % (R1, R2, len(m), same_mem, dt.median(), dt.max(), lh(R1), lh(R2)))
 with open("docs/RESULTS.md", "w", newline="\n") as f:
     f.write("\n".join(md) + "\n")
 
@@ -208,7 +245,10 @@ macro("SwissSlower", slower_than_swiss)
 macro("SwissTimeMed", "%.0f" % -sw["median "]); macro("SwissHeapMin", "%.0f" % sw["peak heap red. % min"]); macro("SwissHeapMax", "%.0f" % sw["max"])
 macro("LookMin", "%.0f" % ovn["lookup p95 red. %"].min()); macro("LookMax", "%.0f" % ovn["lookup p95 red. %"].max())
 macro("DeclMin", "%.0f" % ovn["declare p95 red. %"].min()); macro("DeclMax", "%.0f" % ovn["declare p95 red. %"].max())
-macro("ExitWorstMin", "%.0f" % -ovn["exit p95 red. %"].max()); macro("ExitWorstMax", "%.0f" % -ovn["exit p95 red. %"].min())
+macro("ExitMin", "%.0f" % ovn["exit p95 red. %"].min()); macro("ExitMax", "%.0f" % ovn["exit p95 red. %"].max())
+macro("ExitBetterN", int((ovn["exit p95 red. %"] > 0).sum())); macro("LookBetterN", int((ovn["lookup p95 red. %"] > 0).sum()))
+macro("BigRed", "%.0f" % ((big["metis_x"] - big["strata"]) / big["metis_x"] * 100))
+macro("SwissTimeMin", "%.0f" % sw["replay time red. % min"]); macro("SwissTimeMax", "%.0f" % sw["max "])
 macro("PackSlowMax", "%.0f" % -pack_time.min()); macro("PackSlowN", int((pack_time < 0).sum()))
 macro("PackMin", "%.1f" % bud["packing saves %"].min()); macro("PackMax", "%.1f" % bud["packing saves %"].max())
 macro("SparseGainMed", "%.0f" % sparse_gain.median()); macro("SparseMemMin", "%.0f" % sparse_mem.min()); macro("SparseMemMax", "%.0f" % sparse_mem.max())

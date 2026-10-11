@@ -348,6 +348,18 @@ public:
         return decls == ndecl_ && marks == depth_ && fresh == nident_;
     }
 
+    // 64-bit digest of the complete logical state: counters, the index, both stacks.
+    // Two tables with equal digests hold the same content in the same layout. The tests
+    // use it to show that a refused operation changes nothing at all.
+    uint64_t state_digest() const {
+        uint64_t h = 1469598103934665603ull;
+        const uint32_t head[8] = {idx_, itop_, undo_, mark_, ndecl_, nident_, depth_, cap_};
+        for (int i = 0; i < 8; ++i) h = (h ^ head[i]) * 1099511628211ull;
+        for (uint32_t i = 0; i < idx_ + itop_; ++i) h = (h ^ w_[i]) * 1099511628211ull;
+        for (uint32_t i = cap_ - undo_; i < cap_; ++i) h = (h ^ w_[i]) * 1099511628211ull;
+        return h;
+    }
+
     // Packs (or copies) a name and hashes it. Public so tests can inspect the encoding.
     Status make_key(const char* name, size_t len, Key& k) const {
         if (len == 0) return kEmptyName;

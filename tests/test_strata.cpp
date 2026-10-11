@@ -344,6 +344,93 @@ static void test_allocation_failure() {
     for (int i = 0; i < 5000; ++i) CHECK(look(t, name_of(i, 0)) == (stored[i] ? i : -1));
 }
 
+// All-or-nothing: in a fixed buffer, EVERY refused operation must leave the complete state
+// (index, both stacks, counters) bit-for-bit unchanged, and everything accepted before must
+// still resolve correctly. Checked with the normal hash and with every key forced into one
+// probe cluster, for random mixes, deep shadowing and deep nesting, at five buffer sizes.
+static void test_all_or_nothing() {
+    static uint32_t buf[8192];
+    const size_t sizes[] = {256, 1024, 2048, 8192, 32768};
+    for (int degenerate = 0; degenerate <= 1; ++degenerate) {
+        Table::degenerate_hash() = degenerate != 0;
+        for (int si = 0; si < 5; ++si) {
+            for (int mix = 0; mix < 3; ++mix) {       // 0 random, 1 deep shadowing, 2 deep nesting
+                Table t(buf, sizes[si]);
+                ReferenceModel ref;
+                std::vector<std::string> pool;
+                int pool_size = mix == 1 ? 3 : (degenerate ? 120 : 600);
+                for (int i = 0; i < pool_size; ++i) pool.push_back(name_of(i, i % 7 == 0 ? 2 : (i % 11 == 0 ? 1 : 0)));
+                int refused = 0, steps = degenerate ? 6000 : 20000;
+                for (int s = 0; s < steps; ++s) {
+                    uint32_t r = rnd() % 100;
+                    const std::string& nm = pool[rnd() % pool.size()];
+                    uint64_t before = t.state_digest();
+                    int enter_cut = mix == 0 ? 10 : 30, exit_cut = mix == 0 ? 18 : (mix == 1 ? 36 : 33);
+                    if (r < static_cast<uint32_t>(enter_cut)) {
+                        strata::Status st = t.enter_scope();
+                        if (st == strata::kOk) ref.enter();
+                        else { ++refused; CHECK(st == strata::kNoMemory); CHECK(t.state_digest() == before); }
+                    } else if (r < static_cast<uint32_t>(exit_cut)) {
+                        bool a = t.exit_scope() == strata::kOk, b = ref.exit();
+                        CHECK(a == b);
+                        if (!a) CHECK(t.state_digest() == before);
+                    } else if (r < 70) {
+                        int v = static_cast<int>(rnd());
+                        int st = decl(t, nm, v, 3);
+                        if (st >= 0) CHECK(st == ref.declare(nm, v, 3));
+                        else { ++refused; CHECK(st == strata::kNoMemory); CHECK(t.state_digest() == before); }
+                    } else {
+                        int32_t a = -1, b = -1;
+                        bool fa = t.resolve(nm.data(), nm.size(), &a), fb = ref.resolve(nm, &b);
+                        CHECK(fa == fb && a == b);
+                        CHECK(t.state_digest() == before);          // lookups never modify the table
+                    }
+                    if (s % 499 == 0) CHECK(t.check_invariants() && agrees(t, ref, pool));
+                }
+                CHECK(sizes[si] > 2048 || refused > 0);             // the small buffers really were exhausted
+                CHECK(agrees(t, ref, pool) && t.check_invariants());
+                while (ref.exit()) { CHECK(t.exit_scope() == strata::kOk); }
+                CHECK(agrees(t, ref, pool) && t.check_invariants());   // unwinding after exhaustion is exact
+            }
+        }
+    }
+    Table::degenerate_hash() = false;
+    // other refusals are also no-ops
+    Table t(buf, 4096);
+    decl(t, "a", 1);
+    uint64_t d = t.state_digest();
+    std::string too_long(300, 'x');
+    CHECK(decl(t, too_long, 2) == strata::kNameTooLong && t.declare("", 0, 3) == strata::kEmptyName);
+    CHECK(t.exit_scope() == strata::kNoScope && t.state_digest() == d);
+}
+
+// Scope exit when all keys share one probe cluster and the index is rebuilt while scopes are
+// open: the recorded slots must follow the keys through every rebuild.
+static void test_exit_under_collisions_and_rebuilds() {
+    for (int degenerate = 0; degenerate <= 1; ++degenerate) {
+        Table::degenerate_hash() = degenerate != 0;
+        strata::Options o;
+        o.initial_bytes = 128;
+        Table t(o);
+        ReferenceModel ref;
+        std::vector<std::string> pool;
+        for (int i = 0; i < 300; ++i) pool.push_back(name_of(i, 0));
+        for (int depth = 0; depth < 30; ++depth) {             // each level adds names and shadows older ones
+            t.enter_scope(); ref.enter();
+            for (int i = 0; i < 10; ++i) { int k = depth * 10 + i; decl(t, pool[k], k); ref.declare(pool[k], k); }
+            for (int i = 0; i < depth; ++i) { int k = i * 7 % (depth * 10); decl(t, pool[k], -k); ref.declare(pool[k], -k); }
+            CHECK(agrees(t, ref, pool) && t.check_invariants());
+        }
+        CHECK(t.stats().rebuilds > 3);
+        for (int depth = 0; depth < 30; ++depth) {
+            CHECK(t.exit_scope() == strata::kOk); ref.exit();
+            CHECK(agrees(t, ref, pool) && t.check_invariants());
+        }
+        CHECK(t.size() == 0 && t.stats().live_identifiers == 0);
+    }
+    Table::degenerate_hash() = false;
+}
+
 // deep shadowing: one name declared in 5000 nested scopes (the case METIS-X rejects after 250)
 static void test_deep_shadowing() {
     Table t;
@@ -371,6 +458,8 @@ int main() {
     test_reclamation();
     test_fixed_capacity();
     test_allocation_failure();
+    test_all_or_nothing();
+    test_exit_under_collisions_and_rebuilds();
     test_deep_shadowing();
     std::printf("%d checks, %d failed\n", g_checks, g_failed);
     return g_failed ? 1 : 0;

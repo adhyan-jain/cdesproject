@@ -1,0 +1,23 @@
+compiler: arm-none-eabi-g++ (15:10.3-2021.07-4) 10.3.1 20210621 (release)
+emulator: QEMU emulator version 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6.31)
+machine: mps2-an385 (Cortex-M3); RAM limited to 64 KiB by tools/embedded/link.ld; no heap, no OS
+flags: -mcpu=cortex-m3 -mthumb -Os -fno-exceptions -fno-rtti -fno-threadsafe-statics -ffunction-sections -fdata-sections -Wl,--gc-sections
+
+== zlib   (host run: checksum 1061675059, refused 0, peak used 16128 bytes; buffer 16384 bytes)
+STRATA on bare-metal Cortex-M3 (QEMU mps2-an385)
+operations          58058
+declares            16341
+lookups             27405
+lookup hits         18757
+refused operations  0
+buffer bytes        16384
+peak used bytes     16128
+stack bytes used    792
+static RAM bytes    16724
+checksum            1061675059
+expected (host run) 1061675059
+RESULT: PASS
+STRATA code size (sum of the strata:: functions in the object file, bytes):
+  2557
+whole image: text 190792, data 0, bss 16724  (text includes the embedded trace)
+

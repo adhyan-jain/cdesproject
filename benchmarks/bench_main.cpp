@@ -5,7 +5,9 @@
 //
 //   1. check    replay against the reference model; counts wrong results (not timed)
 //   2. memory   replay inside a heap-accounting window: peak / final bytes, allocations
-//   3. replay   N timed replays of the whole trace, one timer around each (primary timing)
+//   3. replay   N rounds; in each round every table replays the whole trace once, in an
+//               order that rotates from round to round, so that slow drifts of the machine
+//               hit all tables alike and the samples of a round can be compared as pairs
 //   4. latency  one timer per operation (TSC), calibrated overhead subtracted (secondary)
 //
 // A "U" record ends a translation unit: the table is destroyed and a new one created.
@@ -106,28 +108,9 @@ static void run_impl(const Trace& tr, const Expected& ex, int reps, int warmup, 
         row.allocs = mem::c().allocs;
         row.alloc_bytes = mem::c().total;
     }
-    // 3. whole-trace replay time
+    // 3. whole-trace replay time: measured in main(), interleaved across tables
     volatile int32_t guard = 0;
-    for (int rep = -warmup; rep < reps; ++rep) {
-        Clock::time_point t0 = Clock::now();
-        {
-            std::unique_ptr<T> t(new T());
-            int32_t seq = 0, sink = 0;
-            for (size_t i = 0; i < tr.ops.size(); ++i) {
-                const Op& op = tr.ops[i];
-                switch (op.kind) {
-                case OP_ENTER: t->enter(); break;
-                case OP_EXIT: t->exit(); break;
-                case OP_DECLARE: sink += t->declare(tr.names[op.name], seq++); break;
-                case OP_LOOKUP: { int32_t v = 0; sink += t->resolve(tr.names[op.name], &v) ? v : 0; break; }
-                default: t.reset(); t.reset(new T()); seq = 0; break;
-                }
-            }
-            guard = guard + sink;
-        }
-        double ns = ns_since(t0);
-        if (rep >= 0) row.replay_ns.push_back(ns);
-    }
+    (void)reps; (void)warmup;
     // 4. per-operation latency (three replays; the median of each statistic is kept)
     double acc[4][4][3];
     for (int rep = 0; rep < 3; ++rep) {
@@ -162,6 +145,29 @@ static void run_impl(const Trace& tr, const Expected& ex, int reps, int warmup, 
         for (int q = 0; q < 4; ++q) { std::sort(acc[k][q], acc[k][q] + 3); row.lat[k][q] = acc[k][q][1]; }
 }
 
+// One timed replay of the whole trace on a fresh table (construction and destruction included).
+template <class T>
+static double replay_once(const Trace& tr) {
+    static volatile int32_t guard = 0;
+    Clock::time_point t0 = Clock::now();
+    {
+        std::unique_ptr<T> t(new T());
+        int32_t seq = 0, sink = 0;
+        for (size_t i = 0; i < tr.ops.size(); ++i) {
+            const Op& op = tr.ops[i];
+            switch (op.kind) {
+            case OP_ENTER: t->enter(); break;
+            case OP_EXIT: t->exit(); break;
+            case OP_DECLARE: sink += t->declare(tr.names[op.name], seq++); break;
+            case OP_LOOKUP: { int32_t v = 0; sink += t->resolve(tr.names[op.name], &v) ? v : 0; break; }
+            default: t.reset(); t.reset(new T()); seq = 0; break;
+            }
+        }
+        guard = guard + sink;
+    }
+    return ns_since(t0);
+}
+
 static bool want(const std::string& list, const char* id) {
     if (list.empty()) return true;
     std::stringstream ss(list);
@@ -188,11 +194,14 @@ int main(int argc, char** argv) {
     double ns_per_tick = calibrate_ns_per_tick(), overhead = calibrate_overhead_ticks();
 
     std::vector<Row> rows;
-#define RUN(T) if (want(impls, tables::T::id())) { rows.push_back(Row()); run_impl<tables::T>(tr, ex, reps, warmup, ns_per_tick, overhead, rows.back()); }
+    std::vector<double (*)(const Trace&)> timers;
+#define RUN(T) if (want(impls, tables::T::id())) { rows.push_back(Row()); timers.push_back(&replay_once<tables::T>); \
+        run_impl<tables::T>(tr, ex, reps, warmup, ns_per_tick, overhead, rows.back()); }
     RUN(Strata)
     RUN(StrataRaw)
     RUN(StrataNoShrink)
     RUN(StrataSparse)
+    RUN(ArenaChain)
     RUN(ScopeMapStack)
     RUN(StdUndoLog)
 #ifdef CDES_HAVE_PHMAP
@@ -204,6 +213,16 @@ int main(int argc, char** argv) {
     RUN(MetisArenaLP)
     RUN(MetisScopeMaps)
 #endif
+
+    // Interleaved rounds: every table once per round, starting one position later each round.
+    for (int round = -warmup; round < reps; ++round) {
+        size_t n = timers.size(), first = static_cast<size_t>(round + warmup) % (n ? n : 1);
+        for (size_t k = 0; k < n; ++k) {
+            size_t i = (first + k) % n;
+            double ns = timers[i](tr);
+            if (round >= 0) rows[i].replay_ns.push_back(ns);
+        }
+    }
 
     FILE* fs = summary.empty() ? stdout : std::fopen(summary.c_str(), "a");
     FILE* fr = raw.empty() ? 0 : std::fopen(raw.c_str(), "a");
