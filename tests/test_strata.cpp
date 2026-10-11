@@ -219,6 +219,8 @@ static void test_reclamation() {
     size_t big_cap = t.stats().capacity_bytes, big_used = t.stats().used_bytes;
     CHECK(t.stats().live_identifiers == 20001 && big_used > 400000);
     t.exit_scope();
+    CHECK(t.stats().capacity_bytes == big_cap);            // not given back at once ...
+    for (int i = 0; i < 64; ++i) { t.enter_scope(); t.exit_scope(); }   // ... but after 64 calm scope exits
     strata::Stats s = t.stats();
     CHECK(s.live_identifiers == 1 && s.live_declarations == 1 && look(t, "keep") == 1);
     CHECK(s.ident_bytes + s.undo_bytes == base_stacks);     // both stacks are back where they were

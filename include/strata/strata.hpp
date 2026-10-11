@@ -8,7 +8,7 @@
 //   index       one word per slot: 8-bit fingerprint | 24-bit identifier reference
 //   identifier  [value][meta][name words...]     one record per DISTINCT visible name;
 //               it holds the innermost declaration of that name directly
-//   undo entry  [ident ref]                      a declaration of a name not visible before
+//   undo entry  [index slot]                     a declaration of a name not visible before
 //               [ident ref|S][value][meta bits]  a declaration that shadows: the hidden
 //                                                declaration is saved here
 //   scope mark  [identifier-stack top at entry][previous mark]   pushed on the undo stack
@@ -23,6 +23,7 @@
 //     Leaving a scope pops them; the index entries of names first seen in that scope are
 //     the most recently inserted ones, and in linear probing the most recently inserted
 //     keys can be removed by simply emptying their slots (no tombstones, no shifting).
+//     The undo entry of such a name records its slot, so removal is one store per name.
 //   * References are relative (identifiers: from the start of their region; undo entries:
 //     from the end of the buffer), so growing the index or the buffer moves two blocks and
 //     rebuilds the index without patching any stored reference.
@@ -66,7 +67,7 @@ struct Options {
     size_t initial_bytes;  // growable mode: first buffer size
     size_t max_bytes;      // growable mode: hard budget (0 = unlimited)
     bool pack_names;       // 6-bit packing of identifier characters (false: raw bytes)
-    bool shrink;           // growable mode: give memory back when usage drops
+    bool shrink;           // growable mode: give memory back after usage has stayed low for 64 scope exits
     bool sparse_index;     // keep the index at most 1/2 full instead of 3/4: faster probes, more bytes per name
     AllocFn alloc;         // default: malloc
     FreeFn free;           // default: free
@@ -109,19 +110,25 @@ inline const uint8_t* code_table() {
     return t;
 }
 inline uint32_t rotl(uint32_t x, int r) { return (x << r) | (x >> (32 - r)); }
-// MurmurHash3 x86_32 (Austin Appleby, public domain) over whole words.
-inline uint32_t hash_words(const uint32_t* w, uint32_t n, uint32_t seed) {
-    uint32_t h = seed;
-    for (uint32_t i = 0; i < n; ++i) {
-        uint32_t k = w[i] * 0xcc9e2d51u;
-        k = rotl(k, 15) * 0x1b873593u;
-        h = rotl(h ^ k, 13) * 5u + 0xe6546b64u;
-    }
-    h ^= n * 4u;
+// MurmurHash3 x86_32 (Austin Appleby, public domain) over whole words; the meta word
+// (length information) is mixed in last so that packing and hashing can share a loop.
+enum : uint32_t { kHashSeed = 0x9747b28cu };
+inline uint32_t hash_step(uint32_t h, uint32_t k) {
+    k *= 0xcc9e2d51u;
+    k = rotl(k, 15) * 0x1b873593u;
+    return rotl(h ^ k, 13) * 5u + 0xe6546b64u;
+}
+inline uint32_t hash_finish(uint32_t h, uint32_t meta) {
+    h ^= meta * 0x9E3779B1u;
     h ^= h >> 16; h *= 0x85ebca6bu;
     h ^= h >> 13; h *= 0xc2b2ae35u;
     h ^= h >> 16;
     return h;
+}
+inline uint32_t hash_words(const uint32_t* w, uint32_t n, uint32_t meta) {
+    uint32_t h = kHashSeed;
+    for (uint32_t i = 0; i < n; ++i) h = hash_step(h, w[i]);
+    return hash_finish(h, meta);
 }
 inline void* default_alloc(size_t n, void*) { return std::malloc(n); }
 inline void default_free(void* p, void*) { std::free(p); }
@@ -187,7 +194,9 @@ public:
                 rec[1] = (rec[1] & kKeyBits) | e[2];
                 undo_ -= 3;
             } else {
-                undo_ -= 1;                    // the name itself goes away in step 2
+                w_[e[0]] = 0;                  // first declaration of the name: empty its index slot
+                --nident_;
+                undo_ -= 1;
             }
             --ndecl_;
         }
@@ -196,30 +205,18 @@ public:
         mark_ = m[1];
         undo_ -= kMarkWords;
         --depth_;
-        // 2. un-intern the names first seen in this scope. They are the newest index
-        //    entries, so their slots can simply be emptied. Slots are located first
-        //    (pass A, stored in the now dead value word) and emptied afterwards (pass B),
-        //    because emptying one slot could cut the probe path to another.
-        if (itop_ > saved_itop) {
-            for (uint32_t r = saved_itop; r < itop_;) {
-                uint32_t* rec = ident(r);
-                uint32_t n = rec[1] & kWordsMask;
-                uint32_t h = detail::hash_words(rec + 2, n, rec[1] & kKeyBits);
-                uint32_t want = slot_word(h, r);
-                uint32_t i = home(h);
-                while (w_[i] != want) i = (i + 1) & (idx_ - 1);
-                rec[0] = i;
-                r += 2 + n;
+        // 2. the names first seen in this scope were un-interned above (they are the newest
+        //    index entries, so their slots could simply be emptied); drop their records.
+        itop_ = saved_itop;
+        // 3. give memory back only after the table has stayed small for a while, so that a
+        //    large scope that is entered repeatedly does not shrink and regrow each time
+        if (!fixed_ && opt_.shrink) {
+            if (static_cast<uint64_t>(idx_ + itop_ + undo_) * 4 <= cap_) {
+                if (++calm_ >= kShrinkPatience) { maybe_shrink(); calm_ = 0; }
+            } else {
+                calm_ = 0;
             }
-            for (uint32_t r = saved_itop; r < itop_;) {
-                uint32_t* rec = ident(r);
-                w_[rec[0]] = 0;
-                --nident_;
-                r += 2 + (rec[1] & kWordsMask);
-            }
-            itop_ = saved_itop;
         }
-        if (!fixed_ && opt_.shrink) maybe_shrink();
         return kOk;
     }
 
@@ -261,9 +258,9 @@ public:
         std::memcpy(rec + 2, k.w, k.n * 4);
         itop_ += 2 + k.n;
         ++nident_;
-        index_insert(k.hash, ref);
+        uint32_t slot = index_insert(k.hash, ref);
         undo_ += 1;
-        w_[cap_ - undo_] = ref;
+        w_[cap_ - undo_] = slot;
         ++ndecl_;
         touch();
         return kOk;
@@ -338,8 +335,14 @@ public:
         for (uint32_t pos = undo_, mark = mark_; pos > 0;) {
             const uint32_t* e = w_ + cap_ - pos;
             if (pos == mark) { mark = e[1]; pos -= kMarkWords; ++marks; continue; }
-            if ((e[0] & kRefMask) == 0 || (e[0] & kRefMask) >= itop_) return false;
-            if (e[0] & kShadowBit) { if (pos < 3) return false; pos -= 3; } else { pos -= 1; ++fresh; }
+            if (e[0] & kShadowBit) {
+                if (pos < 3 || (e[0] & kRefMask) == 0 || (e[0] & kRefMask) >= itop_) return false;
+                pos -= 3;
+            } else {
+                if (e[0] >= idx_ || w_[e[0]] == 0 || (w_[e[0]] & kRefMask) >= itop_) return false;
+                pos -= 1;
+                ++fresh;
+            }
             ++decls;
         }
         return decls == ndecl_ && marks == depth_ && fresh == nident_;
@@ -351,13 +354,15 @@ public:
         if (len > kMaxNameLen) return kNameTooLong;
         const uint8_t* code = detail::code_table();
         const unsigned char* s = reinterpret_cast<const unsigned char*>(name);
-        uint32_t n = 0, raw = 0;
+        uint32_t n = 0, raw = 0, h = detail::kHashSeed;
         if (opt_.pack_names) {
             size_t i = 0;
             for (; i + 5 <= len; i += 5) {
                 uint32_t a = code[s[i]], b = code[s[i + 1]], c = code[s[i + 2]], d = code[s[i + 3]], e = code[s[i + 4]];
                 if (!(a && b && c && d && e)) { raw = 1; break; }
-                k.w[n++] = a | b << 6 | c << 12 | d << 18 | e << 24;
+                uint32_t word = a | b << 6 | c << 12 | d << 18 | e << 24;
+                k.w[n++] = word;
+                h = detail::hash_step(h, word);
             }
             if (!raw && i < len) {
                 uint32_t word = 0;
@@ -367,6 +372,7 @@ public:
                     word |= a << sh;
                 }
                 k.w[n++] = word;
+                h = detail::hash_step(h, word);
             }
         } else {
             raw = 1;
@@ -381,7 +387,7 @@ public:
         // packed names need no length: a code is never 0, so the padding is unambiguous
         k.n = n;
         k.meta = n | raw << 7 | tail << 8;
-        k.hash = detail::hash_words(k.w, n, k.meta);
+        k.hash = raw ? detail::hash_words(k.w, n, k.meta) : detail::hash_finish(h, k.meta);
         return kOk;
     }
 
@@ -395,7 +401,8 @@ private:
     //   bits 0-6 name words | 7 raw | 8-9 raw length mod 4 | 10-17 type | 18-31 scope depth
     enum : uint32_t {
         kRefMask = 0x00FFFFFFu, kShadowBit = 0x01000000u, kMinWords = 32, kMaxWords = 0x00FFFFFFu,
-        kWordsMask = 0x7Fu, kKeyBits = 0x3FFu, kTypeShift = 10, kDepthShift = 18, kInitialIndex = 16
+        kWordsMask = 0x7Fu, kKeyBits = 0x3FFu, kTypeShift = 10, kDepthShift = 18, kInitialIndex = 16,
+        kShrinkPatience = 64
     };
 
     Table(const Table&);
@@ -405,7 +412,7 @@ private:
         if (!opt_.alloc && !opt_.free && !opt_.realloc) opt_.realloc = detail::default_realloc;
         if (!opt_.alloc) opt_.alloc = detail::default_alloc;
         if (!opt_.free) opt_.free = detail::default_free;
-        idx_ = itop_ = undo_ = mark_ = peak_ = 0;
+        idx_ = itop_ = undo_ = mark_ = peak_ = calm_ = 0;
         ndecl_ = nident_ = depth_ = rebuilds_ = 0;
     }
     void reset_layout() {
@@ -447,11 +454,31 @@ private:
             if (j == k.n) return s & kRefMask;
         }
     }
-    void index_insert(uint32_t h, uint32_t ref) {
+    uint32_t index_insert(uint32_t h, uint32_t ref) {
         const uint32_t mask = idx_ - 1;
         uint32_t i = home(h);
         while (w_[i]) i = (i + 1) & mask;
         w_[i] = slot_word(h, ref);
+        return i;
+    }
+    // Rewrites the undo entries of first declarations: slot -> identifier reference
+    // (to_slots == false, before the index is rebuilt) and back (to_slots == true).
+    void retarget_undo(bool to_slots) {
+        for (uint32_t pos = undo_, mark = mark_; pos > 0;) {
+            uint32_t* e = w_ + cap_ - pos;
+            if (pos == mark) { mark = e[1]; pos -= kMarkWords; continue; }
+            if (e[0] & kShadowBit) { pos -= 3; continue; }
+            if (to_slots) {
+                const uint32_t* rec = ident(e[0]);
+                uint32_t h = detail::hash_words(rec + 2, rec[1] & kWordsMask, rec[1] & kKeyBits);
+                uint32_t want = slot_word(h, e[0]), i = home(h);
+                while (w_[i] != want) i = (i + 1) & (idx_ - 1);
+                e[0] = i;
+            } else {
+                e[0] = w_[e[0]] & kRefMask;
+            }
+            pos -= 1;
+        }
     }
 
     // Makes room for `words` more stack words and `new_idents` more index entries.
@@ -493,15 +520,18 @@ private:
             uint32_t* nw = resize_block(cap);
             if (!nw) return false;
             w_ = nw;
+            retarget_undo(false);    // nothing below can fail any more
             std::memmove(w_ + cap - undo_, w_ + cap_ - undo_, ub);
             if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
         } else if (cap < cap_) {     // shrink: slide the stacks inwards, then give the tail back
+            retarget_undo(false);
             if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
             std::memmove(w_ + cap - undo_, w_ + cap_ - undo_, ub);
             uint32_t* nw = resize_block(cap);
             if (nw) w_ = nw;         // if the allocator refuses, the larger block is simply kept
-        } else if (idx != idx_) {
-            std::memmove(w_ + idx, w_ + idx_, ib);
+        } else {
+            retarget_undo(false);
+            if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
         }
         cap_ = cap;
         idx_ = idx;
@@ -512,6 +542,7 @@ private:
             index_insert(detail::hash_words(rec + 2, n, rec[1] & kKeyBits), r);
             r += 2 + n;
         }
+        retarget_undo(true);
         ++rebuilds_;
         touch();
         return true;
@@ -533,6 +564,7 @@ private:
     uint32_t undo_;      // undo stack size in words (grows down from the end)
     uint32_t mark_;      // current scope mark (undo-stack reference), 0 at the outermost scope
     uint32_t peak_;
+    uint32_t calm_;      // consecutive scope exits with the buffer at most a quarter full
     uint32_t ndecl_, nident_, depth_, rebuilds_;
     bool fixed_, valid_;
     Options opt_;
