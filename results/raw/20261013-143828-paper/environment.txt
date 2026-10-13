@@ -1,0 +1,13 @@
+run: results/raw/20261013-143828-paper
+date_utc: 2026-10-13T14:39:09Z
+git_commit: 36f9f6c0d0d4723beca2d9850cec0b9e195378eb
+compiler: g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+flags: -std=c++14 -O2
+kernel: Linux 6.18.33.2-microsoft-standard-WSL2
+cpu: Intel(R) Core(TM) Ultra 7 258V
+libc: ldd (Ubuntu GLIBC 2.35-0ubuntu3.15) 2.35
+pinning: taskset -c 2
+rounds: 31 (+2 warm-up); in each round every table replays the trace once, order rotated; 3 per-operation latency replays
+metis: 7b3dacfa5405ec3e6a03b718f485b473d779123d
+phmap: v1.4.1
+extra experiments: git 36f9f6c, 2026-10-13T14:47:33Z, all

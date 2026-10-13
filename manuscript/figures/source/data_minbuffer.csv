@@ -1,0 +1,9 @@
+trace,label,strata,arena_chain,strata_raw,strata_sparse
+cjson,cJSON,30720,36736,32512,38912
+littlefs,littlefs,20480,24832,22016,24576
+zlib,zlib,16128,19328,17088,20224
+lua,Lua,36800,44480,39040,44992
+freertos,FreeRTOS,45056,54912,48896,53248
+mbedtls,Mbed TLS,81920,99200,90048,98304
+tinycc,TinyCC,160256,194304,172352,193024
+sqlite,SQLite,143744,173504,156544,176512

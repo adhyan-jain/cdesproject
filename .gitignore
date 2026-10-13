@@ -7,3 +7,10 @@ paper/*.log
 paper/*.out
 paper/*.bbl
 paper/*.blg
+
+# manuscript: downloaded template archive and LaTeX build products
+manuscript/template_download/
+manuscript/overleaf/main.log
+manuscript/overleaf/main.aux
+manuscript/overleaf/main.out
+manuscript/overleaf/main.blg
