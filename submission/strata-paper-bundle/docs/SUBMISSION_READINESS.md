@@ -23,7 +23,7 @@ full research track.**
 | Research branch | `research/strata-paper-completion`, created from `36f9f6c` |
 | Commits | `2382cb5` carry-over; `cddcb25` results, probe limit, chibicc; `73de39d` paper; `149c5d8` gate and documents; then the commit that adds this file and the bundle (the branch head) |
 | Library version measured | `include/strata/strata.hpp` of `36f9f6c`; `git diff 36f9f6c -- include tests benchmarks/baselines` is empty on the branch |
-| Remote | **nothing was pushed** |
+| Remote | pushed after the merge, on the owner's instruction (section 13) |
 | Merge | see section 13 |
 
 ## 3. Files materially changed on the branch
@@ -138,7 +138,7 @@ None of these can be resolved by an agent. Full list: `submission/SIGNOFF_CHECKL
 4. **Patent/IP.** The advisory recorded for the predecessor project is unresolved, and the repository was made public on 2026-10-13 by its owner without a recorded agreement of the co-author or institution.
 5. **Author details**: spelling of one name, affiliations, e-mails, corresponding author.
 6. **Venue decision** (including travel and registration cost) and a fresh check of the 2027 call.
-7. **Authorisation to push** the branch or the merged result.
+7. Authorisation to push: **given by the repository owner on 2026-10-13** (section 13). The agreement of the other contributors to the public release is still not recorded (item 4).
 
 ## 11. Status
 
@@ -156,7 +156,7 @@ None of these can be resolved by an agent. Full list: `submission/SIGNOFF_CHECKL
 | Submission materials and bundle | PASS | `submission/` |
 | Novelty gate | PASS | for narrowed claims and an incremental-work venue |
 | Human approvals | BLOCKED | section 10 |
-| Push / public release of this work | BLOCKED | not authorised |
+| Push of this work to the public repository | PASS | authorised by the owner on 2026-10-13; co-author and institutional agreement to public release still open |
 
 ## 12. Final verdict
 
@@ -167,6 +167,20 @@ authors have reviewed, verified and signed off, `paper/short.tex` can be submitt
 primary venue after a fresh check of its 2027 call. Acceptance is not predictable and is not
 promised.
 
-## 13. Merge record
+## 13. Merge and release record
 
-To be completed after the gate decision (see the end of this file).
+| Item | Value |
+|---|---|
+| Gate | `NOVELTY_GATE.md`: PASS |
+| Branch head merged | `6eac487` (`research/strata-paper-completion`) |
+| Integration branch before the merge | `main` at `36f9f6c`, equal to `origin/main` and to the merge base: it had not advanced |
+| Review before merging | 259 files changed against the merge base; none deleted; no change under `include/`, `tests/`, `benchmarks/baselines/`, `workloads/` |
+| Merge commit | `e1d099ca5fdc144498a7fef7369190666f662dbd` (`--no-ff`); its tree is identical to the branch head |
+| Verification on the merge commit | `bash scripts/audit/final_verify.sh`: 12 steps passed, 0 failed (`reports/artifacts/final_verification.log`); `crosscheck.py`: 49 quantities, 0 disagreements; `check_manuscript.py` passes for `paper/main` and `paper/short` |
+| Follow-up commit on `main` | records this section, the verification log and the rebuilt bundle; it changes no code, data or paper text |
+| Push | **authorised by the repository owner (Shubhi Singh) on 2026-10-13** after the merge; `main` and the research branch were pushed to `origin`. This is the owner's decision. It does not record agreement of the co-authors, the guide or the institution, which remains open (section 10, items 1 to 4) |
+
+One slip during the merge, for the record: the first merge command failed because the message
+was passed on standard input, and the verification suite then ran once on the unmerged
+`main`. Its log was discarded, the merge was repeated with the message in a file, and the
+suite was run again on the merge commit; that second run is the one recorded above.

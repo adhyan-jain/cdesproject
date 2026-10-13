@@ -1,14 +1,14 @@
-clean copy: /opt/strata_clean (464 files), source commit 2382cb5 + uncommitted changes, 2026-10-13T16:36:50Z
-V01 | PASS | unit tests -O2, ASan+UBSan, exhaustive depth 7 (scripts/test.sh) | exit 0 | 21s |       2 2732358 checks, 0 failed;      1 depth 7: 2239488 sequences, 15676416 operations, 2198905 refusals (no memory 1122529, too deep 0, probe limit 1076376), 0 failures;
-V02 | PASS | fetch pinned baselines | exit 0 | 61s | 
-V03 | PASS | build benchmark tools | exit 0 | 13s | 
-V04 | PASS | command-line robustness tests under sanitizers | exit 0 | 27s |       1 passed 41, failed 0;
-V05 | PASS | warnings, static analyzers, ARM header build, clang sanitizers | exit 0 | 30s |       1 2732358 checks, 0 failed;      1 warnings in log: 0;
-V06 | PASS | keyed hash against reference HalfSipHash | exit 0 | 2s |       1 halfsiphash13 against the reference implementation: 200000 cases, 0 mismatches;
+clean copy: /opt/strata_clean (539 files), source commit e1d099c + uncommitted changes, 2026-10-13T16:56:57Z
+V01 | PASS | unit tests -O2, ASan+UBSan, exhaustive depth 7 (scripts/test.sh) | exit 0 | 24s |       2 2732358 checks, 0 failed;      1 depth 7: 2239488 sequences, 15676416 operations, 2198905 refusals (no memory 1122529, too deep 0, probe limit 1076376), 0 failures;
+V02 | PASS | fetch pinned baselines | exit 0 | 65s | 
+V03 | PASS | build benchmark tools | exit 0 | 11s | 
+V04 | PASS | command-line robustness tests under sanitizers | exit 0 | 28s |       1 passed 41, failed 0;
+V05 | PASS | warnings, static analyzers, ARM header build, clang sanitizers | exit 0 | 29s |       1 2732358 checks, 0 failed;      1 warnings in log: 0;
+V06 | PASS | keyed hash against reference HalfSipHash | exit 0 | 140s |       1 halfsiphash13 against the reference implementation: 200000 cases, 0 mismatches;
 V07 | PASS | differential fuzzing, 2 workers x 90 s on the saved corpus | exit 0 | 94s | 
-V08 | PASS | fuzzer detects injected defects | exit 0 | 22s |       1 detected 9 of 9 mutants;
-V09 | PASS | hardening experiments run and verify the collisions | exit 0 | 44s | 
-V10 | PASS | emulated Cortex-M3, fixed mode, 5 traces | exit 0 | 6s |       5 RESULT: PASS;
-V11 | PASS | emulated Cortex-M3, bounded keyed mode, 5 traces | exit 0 | 6s |       5 RESULT: PASS;
-V12 | PASS | short benchmark run agrees with the reference model | exit 0 | 37s | 
+V08 | PASS | fuzzer detects injected defects | exit 0 | 20s |       1 detected 9 of 9 mutants;
+V09 | PASS | hardening experiments run and verify the collisions | exit 0 | 45s | 
+V10 | PASS | emulated Cortex-M3, fixed mode, 5 traces | exit 0 | 10s |       5 RESULT: PASS;
+V11 | PASS | emulated Cortex-M3, bounded keyed mode, 5 traces | exit 0 | 11s |       5 RESULT: PASS;
+V12 | PASS | short benchmark run agrees with the reference model | exit 0 | 36s | 
 steps passed 12, failed 0

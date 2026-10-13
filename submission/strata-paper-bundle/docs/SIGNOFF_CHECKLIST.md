@@ -41,7 +41,7 @@ the paper must not be submitted and nothing further should be published.
 | 17 | Licence confirmed (currently MIT in two authors' names; four authors are now listed) | [ ] |
 | 18 | The comparison with METIS-X is published with the agreement of its authors | [ ] |
 | 19 | Third-party material: TinyCC and chibicc are patched by scripts and not redistributed; parallel-hashmap and METIS are fetched, not stored; the traces are lists of identifiers from projects under their own licences (`workloads/traces/MANIFEST.tsv`). Confirm this is acceptable under the venue's artifact rules | [ ] |
-| 20 | The research branch and the merged result may be pushed to the public repository | [ ] |
+| 20 | The research branch and the merged result may be pushed to the public repository | [x] by the repository owner (Shubhi Singh), 2026-10-13; agreement of the other contributors: [ ] |
 
 ## Scientific
 
