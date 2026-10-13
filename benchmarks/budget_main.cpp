@@ -217,6 +217,7 @@ int main(int argc, char** argv) {
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return 2; }
     }
     if (out.empty()) { std::fprintf(stderr, "--out is required\n"); return 2; }
+    if (reps < 1) reps = 1;   // the median of zero timed replays does not exist
     if (mode == "budget") return mode_budget(path, name.empty() ? path : name, out, reps);
     if (mode == "worstcase") return mode_worstcase(out);
     if (mode == "units") return mode_units(path, name.empty() ? path : name, out, false);

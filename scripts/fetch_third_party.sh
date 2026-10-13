@@ -14,5 +14,11 @@ git -C third_party/metis checkout -q "$METIS_COMMIT"
 if [ ! -d third_party/phmap/.git ]; then
   git clone -q --depth 1 --branch v1.4.1 https://github.com/greg7mdp/parallel-hashmap third_party/phmap
 fi
+# A tag can be moved; the commit it named when the baselines were measured cannot.
+PHMAP_COMMIT=22a7f6ca7205aaa7d3929277103d5cf94c2e480c
+if [ "$(git -C third_party/phmap rev-parse HEAD)" != "$PHMAP_COMMIT" ]; then
+  echo "parallel-hashmap v1.4.1 is not at the expected commit $PHMAP_COMMIT" >&2
+  exit 1
+fi
 echo "metis: $(git -C third_party/metis rev-parse HEAD)"
 echo "phmap: $(git -C third_party/phmap describe --tags) $(git -C third_party/phmap rev-parse HEAD)"
