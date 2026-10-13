@@ -2,7 +2,7 @@ compiler: arm-none-eabi-g++ (15:10.3-2021.07-4) 10.3.1 20210621 (release)
 emulator: QEMU emulator version 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6.31)
 machine: mps2-an385 (Cortex-M3); RAM limited to 64 KiB by tools/embedded/link.ld; no heap, no OS
 
-== zlib   (ordinary fixed-buffer host run: checksum 1061675059, refused 0; buffer 16384 bytes, index 1024 slots, probe limit 64)
+== zlib   (ordinary fixed-buffer host run: checksum 1061675059, refused 0; buffer 16384 bytes, index 1024 slots, probe limit 512)
 STRATA bounded (static index, probe limit, keyed hash) on bare-metal Cortex-M3 (QEMU mps2-an385)
 operations          58058
 declares            16341
@@ -19,7 +19,7 @@ RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
   2715
 
-== littlefs   (ordinary fixed-buffer host run: checksum 2980311151, refused 0; buffer 20480 bytes, index 1024 slots, probe limit 64)
+== littlefs   (ordinary fixed-buffer host run: checksum 2980311151, refused 0; buffer 20480 bytes, index 1024 slots, probe limit 512)
 STRATA bounded (static index, probe limit, keyed hash) on bare-metal Cortex-M3 (QEMU mps2-an385)
 operations          21080
 declares            3835
@@ -36,7 +36,7 @@ RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
   2715
 
-== cjson   (ordinary fixed-buffer host run: checksum 2412655742, refused 0; buffer 30720 bytes, index 2048 slots, probe limit 64)
+== cjson   (ordinary fixed-buffer host run: checksum 2412655742, refused 0; buffer 30720 bytes, index 2048 slots, probe limit 512)
 STRATA bounded (static index, probe limit, keyed hash) on bare-metal Cortex-M3 (QEMU mps2-an385)
 operations          20874
 declares            5247
@@ -53,7 +53,7 @@ RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
   2715
 
-== lua   (ordinary fixed-buffer host run: checksum 2653795636, refused 0; buffer 36864 bytes, index 2048 slots, probe limit 64)
+== lua   (ordinary fixed-buffer host run: checksum 2653795636, refused 0; buffer 36864 bytes, index 2048 slots, probe limit 512)
 STRATA bounded (static index, probe limit, keyed hash) on bare-metal Cortex-M3 (QEMU mps2-an385)
 operations          188509
 declares            58619
@@ -70,7 +70,7 @@ RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
   2715
 
-== freertos   (ordinary fixed-buffer host run: checksum 3112986313, refused 0; buffer 45056 bytes, index 2048 slots, probe limit 64)
+== freertos   (ordinary fixed-buffer host run: checksum 3112986313, refused 0; buffer 45056 bytes, index 2048 slots, probe limit 512)
 STRATA bounded (static index, probe limit, keyed hash) on bare-metal Cortex-M3 (QEMU mps2-an385)
 operations          37875
 declares            10346
