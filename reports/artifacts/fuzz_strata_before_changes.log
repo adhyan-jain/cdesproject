@@ -1,0 +1,24 @@
+compiler: Ubuntu clang version 21.1.8 (++20251221032842+2078da43e25a-1~exp1~20251221153008.77)
+seconds per job: 600, jobs: 3, exit status: 0
+corpus files: 5082
+--- fuzz-0.log
+#3719667	DONE   cov: 529 ft: 3399 corp: 882/140Kb lim: 4096 exec/s: 6189 rss: 482Mb
+stat::number_of_executed_units: 3719667
+stat::average_exec_per_sec:     6189
+stat::new_units_added:          1247
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              482
+--- fuzz-1.log
+#3057413	DONE   cov: 529 ft: 3399 corp: 880/140Kb lim: 4096 exec/s: 5087 rss: 476Mb
+stat::number_of_executed_units: 3057413
+stat::average_exec_per_sec:     5087
+stat::new_units_added:          1293
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              476
+--- fuzz-2.log
+#2996294	DONE   cov: 529 ft: 3399 corp: 878/142Kb lim: 4096 exec/s: 4985 rss: 479Mb
+stat::number_of_executed_units: 2996294
+stat::average_exec_per_sec:     4985
+stat::new_units_added:          1133
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              479

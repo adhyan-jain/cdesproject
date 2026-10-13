@@ -1,0 +1,1 @@
+verified: 32768 distinct identifiers of 150 characters share hash d741b050 under the built-in seed and collide under 8 further seeds; first: teKyHlSlraYgFYqzqnrbUeEulA5IA8gIwQqJY_58GWgSi6bl08idOrUCACu_Z5nyEk_EKbmKihN5mS6_peQimEkTmdbyck6u4BW__FhzveuVz9fFi1YKvujaoCW4Lv4UG8dp0Zy32SCaOMpsNQAauc

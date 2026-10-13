@@ -1,0 +1,13 @@
+fixed 128 B, packed                10077696 sequences, 20888172 refused operations
+fixed 128 B, raw names             10077696 sequences, 20975655 refused operations
+fixed 160 B, one cluster           10077696 sequences, 3706705 refused operations
+fixed 136 B, keyed hash            10077696 sequences, 13450460 refused operations
+static 16 slots, 144 B             10077696 sequences, 10869042 refused operations
+static 16, limit 1, one cluster    10077696 sequences, 37188600 refused operations
+static 16, limit 2, one cluster    10077696 sequences, 17597088 refused operations
+static 16, limit 2, keyed, 152 B   10077696 sequences, 5685910 refused operations
+depth 9: 80621568 sequences, 725594112 operations, 130361632 refusals (no memory 75575944, too deep 0, probe limit 54785688), 0 failures
+
+real	1m54.130s
+user	1m53.613s
+sys	0m0.000s

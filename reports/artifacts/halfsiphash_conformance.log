@@ -1,0 +1,7 @@
+reference: https://raw.githubusercontent.com/veorq/SipHash/master/halfsiphash.c
+sha256: 096b33b69e7858c2da392bf45341ee09d41cda781cf523b16c3c78e606c8301c
+22:#ifndef cROUNDS
+23:#define cROUNDS 2
+25:#ifndef dROUNDS
+26:#define dROUNDS 4
+halfsiphash13 against the reference implementation: 200000 cases, 0 mismatches

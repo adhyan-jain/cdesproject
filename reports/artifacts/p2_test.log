@@ -1,0 +1,8 @@
+1856579 checks, 0 failed
+1856579 checks, 0 failed
+compiler: g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+
+real	0m8.353s
+user	0m7.621s
+sys	0m0.395s
+exit=0

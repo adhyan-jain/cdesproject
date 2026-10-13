@@ -52,9 +52,9 @@ Compiler). Every number is in `docs/RESULTS.md` with its source file.
 | Where does the gain over METIS-X come from? | Mostly from keeping everything in one allocation-free arena. The conventional table alone is 55–77% below METIS-X's peak heap and 11–36% faster. |
 | What does STRATA's own design add? | About one sixth less memory, lookups whose cost does not grow with shadowing, and wins on shadow-heavy workloads; it costs time on ordinary C code. |
 | How much memory does a project need? | 15.8 KiB (zlib) to 156.5 KiB (TinyCC): 27–36 bytes per live declaration. |
-| Does it run on a small 32-bit target? | Under emulation: 5 traces on a bare-metal Cortex-M3 (QEMU) with 64 KiB RAM, no heap, 792 bytes of stack, about 2.6 KB of code, same results as the PC. Not on hardware. |
+| Does it run on a small 32-bit target? | Under emulation: 5 traces on a bare-metal Cortex-M3 (QEMU) with 64 KiB RAM, no heap, 792 bytes of stack, about 2.6 KB of code, same results as the PC (with the header as changed on 2026-10-13: 504 bytes of stack, 2.7 KB of code, also in bounded mode). Not on hardware. |
 | Was the 85% target met? | For allocator calls, yes, on every trace. Scope-exit latency reaches it on 1 of 8 traces (range 67–88%). For memory against METIS-X, no (best 76% heap, 81% fixed buffer). |
-| Is it novel? | Not as an algorithm. Our own assessment is about 4.5/10 (`docs/RELATED_WORK.md`). |
+| Is it novel? | Not as an algorithm. Our own assessment was about 4.5/10 (`docs/RELATED_WORK.md`); the audit's weighted rubric gives 5.5/10 after the bounded mode (`reports/NOVELTY_ASSESSMENT.md`). The 8/10 goal is not met. |
 
 One finding about the old code: METIS-X refuses declarations when one name is shadowed about
 250 levels deep (149 of 400 refused in our test). No other table does.
@@ -103,6 +103,34 @@ t.resolve_cstr("count", &v);                     // v == 1
 
 Limits: names 1–255 bytes, scope depth 16 383, buffer 64 MiB, 32-bit value, 8-bit type tag.
 
+## Bounded mode and hash flooding (added 2026-10-13, after the reported run)
+
+An audit (`reports/`) confirmed a weakness the limitations already named: the default hash is
+unkeyed, and C identifiers that collide in it **for every seed** can be constructed.
+Declaring 32 768 such names took 1.9 s against 8.6 ms for ordinary names of the same length
+(`results/hardening/flood.csv`). Two opt-in defences were added; the default behaviour and the
+results above are unchanged.
+
+```cpp
+strata::Options o;
+o.index_slots = 2048;        // static index: never rebuilt, so no hidden O(n) step
+o.max_probe   = 64;          // a call examines at most 64 index slots, otherwise kProbeLimit
+o.keyed = true;              // HalfSipHash-1-3; the key must come from the device, not the source
+o.key[0] = k0; o.key[1] = k1;
+strata::Table t(buffer, sizeof buffer, o);
+```
+
+| Question | Measured |
+|---|---|
+| Does the attack still work? | Keyed hash: colliding and ordinary names cost the same (ratio 0.9–1.1). Probe limit with the unkeyed hash: all but 64 of the colliding names are refused and time grows linearly instead of quadratically. |
+| Does the limit get in the way of real programs? | At a limit of 64: no declaration refused on any of the 15 stored compiler traces (719 833 declarations), with either hash; longest probe sequence seen 47. At 32: 51 refused. At 16: more than 500. |
+| What does it cost? | Memory: identical peak to the growing index. Time: the keyed hash makes replay 22–33% slower on the 8 TinyCC traces. Code on Cortex-M3: +182 bytes. |
+| Does a refusal keep the all-or-nothing guarantee? | Yes; checked by the unit tests, 80.6 million exhaustively enumerated operation sequences and 12 million fuzzing runs (`reports/TEST_RESULTS.md`). |
+
+None of the mechanisms is new: keyed hashing against flooding and probe limits are established
+techniques. The honest novelty assessment after this work is 5.5/10 (`reports/NOVELTY_ASSESSMENT.md`).
+The paper in `paper/` does **not** describe this mode yet.
+
 ## Repository layout
 
 | Path | Contents |
@@ -117,6 +145,8 @@ Limits: names 1–255 bytes, scope depth 16 383, buffer 64 MiB, 32-bit value, 8-
 | `scripts/` | `test.sh`, `fetch_third_party.sh`, `build.sh`, `run_all.sh`, `analyze.py`, `make_report.py`, `gen_synthetic.py` |
 | `results/raw/`, `results/summary/` | raw CSVs of four complete runs; generated tables and figures |
 | `results/embedded/` | log of the emulated Cortex-M3 run |
+| `reports/` | independent audit of 2026-10-13: test results, performance reproduction, security findings, novelty assessment, roadmap |
+| `scripts/audit/`, `tests/fuzz_strata.cpp`, `tests/exhaustive_small.cpp`, `benchmarks/hardening_main.cpp` | the audit's fuzzing, exhaustive checking, robustness tests and flooding experiments |
 | `docs/` | audit, decision, design space, related work, methodology, correctness, results, limitations, reproducibility, contributions, execution log |
 | `paper/` | `main.tex`, `references.bib`, `generated.tex` (numbers), `main.pdf` |
 
@@ -125,8 +155,10 @@ Limits: names 1–255 bytes, scope depth 16 383, buffer 64 MiB, 32-bit value, 8-
 Linux x86-64, `g++` (C++14), `python3`, `git`.
 
 ```bash
-bash scripts/test.sh                 # tests at -O2 and under ASan + UBSan
-bash scripts/fetch_third_party.sh    # METIS @ 7b3dacf and parallel-hashmap v1.4.1 (baselines)
+bash scripts/test.sh                 # tests at -O2, under ASan + UBSan, and the bounded exhaustive check
+bash scripts/fetch_third_party.sh    # METIS @ 7b3dacf and parallel-hashmap v1.4.1 @ 22a7f6c (baselines)
+bash scripts/audit/final_verify.sh   # optional: every audit check from a clean copy (needs clang++-21)
+bash scripts/audit/hardening.sh      # optional: hash-flooding and bounded-mode experiments
 bash scripts/run_all.sh mylabel      # all experiments -> results/raw/<timestamp>-mylabel/
 python3 scripts/analyze.py results/raw/<run>      # needs pandas, tabulate, matplotlib
 python3 scripts/make_report.py <run>              # docs/RESULTS.md + paper/generated.tex

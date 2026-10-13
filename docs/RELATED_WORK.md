@@ -24,6 +24,18 @@ their content and not re-read here. Nothing below is cited for a number we rely 
 | 14 | MurmurHash3 32-bit mixer | A. Appleby, SMHasher repository, public domain **[book]** | fast non-cryptographic hashing with 32-bit operations | STRATA's hash over packed words |
 | 15 | Hashed symbol tables for block-structured languages | S. L. Graham, W. N. Joy, O. Roubine, "Hashed symbol tables for languages with explicit scope control", SIGPLAN Symposium on Compiler Construction, 1979 (citation seen in a comp.compilers bibliography **[doc]**; paper not read) | scoped tables with explicit scope control | historical background only |
 
+Added on 2026-10-13 (audit). **[web]** = page or document opened during the audit.
+
+| # | Technique | Source | Problem it addresses | Relation to STRATA |
+|---|---|---|---|---|
+| 16 | Algorithmic-complexity attacks on hash tables | S. A. Crosby, D. S. Wallach, "Denial of Service via Algorithmic Complexity Attacks", USENIX Security 2003 **[web]** | crafted keys turn expected O(1) into O(n) per operation | the threat the bounded mode addresses; not specific to compilers |
+| 17 | Seed-independent ("universal") multicollisions of MurmurHash2/3; SipHash as the remedy | J.-P. Aumasson, D. J. Bernstein, "SipHash: a fast short-input PRF", INDOCRYPT 2012, LNCS 7668, pp. 489-508; slides "Hash-flooding DoS reloaded" **[web]** | a secret seed does not protect Murmur | our construction is this technique restricted to packed identifier words; the keyed option uses the 32-bit sibling HalfSipHash |
+| 18 | HalfSipHash-1-3 for hash tables on 32-bit machines | Linux kernel, `Documentation/security/siphash.rst` **[web]**; reference code github.com/veorq/SipHash **[impl]** | flooding resistance where 64-bit arithmetic is expensive | the keyed hash of STRATA, checked against the reference code |
+| 19 | Hash flooding in language tooling | CVE-2012-0839 (OCaml `Hashtbl`), CVE-2012-0876 (Expat) **[web]** | parsers and runtimes that hash attacker-chosen names | precedent that name tables fed by untrusted input are attacked |
+| 20 | Compilers that deliberately use unkeyed hashes | rustc-hash README: SipHash's DoS resistance "isn't a concern in the compiler" **[web]** | speed over resistance in a hosted compiler | the opposite design choice; reasonable for a developer's own code, not for a device compiling untrusted input |
+| 21 | Interned identifier pools on microcontrollers | MicroPython `qstr` (pools of interned strings with stored hash and length) **[web]** | one copy of each identifier in little RAM | closest deployed relative of the interning part; no scopes, no undo, linear pool search |
+| 22 | Compilation without a symbol table to save RAM | US patent 8,505,000 B2 (Ezurio), "Compilation method without explicit symbol table for saving memory" **[web]**, abstract only | on-device compiler with very little volatile memory | a different answer to the same constraint; relevant prior art for any patent question |
+
 A reference often given for scoped tables, R. P. Cook and T. J. LeBlanc, "A symbol table
 abstraction to implement languages with explicit scope control" (IEEE TSE, 1983), could not
 be confirmed in our search and is therefore **not** cited in the paper.
@@ -65,7 +77,10 @@ Experiments that would close the gap: (a) patch TCC to call STRATA instead of
 benchmark for a Cortex-M target and run the fixed-buffer mode on hardware; (c) add LLVM ADT
 as a baseline.
 
-## 4. Novelty assessment (internal rubric)
+## 4. Novelty assessment (internal rubric, 2026-10-11)
+
+*Superseded by `reports/NOVELTY_ASSESSMENT.md` (2026-10-13), which uses a different, weighted
+rubric and includes the bounded mode. The table below is kept as written.*
 
 Scale per criterion: 0-2 none, 3-4 minor, 5-6 solid incremental, 7-8 clearly new, 9-10 major.
 

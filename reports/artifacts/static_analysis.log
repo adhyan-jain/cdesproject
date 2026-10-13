@@ -1,0 +1,30 @@
+== g++ -std=c++14 -fsyntax-only -Wall -Wextra -Wshadow -Wconversion -Wno-sign-conversion -Wcast-align -Wundef -Wformat=2 -pedantic -DFUZZ_STANDALONE tests/test_strata.cpp tests/exhaustive_small.cpp tests/fuzz_strata.cpp
+exit=0
+== clang++-21 -std=c++14 -fsyntax-only -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-sign-conversion -Wno-old-style-cast -Wno-zero-as-null-pointer-constant -Wno-unsafe-buffer-usage -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-prototypes -Wno-missing-variable-declarations -Wno-covered-switch-default -Wno-switch-default -Wno-weak-vtables -Wno-unsafe-buffer-usage-in-libc-call -Wno-nrvo -DFUZZ_STANDALONE tests/test_strata.cpp tests/exhaustive_small.cpp tests/fuzz_strata.cpp
+exit=0
+== g++ -std=c++17 -fsyntax-only -Wall -Wextra -Wshadow -Wconversion -Wno-sign-conversion -Wcast-align -Wundef -Wformat=2 -pedantic -DFUZZ_STANDALONE tests/test_strata.cpp tests/exhaustive_small.cpp tests/fuzz_strata.cpp
+exit=0
+== clang++-21 -std=c++17 -fsyntax-only -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-sign-conversion -Wno-old-style-cast -Wno-zero-as-null-pointer-constant -Wno-unsafe-buffer-usage -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-prototypes -Wno-missing-variable-declarations -Wno-covered-switch-default -Wno-switch-default -Wno-weak-vtables -Wno-unsafe-buffer-usage-in-libc-call -Wno-nrvo -DFUZZ_STANDALONE tests/test_strata.cpp tests/exhaustive_small.cpp tests/fuzz_strata.cpp
+exit=0
+== g++ -std=c++20 -fsyntax-only -Wall -Wextra -Wshadow -Wconversion -Wno-sign-conversion -Wcast-align -Wundef -Wformat=2 -pedantic -DFUZZ_STANDALONE tests/test_strata.cpp tests/exhaustive_small.cpp tests/fuzz_strata.cpp
+exit=0
+== clang++-21 -std=c++20 -fsyntax-only -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded -Wno-sign-conversion -Wno-old-style-cast -Wno-zero-as-null-pointer-constant -Wno-unsafe-buffer-usage -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-prototypes -Wno-missing-variable-declarations -Wno-covered-switch-default -Wno-switch-default -Wno-weak-vtables -Wno-unsafe-buffer-usage-in-libc-call -Wno-nrvo -DFUZZ_STANDALONE tests/test_strata.cpp tests/exhaustive_small.cpp tests/fuzz_strata.cpp
+exit=0
+== clang++-21 -std=c++14 --analyze -Xclang -analyzer-output=text -DSTRATA_TEST_HOOKS -x c++ include/strata/strata.hpp
+exit=0
+== clang++-21 -std=c++14 --analyze -Xclang -analyzer-output=text tests/exhaustive_small.cpp
+exit=0
+== g++ -std=c++14 -fanalyzer -fsyntax-only -x c++ include/strata/strata.hpp
+exit=0
+== g++ -std=c++14 -fanalyzer -O1 -c -o /dev/null benchmarks/hardening_main.cpp
+exit=0
+== g++ -std=c++14 -fno-exceptions -fno-rtti -Wall -Wextra -Werror -c -o /dev/null build/hdr_only.cpp
+exit=0
+== arm-none-eabi-g++ -std=c++14 -mcpu=cortex-m3 -mthumb -fno-exceptions -fno-rtti -Os -Wall -Wextra -Werror -c -o build/hdr_m3.o build/hdr_only.cpp
+exit=0
+== 32-bit host build: NOT RUN (g++ -m32 multilib not installed)
+== clang++-21 -std=c++14 -O1 -g -fsanitize=address,undefined,integer -fno-sanitize=unsigned-integer-overflow,unsigned-shift-base,implicit-conversion -fno-sanitize-recover=all -o build/test_strata_clang_san tests/test_strata.cpp
+exit=0
+== ./build/test_strata_clang_san
+2706587 checks, 0 failed
+exit=0

@@ -1,0 +1,48 @@
+cjson.trace.gz
+  K=0: peak 30704B (0.0% less; idx 8192 ident 18172 undo 4340)
+  K=1: peak 30168B (1.7% less; idx 8192 ident 17636 undo 4340)
+  K=4: peak 30072B (2.1% less; idx 8192 ident 17540 undo 4340)
+  K=16: peak 30056B (2.1% less; idx 8192 ident 17524 undo 4340)
+  K=-1: peak 29972B (2.4% less; idx 8192 ident 17440 undo 4340)
+zlib.trace.gz
+  K=0: peak 16128B (0.0% less; idx 4096 ident 9692 undo 2340)
+  K=1: peak 15908B (1.4% less; idx 4096 ident 9472 undo 2340)
+  K=4: peak 15852B (1.7% less; idx 4096 ident 9416 undo 2340)
+  K=16: peak 15832B (1.8% less; idx 4096 ident 9396 undo 2340)
+  K=-1: peak 15816B (1.9% less; idx 4096 ident 9380 undo 2340)
+lua.trace.gz
+  K=0: peak 36776B (0.0% less; idx 8192 ident 23108 undo 5476)
+  K=1: peak 36444B (0.9% less; idx 8192 ident 22776 undo 5476)
+  K=4: peak 36396B (1.0% less; idx 8192 ident 22728 undo 5476)
+  K=16: peak 36388B (1.1% less; idx 8192 ident 22720 undo 5476)
+  K=-1: peak 36324B (1.2% less; idx 8192 ident 22656 undo 5476)
+freertos.trace.gz
+  K=0: peak 45008B (0.0% less; idx 8192 ident 30764 undo 6052)
+  K=1: peak 42972B (4.5% less; idx 8192 ident 28728 undo 6052)
+  K=4: peak 42608B (5.3% less; idx 8192 ident 28364 undo 6052)
+  K=16: peak 42564B (5.4% less; idx 8192 ident 28320 undo 6052)
+  K=-1: peak 42448B (5.7% less; idx 8192 ident 28204 undo 6052)
+mbedtls.trace.gz
+  K=0: peak 81920B (0.0% less; idx 16384 ident 56280 undo 9256)
+  K=1: peak 73396B (10.4% less; idx 16384 ident 47756 undo 9256)
+  K=4: peak 72392B (11.6% less; idx 16384 ident 46752 undo 9256)
+  K=16: peak 71964B (12.2% less; idx 16384 ident 46324 undo 9256)
+  K=-1: peak 71548B (12.7% less; idx 16384 ident 45908 undo 9256)
+sqlite.trace.gz
+  K=0: peak 143724B (0.0% less; idx 32768 ident 93896 undo 17060)
+  K=1: peak 136788B (4.8% less; idx 32768 ident 86960 undo 17060)
+  K=4: peak 135948B (5.4% less; idx 32768 ident 86120 undo 17060)
+  K=16: peak 135480B (5.7% less; idx 32768 ident 85652 undo 17060)
+  K=-1: peak 134108B (6.7% less; idx 32768 ident 84280 undo 17060)
+tinycc.trace.gz
+  K=0: peak 160220B (0.0% less; idx 32768 ident 105312 undo 22140)
+  K=1: peak 154644B (3.5% less; idx 32768 ident 99736 undo 22140)
+  K=4: peak 153808B (4.0% less; idx 32768 ident 98900 undo 22140)
+  K=16: peak 153496B (4.2% less; idx 32768 ident 98588 undo 22140)
+  K=-1: peak 151604B (5.4% less; idx 32768 ident 96696 undo 22140)
+littlefs.trace.gz
+  K=0: peak 20468B (0.0% less; idx 4096 ident 13332 undo 3040)
+  K=1: peak 20072B (1.9% less; idx 4096 ident 12936 undo 3040)
+  K=4: peak 19956B (2.5% less; idx 4096 ident 12820 undo 3040)
+  K=16: peak 19900B (2.8% less; idx 4096 ident 12764 undo 3040)
+  K=-1: peak 19760B (3.5% less; idx 4096 ident 12624 undo 3040)

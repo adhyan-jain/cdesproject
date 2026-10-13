@@ -1,0 +1,16 @@
+date_utc: 2026-10-13T11:37:52Z
+kernel: Linux 6.18.33.2-microsoft-standard-WSL2
+cpu: Intel(R) Core(TM) Ultra 7 258V
+cores: 8
+mem: 15731 MiB
+tool g++: g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+tool clang++-21: Ubuntu clang version 21.1.8 (++20251221032842+2078da43e25a-1~exp1~20251221153008.77)
+tool python3: Python 3.10.12
+tool git: git version 2.34.1
+tool taskset: taskset from util-linux 2.37.2
+tool cppcheck: ABSENT
+tool arm-none-eabi-g++: arm-none-eabi-g++ (15:10.3-2021.07-4) 10.3.1 20210621 (release)
+tool qemu-system-arm: QEMU emulator version 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6.31)
+tool gdb: GNU gdb (Ubuntu 12.1-0ubuntu1~22.04.2) 12.1
+tool valgrind: ABSENT
+git: cd3b4cc94beb890206b7124494a6c274d0b7d3f2 2 modified/untracked paths

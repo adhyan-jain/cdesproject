@@ -33,17 +33,25 @@
   is slower than storing raw bytes on 5 of the 8 compiler traces (by up to 10%).
 * **Lookup latency is not improved** over METIS-X on the compiler traces (p95 lower on 3 of
   8 traces); the per-call numbers are within the measurement's resolution of each other.
-* **No protection against adversarial keys.** The hash is unkeyed. With every key in one
-  cluster a lookup scans the cluster (experiment D). A compiler that reads untrusted source
-  and needs a bound would need a seeded hash or a probe limit.
+* **The default configuration has no protection against adversarial keys.** The default hash
+  is unkeyed, and identifiers that collide in it for every seed can be constructed
+  (`benchmarks/hardening_main.cpp`; measured in `results/hardening/flood.csv`: declaring
+  32 768 such names takes hundreds of times longer than ordinary names). Since 2026-10-13 two
+  opt-in defences exist: a keyed hash (`Options::keyed`) and, in fixed mode, a static index
+  with a probe limit (`Options::index_slots`, `Options::max_probe`) that refuses instead of
+  slowing down. They are off by default, the key must be supplied by the caller, and the
+  keyed hash costs replay time (see `reports/PERFORMANCE_REPORT.md`). The baseline
+  `arena_chain` uses the same unkeyed mixer and has no such option.
 
 ## Design limits
 
 * Names: 1 to 255 bytes. Scope depth: 16 383. Buffer: 64 MiB. Type tag: 8 bits. Value: 32 bits.
 * A table rebuild (index doubling, buffer growth or shrink) is O(live names) and happens in
   the middle of a `declare` or `exit_scope`; worst-case latency of those calls is therefore
-  not bounded by a constant. Fixed mode with a pre-grown index would avoid this; it is not
-  implemented.
+  not bounded by a constant in the growable mode and in the plain fixed mode. The bounded
+  mode added on 2026-10-13 (static index) never rebuilds; there `exit_scope` is still
+  proportional to the number of declarations in the scope being left, and the caller must
+  choose the index size in advance.
 * One declaration record per name and scope: no overloading, no separate tag or label name
   spaces. A front end would use one table per name space.
 * Not thread-safe; the character-code table is initialised on first use.
@@ -96,3 +104,13 @@
 - **End to end, neither table helps a hosted compiler.** In chibicc, STRATA is established slower on 3 of 7 projects (up to about 4%) and the arena table shows no established difference; peak memory is unchanged (median 0.14% per unit).
 - **The fit benefit is narrow.** The saving decides whether a translation unit fits only when the budget lies between the two tables' needs: at most 23 of 169 TinyCC units (at 16 KiB), and at most 2 at 64 KiB and above.
 - **chibicc integration detail.** Only variable scopes were replaced; file-scope declarations are mirrored in a second table instance to answer chibicc's global lookups, which adds work the original compiler does not do.
+
+## Added by the audit of 2026-10-13
+
+- **The bounded mode was evaluated by replay only.** Zero refusals at a probe limit of 64 were observed on the 15 stored compiler traces with both hashes; that is an observation about these traces, not a guarantee for other programs. A program whose names cluster would see declarations refused.
+- **The keyed hash is not a cryptographic claim of this project.** It is HalfSipHash-1-3 with a 64-bit key, checked against the reference source on a little-endian host. A big-endian target would compute different (still consistent) values and was not tested. Where the key comes from on a device without an entropy source is not addressed.
+- **The collision construction is a known technique.** Seed-independent multicollisions of MurmurHash2/3 were published by Aumasson and Bernstein in 2012; what was done here is the restriction to words that are packings of identifier characters, and the measurement on this table.
+- **Fuzzing and bounded exhaustive checking are evidence, not proof.** The exhaustive check covers every sequence of at most 9 operations over 6 operations and 4 names in 8 small configurations; larger states are covered only by randomized tests and fuzzing.
+- **No 32-bit host build of the unit tests.** The 32-bit evidence is still the emulated Cortex-M3 replay (now also in bounded mode); a `-m32` multilib was not installed.
+- **Sources for trace regeneration are not checksum-pinned.** `tools/tcc-trace/make_traces.sh` fetches projects by tag or URL. The stored traces, not a regeneration, are what the results use.
+- **Not applicable rather than untested:** the project has no web interface, service, authentication or database; nothing was tested in a browser.

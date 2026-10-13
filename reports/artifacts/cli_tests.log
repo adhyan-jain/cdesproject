@@ -1,0 +1,42 @@
+C01 | PASS | bench: valid small trace | expected exit 0 | actual exit 0 | 
+C02 | PASS | bench: no arguments | expected exit 2 | actual exit 2 | cannot load trace '' 
+C03 | PASS | bench: missing file | expected exit 2 | actual exit 2 | cannot load trace 'build/cli/does_not_exist.trace' 
+C04 | PASS | bench: empty file | expected exit 2 | actual exit 2 | cannot load trace 'build/cli/empty.trace' 
+C05 | PASS | bench: blank lines only | expected exit 2 | actual exit 2 | cannot load trace 'build/cli/blank.trace' 
+C06 | PASS | bench: exits without enters | expected exit 0 | actual exit 0 | 
+C07 | PASS | bench: unknown tags and missing names | expected exit any | actual exit 2 | cannot load trace 'build/cli/garbage_tags.trace' 
+C08 | PASS | bench: random bytes | expected exit any | actual exit 2 | cannot load trace 'build/cli/random.trace' 
+C09 | PASS | bench: names of 255, 256 and 300 bytes | expected exit 0 | actual exit 0 | 
+C10 | PASS | bench: non-ASCII, NUL, tab, '::' in names | expected exit 0 | actual exit 0 | 
+C11 | PASS | bench: 20000 nested scopes (past STRATA's depth limit) | expected exit 0 | actual exit 0 | 
+C12 | PASS | bench: CRLF line ends | expected exit 0 | actual exit 0 | 
+C13 | PASS | bench: one 5 MB line | expected exit any | actual exit 2 | cannot load trace 'build/cli/huge_line.trace' 
+C14 | PASS | bench: consecutive unit separators | expected exit 0 | actual exit 0 | 
+C15 | PASS | bench: unknown option | expected exit 2 | actual exit 2 | unknown option --bogus 
+C16 | PASS | bench: --reps 0 | expected exit 0 | actual exit 0 | 
+C17 | PASS | bench: --reps -5 | expected exit 0 | actual exit 0 | 
+C18 | PASS | bench: --reps not a number | expected exit 0 | actual exit 0 | 
+C19 | PASS | bench: --warmup -3 | expected exit 0 | actual exit 0 | 
+C20 | PASS | bench: --impls names nothing | expected exit 0 | actual exit 0 | 
+C21 | PASS | bench: summary path in a missing directory | expected exit 3 | actual exit 3 | 
+C22 | PASS | bench: option without a value | expected exit any | actual exit 2 | cannot load trace '' 
+C23 | PASS | budget: valid, budget mode | expected exit 0 | actual exit 0 | 
+C24 | PASS | budget: units mode | expected exit 0 | actual exit 0 | 
+C25 | PASS | budget: minbuf mode | expected exit 0 | actual exit 0 | 
+C26 | PASS | budget: missing trace | expected exit any | actual exit 2 | cannot load build/cli/does_not_exist.trace 
+C27 | PASS | budget: unknown mode | expected exit any | actual exit 2 | --mode budget|units|minbuf|worstcase 
+C28 | PASS | budget: deep nesting trace | expected exit any | actual exit 0 | 
+C29 | PASS | budget: random bytes | expected exit any | actual exit 2 | cannot load build/cli/random.trace 
+C30 | PASS | budget: --reps 0 (regression: indexed an empty vector) | expected exit 0 | actual exit 0 | 
+C30b | PASS | budget: --reps -3 | expected exit 0 | actual exit 0 | 
+C31 | PASS | hardening: no mode | expected exit 2 | actual exit 2 | usage: hardening --mode flood|traces|names ... 
+C32 | PASS | hardening: names, valid | expected exit 0 | actual exit 0 | 
+C33 | PASS | hardening: names, odd word count | expected exit 2 | actual exit 2 | --words must be even, 2..50, and --count at most 2^(words/2) 
+C34 | PASS | hardening: names, more than exist | expected exit 2 | actual exit 2 | --words must be even, 2..50, and --count at most 2^(words/2) 
+C35 | PASS | hardening: names, zero count | expected exit 2 | actual exit 2 | --words must be even, 2..50, and --count at most 2^(words/2) 
+C36 | PASS | hardening: traces, valid | expected exit 0 | actual exit 0 | 
+C37 | PASS | hardening: traces, missing file | expected exit 2 | actual exit 2 | cannot load trace 'build/cli/does_not_exist.trace' 
+C38 | PASS | hardening: traces, random bytes | expected exit any | actual exit 2 | cannot load trace 'build/cli/random.trace' 
+C39 | PASS | hardening: traces, deep nesting | expected exit 0 | actual exit 0 | 
+C40 | PASS | hardening: unknown option | expected exit 2 | actual exit 2 | unknown option --what 
+passed 41, failed 0

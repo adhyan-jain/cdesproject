@@ -1,0 +1,21 @@
+compiler: arm-none-eabi-g++ (15:10.3-2021.07-4) 10.3.1 20210621 (release)
+emulator: QEMU emulator version 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6.31)
+machine: mps2-an385 (Cortex-M3); RAM limited to 64 KiB by tools/embedded/link.ld; no heap, no OS
+
+== freertos   (ordinary fixed-buffer host run: checksum 3112986313, refused 0; buffer 45056 bytes, index 2048 slots, probe limit 64)
+STRATA bounded (static index, probe limit, keyed hash) on bare-metal Cortex-M3 (QEMU mps2-an385)
+operations          37875
+declares            10346
+lookups             17417
+lookup hits         12193
+refused operations  0
+buffer bytes        45056
+peak used bytes     45008
+stack bytes used    484
+static RAM bytes    45420
+checksum            3112986313
+expected (host run) 3112986313
+RESULT: PASS
+STRATA code size (sum of the strata:: functions in the object file, bytes):
+  2739
+

@@ -1,0 +1,10 @@
+run: results/raw/20261013-120345-audit
+date_utc: 2026-10-13T12:03:53Z
+git_commit: cd3b4cc94beb890206b7124494a6c274d0b7d3f2 (+ 21 uncommitted paths)
+compiler: g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+flags: -std=c++14 -O2
+kernel: Linux 6.18.33.2-microsoft-standard-WSL2
+cpu: Intel(R) Core(TM) Ultra 7 258V
+pinning: taskset -c 2
+rounds: 31 (+2 warm-up), tables interleaved; compiler traces only
+load: 1.09 2.23 2.30 at start
