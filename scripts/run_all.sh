@@ -34,7 +34,9 @@ cat "$RUN/environment.txt"
 
 echo "== compiler traces (instrumented TinyCC)"
 for f in build/traces/*.trace; do
-  n=$(basename "$f" .trace); echo "  $n"
+  n=$(basename "$f" .trace)
+  case "$n" in chibicc_*) continue ;; esac   # measured by scripts/run_extra.sh into chibicc_*.csv
+  echo "  $n"
   $PIN ./build/bench --trace "$f" --name "$n" --reps "$REPS" --summary "$RUN/compiler_summary.csv" --raw "$RUN/compiler_replays.csv"
   $PIN ./build/budget --mode budget --trace "$f" --name "$n" --reps 9 --out "$RUN/budget.csv"
 done

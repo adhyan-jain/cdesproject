@@ -42,3 +42,18 @@ his findings; that listing needs his agreement.
 * The guide's role and affiliation lines are confirmed.
 * The patent question noted in `ARCHITECTURE_DECISION.md` is settled before the repository
   is made public.
+
+## Status on 2026-10-13 (recorded by the research-completion branch; nothing here is a decision)
+
+* The work of 2026-10-13 (audit, bounded mode, rebuild change, probe-limit analysis, the
+  re-run of every experiment, the rewritten paper in `paper/` and the IEEE Access format draft
+  in `manuscript/`) was again produced by an AI coding assistant at Shubhi Singh's direction.
+* The paper now lists four authors in the order Shubhi Singh, Adhyan Jain, Akshith
+  Venkatataramana, Arjuman, as instructed by Shubhi Singh, and thanks the guide
+  (Bhuvaneswari M.) in the Acknowledgment. The earlier draft listed five authors in a different
+  order with the guide as an author. **No record exists in this repository that any of the
+  other three authors or the guide has read or approved either version.**
+* The contributions of Akshith Venkatataramana and Arjuman to this repository are not
+  recorded anywhere in it. Their authorship has to be justified by the authors themselves.
+* The four items under "Before anything is submitted" above are all still open. They are
+  tracked in `SUBMISSION_READINESS.md` and `submission/SIGNOFF_CHECKLIST.md`.

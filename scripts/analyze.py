@@ -19,10 +19,11 @@ run = sys.argv[1].rstrip("/\\")
 out = os.path.join("results", "summary", os.path.basename(run))
 os.makedirs(out, exist_ok=True)
 NEW = "strata"
-ORDER = ["strata", "strata_raw", "strata_noshrink", "strata_sparse", "arena_chain", "metis_x", "metis_arena_lp", "metis_scope_maps",
+ORDER = ["strata", "strata_raw", "strata_noshrink", "strata_sparse", "strata_keyed", "arena_chain", "metis_x", "metis_arena_lp", "metis_scope_maps",
          "scope_map_stack", "std_undo_log", "swiss_undo_log", "swiss_interned"]
 LABEL = {"strata": "STRATA", "strata_raw": "STRATA (raw names)", "strata_noshrink": "STRATA (no shrink)",
-         "strata_sparse": "STRATA (sparse index)", "arena_chain": "arena + chains (allocator-free)",
+         "strata_sparse": "STRATA (sparse index)", "strata_keyed": "STRATA (keyed hash)",
+         "arena_chain": "arena + chains (allocator-free)",
          "metis_x": "METIS-X (previous)", "metis_arena_lp": "old arena table", "metis_scope_maps": "old scope maps",
          "scope_map_stack": "map per scope", "std_undo_log": "std map + undo log",
          "swiss_undo_log": "Swiss node map + undo log", "swiss_interned": "Swiss flat map, interned"}
@@ -65,7 +66,15 @@ def table(df, title, note=""):
 
 def load(name):
     p = os.path.join(run, name)
-    return pd.read_csv(p) if os.path.exists(p) else None
+    if not os.path.exists(p):
+        return None
+    df = pd.read_csv(p)
+    # The chibicc traces have their own files (chibicc_*.csv, written by run_extra.sh).
+    # A run made while they were unpacked in build/traces also has them in the compiler_*
+    # files; the "compiler" sections are about the eight TinyCC traces only.
+    if name.startswith(("compiler_", "budget")) and "trace" in df.columns:
+        df = df[~df.trace.astype(str).str.startswith("chibicc_")].reset_index(drop=True)
+    return df
 
 
 def section(tag, heading):

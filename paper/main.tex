@@ -1,172 +1,78 @@
-% DRAFT - not submitted, not peer reviewed.
-% Build: pdflatex main && bibtex main && pdflatex main && pdflatex main
-% All numbers come from generated.tex (scripts/make_report.py).
+% STRATA: full-length conference version (IEEEtran, two columns).
+% Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+% The text of Sections I-XII is in body.tex and the abstract in abstract.tex; both are shared
+% with the IEEE Access format draft in ../manuscript/overleaf. Every number is a macro from
+% generated_numbers.tex or a table body in tables/, written by
+% ../manuscript/tools/make_numbers.py from the raw measurements. Nothing numeric is typed here.
+%
+% Double-blind review: uncomment the next line to hide authors, acknowledgment and the
+% artifact link.
+%\def\anonymous{1}
 \documentclass[conference]{IEEEtran}
 \usepackage{cite}
-\usepackage{amsmath}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
 \usepackage{graphicx}
-\usepackage{booktabs}
+\usepackage{textcomp}
 \usepackage{url}
-\usepackage[hidelinks]{hyperref}
-\input{generated}
+
+\input{generated_numbers}
+
+% Visible marker for information only the authors can supply (see
+% ../manuscript/AUTHOR_DETAILS_REQUIRED.md). A submission must contain none.
+\newcommand{\authorfill}[1]{\textbf{[AUTHOR: #1]}}
+
+% Wrappers used by the shared body.
+\newcommand{\strstart}[2]{#1 #2}   % no drop capital in the conference format
+\newcommand{\strfig}[3]{\begin{figure}[t!]\centering\includegraphics[width=0.98\columnwidth]{#1}\caption{#2}\label{#3}\end{figure}}
+\newcommand{\strcap}[1]{\caption{#1}}
+% Table bodies are read with TeX's expandable input primitive: LaTeX's \input would leave an
+% empty row at the end of a tabular.
+\makeatletter
+\newcommand{\tabinput}[1]{\@@input #1.tex }
+\makeatother
+
 \newcommand{\st}{STRATA}
-\newcommand{\ac}{ARENA}
 \newcommand{\code}[1]{\texttt{#1}}
+\newtheorem{proposition}{Proposition}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
 
 \begin{document}
-\title{When Does a Compact Scoped Symbol Table Pay Off? Bounded-Memory Tables Evaluated on Two Instrumented C Compilers}
 
-\author{\IEEEauthorblockN{Adhyan Jain, Shubhi Singh, Akshith Venkataramana, Arjuman, and Bhuvaneshwari M}
-\IEEEauthorblockA{School of Computer Science and Engineering\\Vellore Institute of Technology\\Vellore, India}}
+\title{Bounded Memory and Bounded Work for Scoped Symbol Tables: A Single-Buffer Design Evaluated on Compiler-Generated Workloads}
+
+\ifdefined\anonymous
+\author{\IEEEauthorblockN{Anonymous Author(s)}\IEEEauthorblockA{Submission for double-blind review}}
+\else
+\author{\IEEEauthorblockN{Shubhi Singh, Adhyan Jain, Akshith Venkatataramana, and Arjuman}
+\IEEEauthorblockA{School of Computer Science and Engineering\\
+Vellore Institute of Technology, Vellore, Tamil Nadu, India\\
+\authorfill{confirm the affiliation of each author; add e-mail addresses}}}
+\fi
+
 \maketitle
 
 \begin{abstract}
-A compiler that must run within a fixed memory budget needs a symbol table whose size is bounded in advance and whose behaviour at the bound is defined. We ask when a compact, interning table is worth its cost against the conventional design under such a bound. Two tables with the same storage discipline---one caller-supplied buffer, no allocation, refusal without state change---are compared: \ac{}, the classic chained table over an entry arena, and \st{}, which stores each visible name once in packed form, keeps the innermost declaration in the name's record and saves hidden declarations on an undo stack. Workloads are the symbol-table calls logged by two instrumented C compilers, TinyCC and chibicc, on eight open-source projects, plus a parametric sweep over the shadowing factor and name length. Against our earlier table, METIS-X, both bounded tables cut memory by more than half, and \ac{} alone accounts for most of that gain. Against \ac{}, \st{} needs \FixArenaMin--\FixArenaMax\% less memory on the compiler traces, where there is almost no shadowing, and is slower on \ArenaSlowerN{} of \NTraces{} of them (median \ArenaSlowMed\%). A closed-form memory model predicts both tables' needs to within \ModelErrS\% and \ModelErrA\%; the saving grows to \SweepMemMax\% with shadowing. Speed does not follow shadowing but name length: \st{} is the faster table for very short names and the slower one otherwise. The saving decides whether a translation unit fits a budget only in a narrow band: at most \FitBestOnly{} of \UnitsN{} units for any tested buffer size. Integrated into chibicc, both tables produce assembly identical to the original compiler on \ChibiSame{} of \ChibiUnits{} units; neither improves whole-compiler time or memory, and \st{} costs up to four percent of compile time. We give a correctness argument with tests for the refusal guarantee and run both tables on an emulated Cortex-M3. We claim no new algorithm; the contribution is the measured answer to when the compact design pays off.
+\input{abstract}
 \end{abstract}
 
 \begin{IEEEkeywords}
-symbol table, lexical scope, embedded compilers, memory budget, arena allocation, trace replay, empirical evaluation
+algorithmic complexity attacks, compilers, embedded software, hash tables, linear probing, memory management, software testing, symbol tables
 \end{IEEEkeywords}
 
-\section{Introduction}
-A scoped symbol table maps identifiers to declarations and forgets a block's declarations when the block ends~\cite{aho2006}. For a compiler that runs on a small device, or inside a tool with a fixed memory budget, three properties matter that general-purpose containers do not give: a memory bound fixed before compilation starts, no allocator calls during compilation, and a defined result when the bound is reached.
+\input{body}
 
-Two designs meet these requirements. The conventional one keeps one entry per declaration in an arena and links entries in hash chains; it is what small compilers have long done~\cite{tcc}. A compact one interns each name once and records shadowing on an undo stack~\cite{appel1998,llvmsht}; it stores less but does more work per operation. Which should a memory-constrained compiler use? The answer is not obvious, because the compact design saves memory only to the extent that names repeat among live declarations, and real C code may not repeat them.
-
-This paper measures the answer. It continues the METIS-X project~\cite{metis}, a Robin Hood table~\cite{celis1985} with one 32-byte slot per declaration, whose authors closed it after finding that its components were known, its traces came from regular expressions, and its design had no place in a compiler that interns identifiers first. An earlier version of the present work reported that a redesigned table used far less memory than METIS-X; a review asked whether that gain belonged to the design or merely to the absence of allocation. We therefore make the following contributions, none of which is a new algorithm.
-\begin{enumerate}
-\item A decomposition of the improvement over METIS-X into the part due to allocation-free arena storage and the part due to interning, undo entries and packed names (Section~\ref{sec:decomp}).
-\item A closed-form memory model for both bounded tables, validated on a sweep, and the finding that the compact table's speed depends on name length, not on shadowing (Section~\ref{sec:sweep}).
-\item A per-translation-unit analysis of when the saving decides whether a workload fits a buffer, with a demonstration on an emulated microcontroller (Section~\ref{sec:fit}).
-\item Workloads from two instrumented compilers, and integration of both tables into one of them with end-to-end measurements (Sections~\ref{sec:method} and~\ref{sec:e2e}).
-\item A correctness argument and tests for refusal without state change (Section~\ref{sec:correct}).
-\end{enumerate}
-
-\section{Background: the Previous Table}
-\label{sec:audit}
-We audited METIS-X at commit \code{7b3dacf}. All declarations of one name share a hash value and one probe cluster; the probe distance is an 8-bit field capped at 250, and an insertion beyond it is refused. On a trace that declares one name in 400 nested scopes METIS-X refused \DeepRefused{} declarations and returned \DeepWrong{} wrong lookups; no other table failed. Its lookup compares every live declaration of a name, and names over 12 bytes are separate heap blocks. Its earlier evaluation used traces extracted by regular expressions, included harness data in the heap figures, and timed each call with a clock as costly as the call.
-
-\section{Two Bounded-Memory Tables}
-\label{sec:design}
-Both tables keep all state in one array of 32-bit words that the caller may supply (fixed mode) or that grows by half through \code{realloc} (growable mode). Neither throws; in fixed mode neither allocates; a refused operation leaves the state unchanged.
-
-\subsection{\ac{}: the conventional design}
-Bucket heads at the bottom of the buffer, a stack of entries above them, scope marks at the top. An entry (a 16-byte header and the name, unpacked) is created for every declaration and linked at the head of its hash chain, so the first match in a chain is the innermost declaration. Scope exit unlinks and pops the scope's entries.
-
-\subsection{\st{}: the compact design}
-The index is an open-addressing array with linear probing; a slot holds an 8-bit fingerprint~\cite{swisstables} and a 24-bit reference. The identifier stack holds one record per distinct visible name: a value word, a meta word (name length in words, type tag, scope depth of the innermost declaration) and the name, packed five characters to a word in the manner of RADIX-50~\cite{radix50}. The undo stack grows down from the end of the buffer (Fig.~\ref{fig:layout}).
-
-\begin{figure}[t]
-\centering
-\setlength{\unitlength}{1mm}
-\begin{picture}(84,16)
-\put(0,6){\framebox(16,8){\scriptsize index}}
-\put(16,6){\framebox(26,8){\scriptsize identifiers $\rightarrow$}}
-\put(42,6){\framebox(18,8){\scriptsize free}}
-\put(60,6){\framebox(24,8){\scriptsize $\leftarrow$ undo stack}}
-\put(0,1){\scriptsize word 0}
-\put(73,1){\scriptsize end}
-\end{picture}
-\caption{\st{}'s buffer. Identifier references are relative to the start of their region and undo references to the end of the buffer, so either boundary can move without patching stored references.}
-\label{fig:layout}
-\end{figure}
-
-A lookup packs and hashes the query (MurmurHash3's 32-bit mixer~\cite{murmur3}), probes, and reads the innermost declaration from the record; its cost does not depend on shadowing depth. A declaration of a new name appends a record, fills a slot and pushes that slot's index (one word) on the undo stack. A declaration that shadows pushes the record's current value and tag (three words) and overwrites them. Scope exit pops entries down to the scope's mark: a shadow entry restores what it saved; a first-declaration entry empties the recorded slot. Limits: names of 1--255 bytes, depth 16{,}383, buffer 64\,MiB; an index rebuild is linear in the number of live names; the hash is unkeyed.
-
-\subsection{Memory model}
-\label{sec:model}
-Let $N$ be the number of live declarations, $D$ the number of distinct live names, $L$ the name length in characters, $d$ the number of open scopes, and $\sigma = N/D$ the \emph{shadowing factor}. In bytes,
-\begin{align}
-M_{\st} &= D\,(8 + 4\lceil L/5\rceil) + 4\,I(D) + 4D \notag\\
-&\quad + 12\,(N-D) + 8d,\\
-M_{\ac} &= N\,(16 + 4\lceil L/4\rceil) + 4\,B(N) + 4d,
-\end{align}
-where $I(D)$ is the smallest $16\cdot 2^k$ with $D \le 0.75\,I(D)$ and $B(N)$ the smallest $16\cdot 2^k \ge N$. At $\sigma = 1$ the tables differ only through the header (8 against 16 bytes), the packing of the name and the index granularity; every additional declaration of an already live name costs 12 bytes in \st{} and a full entry in \ac{}.
-
-\section{Correctness of the Guarantees}
-\label{sec:correct}
-\emph{Scope exit needs no tombstones.} In linear probing without displacement a key is stored in the first empty slot of its probe path and never moves, so the path of a key consists of slots filled by older keys. The name removed at scope exit is the newest key in the index; it lies on no remaining key's path, and emptying its slot cuts no path. Rebuilding the index oldest first preserves the premise. This differs from general deletion, which needs tombstones or shifting~\cite{knuth3,bender2021}.
-
-\emph{All-or-nothing.} Each operation validates, reserves, then writes. The reservation either guarantees room for every word and slot the operation will write, or fails before anything is modified; in growable mode the only fallible step, the allocator call, comes first.
-
-\emph{Tests.} A digest of the complete state is taken before every operation and must be unchanged after every refusal, in 30 configurations: five buffer sizes, three workloads (random, deep shadowing, deep nesting), with the normal hash and with every key forced into one probe cluster. Each run is compared with a reference model and unwound to empty. Further tests use an allocator that fails after $k$ calls, 5{,}000-deep shadowing of one name, and scope exit across index rebuilds; 1.86 million checks pass under AddressSanitizer and UndefinedBehaviorSanitizer. The argument is informal; nothing was machine-checked.
-
-\section{Methodology}
-\label{sec:method}
-\emph{Compiler traces.} We instrumented two compilers. In TinyCC~\cite{tcc} (commit \code{43c7708}) we log \code{sym\_find}, \code{sym\_link}, \code{global\_identifier\_push} and every change of scope level. TinyCC interns identifiers and resolves through per-token pointers, so these are the calls its tables receive, not string lookups it performs. In chibicc~\cite{chibicc} (commit \code{90d1f7f}) we log \code{find\_var}, \code{push\_scope}, \code{enter\_scope} and \code{leave\_scope}; chibicc resolves identifiers by string through one hash map per open scope, so a string-keyed scoped table is on its real resolution path. The compilers were run on cJSON, littlefs, zlib, Lua, FreeRTOS-Kernel, Mbed TLS, TinyCC itself and SQLite (Table~\ref{tab:work}; chibicc compiles \ChibiUnits{} of \ChibiAll{} units of seven of them). Each translation unit starts with a fresh table.
-
-\begin{table}[t]
-\centering\caption{TinyCC traces}\label{tab:work}
-\setlength{\tabcolsep}{2.5pt}\footnotesize\TabWork
-\end{table}
-
-\emph{Sweep.} Synthetic traces hold 4{,}096 live declarations at their peak, built from $4096/\sigma$ distinct names of exactly $L$ characters declared in nested scopes, with five lookups per declaration; $\sigma \in \{1, 1.25, 1.5, 2, 3, 4, 8\}$ and $L \in \{6, 12, 24\}$.
-
-\emph{Tables.} \st{}; \ac{}; METIS-X and its two baselines, unmodified; a hash map per open scope (chibicc's own design); the undo-log algorithm of LLVM's \code{ScopedHashTable}~\cite{llvmsht} on \code{std::unordered\_map} and on a Swiss-table node map~\cite{phmap}; and an interning Swiss flat map, mirroring the split between interning and resolution in Clang~\cite{clangident}.
-
-\emph{Measurements.} Every result is compared with a reference model built on \code{std::map}. For the two bounded tables memory is the smallest fixed buffer, found by bisection to 64 bytes, with which a trace or unit replays without a refusal; for the others it is peak heap through an allocator hook. Time: \Rounds{} rounds after two warm-up rounds; in each round every table replays the whole trace once, in an order rotated from round to round; for two tables we report the median per-round relative difference with a 95\% bootstrap interval and call it \emph{established} when the interval excludes zero. Runs were pinned to one core of an Intel Core Ultra 7 258V under Linux (WSL~2), GCC 11.4, \code{-O2}.
-
-\section{Results}
-\label{sec:results}
-All \PairsOk{} of \PairsAll{} table--trace pairs on the TinyCC traces agree with the reference model, as do all pairs on the chibicc traces.
-
-\subsection{Decomposition of the gain over METIS-X}
-\label{sec:decomp}
-Table~\ref{tab:dec} places \ac{} between METIS-X and \st{}. \ac{}'s smallest buffer is already \ArenaVsMetisMemMin--\ArenaVsMetisMemMax\% below METIS-X's peak heap, and it replays the traces \ArenaVsMetisTimeMin--\ArenaVsMetisTimeMax\% faster. \st{}'s buffer is a further \FixArenaMin--\FixArenaMax\% smaller (\BufMin--\BufMax\,KiB, or \BpdMin--\BpdMax{} bytes per live declaration), but \st{} is established slower than \ac{} on \ArenaSlowerN{} of \NTraces{} traces, by \ArenaSlowMin--\ArenaSlowMax\% (median \ArenaSlowMed\%). Against METIS-X itself, \st{} uses \HeapRedMin--\HeapRedMax\% less heap with \AllocRedMin--\AllocRedMax\% fewer allocator calls and is established faster on \MFasterN{} of \NTraces{} traces.
-
-At the memory peak the number of live declarations equals the number of distinct live names on all TinyCC traces but one: $\sigma$ is 1. Interning therefore saves nothing there; \st{}'s advantage is the smaller record and packed names, and its time cost is packing the query and probing an open-addressing index instead of following a short chain that stores full hashes. Most of the improvement over METIS-X is thus obtained by allocation-free storage, not by the compact structure.
-
-\begin{table}[t]
-\centering\caption{METIS-X peak heap and the smallest fixed buffer of the two bounded tables (KiB); reduction (\%) of \st{} against \ac{} in memory and in replay time, with 95\% interval. Negative: \st{} is worse.}\label{tab:dec}
-\setlength{\tabcolsep}{3pt}\scriptsize\TabDec
-\end{table}
-
-\subsection{When the compact design pays off}
-\label{sec:sweep}
-Table~\ref{tab:sweep} gives the sweep. The model of Section~\ref{sec:model} predicts the measured minimum buffers to within \ModelErrS\% for \st{} and \ModelErrA\% for \ac{}. \emph{Memory.} At $\sigma = 1$ the saving is \SweepMemSigmaOne\%: it depends on name length and on where the number of names falls between two index sizes (the compiler traces, with mixed lengths, show \FixArenaMin--\FixArenaMax\%). At $\sigma = 2$ it is \SweepMemSigmaTwo\%, and it grows monotonically to \SweepMemMax\% at $\sigma = 8$. \emph{Time.} We expected a shadowing factor beyond which \st{} would also be faster; the data do not show one. Time follows name length instead: with \SweepShortL-character names \st{} is established faster at \SweepShortFaster{} of \SweepShortN{} shadowing factors, and with 12- and 24-character names it is established slower at \SweepLongSlower{} of \SweepLongN{} points and faster at \SweepLongFaster. The values are not monotone in $\sigma$, which we attribute to cache and index-size effects the sweep does not control; only the pattern by name length is consistent. The rule that follows: choose the compact table for memory, in proportion to shadowing; do not expect it to be faster unless identifiers are very short.
-
-\begin{table}[t]
-\centering\caption{Sweep: reduction (\%) of \st{} against \ac{} in minimum buffer and in replay time (paired medians), by shadowing factor $\sigma$ and name length $L$. Negative: \st{} is worse.}\label{tab:sweep}
-\setlength{\tabcolsep}{2pt}\scriptsize\TabSweep
-\end{table}
-
-\subsection{Does the saving let a workload fit?}
-\label{sec:fit}
-For each of the \UnitsN{} translation units of the TinyCC traces we determined the smallest buffer of each table (Table~\ref{tab:fit}). Per unit, \st{} needs \UnitRedMin--\UnitRedMax\% less than \ac{} (median \UnitRedMed\%). The saving changes the outcome only when the budget lies between the two requirements: at \FitBestKiB\,KiB, \FitBestStrata{} units fit \st{} and \FitBestArena{} fit \ac{}, the largest gap we observed; at 64\,KiB and above the counts differ by at most two. On an emulated Cortex-M3 with 64\,KiB of RAM and a \EmbFitKiB\,KiB table buffer, \st{} replays the FreeRTOS-Kernel trace completely while \ac{} refuses \EmbFitRefused{} operations; with 8\,KiB more both succeed. The reduction is therefore decisive for a design whose table budget is fixed close to the workload's need, and immaterial otherwise.
-
-\begin{table}[t]
-\centering\caption{Number of the \UnitsN{} TinyCC translation units whose symbol workload fits a buffer of the given size}\label{tab:fit}
-\setlength{\tabcolsep}{2.5pt}\scriptsize\TabFit
-\end{table}
-
-\subsection{Inside a compiler}
-\label{sec:e2e}
-We routed chibicc's variable scopes through each bounded table. Both builds produce assembly identical to the original compiler on all \ChibiSame{} units the original compiles. Whole-project compile time over \ChibiRounds{} interleaved rounds changes by \ChibiTimeMin\% to \ChibiTimeMax\% with \st{} (established slower on \ChibiStrataSlowN{} of \ChibiProjects{} projects, faster on none) and by \ChibiArenaTimeMin\% to \ChibiArenaTimeMax\% with \ac{} (no established difference); peak resident memory changes by a median of \ChibiRssMed\% per unit. chibicc spends little of its time in scope lookups and never frees its tokens and syntax trees, so neither table gives an end-to-end benefit in this hosted compiler. Replaying chibicc's own scope calls, where the tables are measured alone, \st{} is established faster than chibicc's per-scope maps on \ChibiVsMapFastN{} of \ChibiTraces{} traces and established slower than \ac{} on \ChibiVsArenaSlowN{}.
-
-\subsection{Other tables and stress cases}
-Table~\ref{tab:time} gives replay times on the TinyCC traces. The interning flat map is faster than \st{} on \SwissSlowerN{} of \NTraces{} traces (median \SwissTimeMed\%) and uses the most memory of all tables. The interquartile range of raw replay times has a median of \IqrMed\% of the median, which is why only paired differences are reported. With every key forced into one probe cluster a lookup among 4{,}096 names takes \WcHit\,ns instead of \WcHitNormal\,ns: results stay correct but there is no defence against adversarial keys. On the emulated Cortex-M3, \st{} replayed \EmbN{} traces from buffers of \EmbBufMin--\EmbBufMax\,KiB with host-identical results, \EmbStack{} bytes of stack and \EmbCode{} bytes of code.
-
-\begin{table}[t]
-\centering\caption{Replay time on the TinyCC traces, ns per trace operation, median of \Rounds{} rounds (lowest in bold)}\label{tab:time}
-\setlength{\tabcolsep}{1pt}\scriptsize\TabTime
-\end{table}
-
-\section{Related Work}
-\label{sec:related}
-A single hash table with an auxiliary stack unwound at scope exit is described in compiler textbooks~\cite{appel1998,aho2006} and implemented in LLVM's \code{ScopedHashTable}~\cite{llvmsht}; chained tables over arenas popped at scope exit are equally standard, and arena allocation by lifetime is long established in compilers~\cite{hanson1990}. Clang separates an identifier table from a resolver~\cite{clangident}; TinyCC keeps a per-token symbol pointer with symbol stacks~\cite{tcc}; chibicc uses a hash map per scope~\cite{chibicc}. Character packing goes back to RADIX-50~\cite{radix50}. We found no published comparison of these designs under a hard memory bound on compiler-generated events, but our search of prior work was not systematic.
-
-\section{Threats to Validity}
-\emph{Workloads.} Two compilers, C only. Languages with heavier shadowing or longer names (C++ in particular) may sit elsewhere in the $(\sigma, L)$ plane; the sweep covers that plane only synthetically. Three Mbed TLS files that TinyCC rejects and twelve units that chibicc rejects are missing. \emph{Hardware.} All timings come from one laptop under a hypervisor; the microcontroller results are from an instruction-level emulator and include no timing. \emph{Baselines.} All tables except METIS-X's were written by us after known designs; they are not the production code of LLVM or Clang. \emph{Integration.} In chibicc only variable scopes were replaced, and file-scope declarations are kept in a second table instance to answer chibicc's global lookups, which slightly penalises both bounded tables. \emph{Causes.} We did not separate the cost of packing from that of open addressing, and the sweep's time results are not monotone in the shadowing factor for reasons we did not isolate. \emph{Correctness.} The argument of Section~\ref{sec:correct} is informal.
-
-\section{Conclusion}
-Under a hard memory bound, the first-order gain over a per-declaration heap-allocating table comes from allocation-free arena storage, which the conventional chained design provides and provides faster. A compact interning design saves roughly a sixth more memory on ordinary C code, where live names are almost never shadowed, at a clear cost in time. Its saving grows with the shadowing factor as a simple model predicts; its speed does not, and depends on identifier length instead. The saving determines whether a workload fits only when the budget lies within that margin of the need. Inside a hosted compiler neither design improves time or memory end to end. For a memory-constrained C compiler the conventional design is therefore the default, and the compact one is justified only when the table budget is the binding constraint or the language shadows heavily.
-
+\ifdefined\anonymous
+\else
 \section*{Acknowledgment}
-An AI coding assistant (Claude, Anthropic) was used extensively for the implementation, the experiments and the drafting of this paper. The authors are responsible for verifying the code and the claims.
+The authors thank Bhuvaneswari~M. for guiding the project from which this work grew. \authorfill{confirm the wording and the guide's affiliation.}
 
-\section*{Data and Code Availability}
-Source code, traces, raw measurements (run \code{\RunId}) and the scripts that generate every table and figure are in the project repository. METIS-X, chibicc, TinyCC and the Swiss-table library are fetched at pinned versions and are not redistributed.
+The implementation, the experiments, the analysis and the text of this manuscript were produced with the assistance of an artificial-intelligence coding assistant (Claude, Anthropic) working at the direction of the first author; this applies to every section. \authorfill{the authors must review this statement, verify every result themselves, adapt it to the venue's policy, and confirm that they accept responsibility for the entire content.}
+\fi
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
+
 \end{document}

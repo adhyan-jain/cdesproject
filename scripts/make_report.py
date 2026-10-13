@@ -22,7 +22,14 @@ R1 = "20261011-160113-full"       # an earlier run of the same version-1 code
 S = os.path.join("results", "summary", run)
 R = os.path.join("results", "raw", run)
 rd = lambda name, r=None: pd.read_csv(os.path.join("results", "summary", r or run, name))
-raw = lambda name, r=None: pd.read_csv(os.path.join("results", "raw", r or run, name))
+def raw(name, r=None):
+    df = pd.read_csv(os.path.join("results", "raw", r or run, name))
+    # see analyze.py: the compiler_* files of some runs also contain the chibicc traces
+    if name.startswith(("compiler_", "budget")) and "trace" in df.columns:
+        df = df[~df.trace.astype(str).str.startswith("chibicc_")].reset_index(drop=True)
+    return df
+
+
 
 ovn, allb, bud = rd("compiler_old_vs_new.csv"), rd("compiler_strata_vs_all.csv"), rd("budget_min_buffer.csv")
 rt, work = rd("compiler_replay_time.csv"), rd("compiler_workloads.csv")

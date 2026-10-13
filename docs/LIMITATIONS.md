@@ -123,3 +123,23 @@
 - **No 32-bit host build of the unit tests.** The 32-bit evidence is still the emulated Cortex-M3 replay (now also in bounded mode); a `-m32` multilib was not installed.
 - **Sources for trace regeneration are not checksum-pinned.** `tools/tcc-trace/make_traces.sh` fetches projects by tag or URL. The stored traces, not a regeneration, are what the results use.
 - **Not applicable rather than untested:** the project has no web interface, service, authentication or database; nothing was tested in a browser.
+
+## Updated on 2026-10-13 by the full re-run (run `20261013-143828-paper`)
+
+- **The chibicc integration was repeated with the final code** (`results/chibicc/`; the
+  measurements of 2026-10-11 are kept in `results/chibicc-20261011/`). Assembly identical on
+  158 of 158 units for both tables. Whole-project compile time with STRATA: between -3.7% and
+  +2.2% against the original compiler, established slower on 1 of 7 projects (Mbed TLS, +1.4%)
+  and faster on none. With the arena table: -3.1% to +4.3%, faster on 3. The earlier statement
+  "STRATA established slower on 3 of 7 projects (up to about 4%)" described the older code.
+  The conclusion is unchanged: end to end, in a hosted compiler, neither table matters.
+- **Per-trace timing verdicts against `arena_chain` are not stable between runs.** Run
+  `20261013-125704-final`: faster on 2, slower on 3, not established on 3 (-10.7% to +7.0%).
+  Run `20261013-143828-paper` (same code): faster on 0, slower on 2, not established on 6
+  (-10.6% to +10.7%). Both support "within about 10%", neither supports a ranking per trace.
+- **The embedded bounded-mode test now uses a probe limit of 512**, the value the analysis
+  supports; `PROBE_LIMIT=64 bash tools/embedded/bounded.sh` reproduces the earlier setting.
+- `scripts/run_all.sh` measured the seven chibicc traces together with the eight TinyCC
+  traces in this run (they were present in `build/traces/`). The analysis scripts now keep the
+  two sets apart, and `run_all.sh` skips the chibicc traces in future runs; they are measured
+  by `scripts/run_extra.sh`.

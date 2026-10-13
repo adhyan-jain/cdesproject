@@ -13,7 +13,7 @@
 //
 //   hardening --mode traces --trace FILE --name LABEL --out FILE.csv
 //       Replays a compiler trace in bounded mode (static index sized from a first pass)
-//       for several probe limits, with and without the keyed hash: refused declarations,
+//       for probe limits from 4 to 512, with and without the keyed hash: refused declarations,
 //       longest probe sequence, wrong lookups against the reference model, peak bytes.
 //
 //   hardening --mode probes --out FILE.csv [--reps N]
@@ -252,7 +252,7 @@ static int mode_traces(const std::string& path, const std::string& name, const s
         std::fprintf(fo, "trace,hash,index_slots,max_probe,declares,refused_probe_limit,refused_memory,wrong_lookups,"
                          "longest_probe,peak_used_bytes,growing_index_peak_used_bytes,rebuilds\n");
     std::vector<uint32_t> buf(1u << 22);
-    const uint32_t limits[] = {0, 4, 8, 16, 32, 64, 128};
+    const uint32_t limits[] = {0, 4, 8, 16, 32, 64, 128, 256, 512};
     for (int keyed = 0; keyed < 2; ++keyed) {
         for (size_t li = 0; li < sizeof limits / sizeof limits[0]; ++li) {
             strata::Options o;

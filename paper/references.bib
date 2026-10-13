@@ -1,85 +1,41 @@
-% References for paper/main.tex.
-% Entries marked VERIFIED were checked against a publisher page, the project's own
-% site or its source code during this project. Entries marked STANDARD are well-known
-% books or papers cited for a technique, not for a number; their bibliographic details
-% were not re-checked and must be confirmed by the authors before submission.
+% References for main.tex. Verification status of every entry: ../REFERENCE_AUDIT.md
 
-% status: STANDARD
 @book{aho2006,
   author    = {Alfred V. Aho and Monica S. Lam and Ravi Sethi and Jeffrey D. Ullman},
   title     = {Compilers: Principles, Techniques, and Tools},
   edition   = {2nd},
   publisher = {Addison-Wesley},
+  address   = {Boston, MA, USA},
   year      = {2006}
 }
-% status: STANDARD
+
 @book{appel1998,
   author    = {Andrew W. Appel},
   title     = {Modern Compiler Implementation in {C}},
   publisher = {Cambridge University Press},
-  year      = {1998}
+  address   = {Cambridge, U.K.},
+  year      = {1998},
+  doi       = {10.1017/CBO9781139174930}
 }
-% status: VERIFIED: page retrieved October 2026
-@misc{llvmsht,
-  author       = {{LLVM Project}},
-  title        = {{ScopedHashTable.h}, {LLVM} {ADT} library},
-  howpublished = {\url{https://llvm.org/doxygen/ScopedHashTable_8h_source.html}}
-}
-% status: VERIFIED: file headers retrieved October 2026
-@misc{clangident,
-  author       = {{LLVM Project}},
-  title        = {{IdentifierTable.cpp} and {IdentifierResolver.h}, {Clang}},
-  howpublished = {\url{https://github.com/llvm/llvm-project/tree/main/clang}}
-}
-% status: VERIFIED: source code read and instrumented
-@misc{tcc,
-  author       = {Fabrice Bellard and {TinyCC contributors}},
-  title        = {{Tiny C Compiler}},
-  howpublished = {\url{https://repo.or.cz/tinycc.git}, commit 43c7708}
-}
-% status: STANDARD
-@inproceedings{celis1985,
-  author    = {Pedro Celis and Per-{\AA}ke Larson and J. Ian Munro},
-  title     = {Robin {Hood} Hashing},
-  booktitle = {Proc. 26th Annual Symposium on Foundations of Computer Science (FOCS)},
-  year      = {1985}
-}
-% status: VERIFIED: institutional publication record
-@inproceedings{bender2021,
-  author    = {Michael A. Bender and Bradley C. Kuszmaul and William Kuszmaul},
-  title     = {Linear Probing Revisited: Tombstones Mark the Demise of Primary Clustering},
-  booktitle = {Proc. 62nd IEEE Annual Symposium on Foundations of Computer Science (FOCS)},
-  pages     = {1171--1182},
-  year      = {2021},
-  doi       = {10.1109/FOCS52979.2021.00115}
-}
-% status: STANDARD
-@misc{swisstables,
-  author       = {{Abseil}},
-  title        = {Swiss Tables Design Notes},
-  howpublished = {\url{https://abseil.io/about/design/swisstables}}
-}
-% status: VERIFIED: tag v1.4.1 fetched and compiled
-@misc{phmap,
-  author       = {Gregory Popovitch},
-  title        = {The Parallel Hashmap, version 1.4.1},
-  howpublished = {\url{https://github.com/greg7mdp/parallel-hashmap}}
-}
-% status: VERIFIED: page retrieved October 2026; a primary DEC manual should replace this entry
-@misc{radix50,
-  author       = {{Wikipedia contributors}},
-  title        = {{DEC RADIX 50}},
-  howpublished = {\url{https://en.wikipedia.org/wiki/DEC_RADIX_50}}
-}
-% status: STANDARD
+
 @book{knuth3,
   author    = {Donald E. Knuth},
   title     = {The Art of Computer Programming, Volume 3: Sorting and Searching},
   edition   = {2nd},
   publisher = {Addison-Wesley},
+  address   = {Reading, MA, USA},
   year      = {1998}
 }
-% status: STANDARD
+
+@inproceedings{graham1979,
+  author    = {Susan L. Graham and William N. Joy and Olivier Roubine},
+  title     = {Hashed Symbol Tables for Languages With Explicit Scope Control},
+  booktitle = {Proc. SIGPLAN Symposium on Compiler Construction},
+  pages     = {50--57},
+  year      = {1979},
+  doi       = {10.1145/800229.806953}
+}
+
 @article{hanson1990,
   author  = {David R. Hanson},
   title   = {Fast Allocation and Deallocation of Memory Based on Object Lifetimes},
@@ -87,24 +43,178 @@
   volume  = {20},
   number  = {1},
   pages   = {5--12},
-  year    = {1990}
+  year    = {1990},
+  doi     = {10.1002/spe.4380200104}
 }
-% status: STANDARD
+
+@inproceedings{celis1985,
+  author    = {Pedro Celis and Per-{\AA}ke Larson and J. Ian Munro},
+  title     = {Robin {Hood} Hashing},
+  booktitle = {Proc. 26th Annual Symposium on Foundations of Computer Science (SFCS)},
+  pages     = {281--288},
+  year      = {1985},
+  doi       = {10.1109/SFCS.1985.48}
+}
+
+@inproceedings{bender2021,
+  author    = {Michael A. Bender and Bradley C. Kuszmaul and William Kuszmaul},
+  title     = {Linear Probing Revisited: Tombstones Mark the Demise of Primary Clustering},
+  booktitle = {Proc. IEEE 62nd Annual Symposium on Foundations of Computer Science (FOCS)},
+  pages     = {1171--1182},
+  year      = {2021},
+  doi       = {10.1109/FOCS52979.2021.00115}
+}
+
+@inproceedings{pagh2007,
+  author    = {Anna Pagh and Rasmus Pagh and Milan Ru{\v{z}}i{\'c}},
+  title     = {Linear Probing With Constant Independence},
+  booktitle = {Proc. 39th Annual ACM Symposium on Theory of Computing (STOC)},
+  pages     = {318--327},
+  year      = {2007},
+  doi       = {10.1145/1250790.1250839}
+}
+
+@misc{thorup2015,
+  author        = {Mikkel Thorup},
+  title         = {Linear Probing With 5-Independent Hashing},
+  year          = {2015},
+  howpublished  = {arXiv:1509.04549},
+  note          = {[Online]. Available: \url{https://arxiv.org/abs/1509.04549}}
+}
+
+@inproceedings{naor2001,
+  author    = {Moni Naor and Vanessa Teague},
+  title     = {Anti-Persistence: History Independent Data Structures},
+  booktitle = {Proc. 33rd Annual ACM Symposium on Theory of Computing (STOC)},
+  pages     = {492--501},
+  year      = {2001},
+  doi       = {10.1145/380752.380844}
+}
+
+@inproceedings{blelloch2007,
+  author    = {Guy E. Blelloch and Daniel Golovin},
+  title     = {Strongly History-Independent Hashing With Applications},
+  booktitle = {Proc. 48th Annual IEEE Symposium on Foundations of Computer Science (FOCS)},
+  pages     = {272--282},
+  year      = {2007},
+  doi       = {10.1109/FOCS.2007.36}
+}
+
+@inproceedings{crosby2003,
+  author    = {Scott A. Crosby and Dan S. Wallach},
+  title     = {Denial of Service via Algorithmic Complexity Attacks},
+  booktitle = {Proc. 12th USENIX Security Symposium},
+  year      = {2003},
+  note      = {[Online]. Available: \url{https://www.usenix.org/conference/12th-usenix-security-symposium/denial-service-algorithmic-complexity-attacks}}
+}
+
+@inproceedings{aumasson2012,
+  author    = {Jean-Philippe Aumasson and Daniel J. Bernstein},
+  title     = {{SipHash}: A Fast Short-Input {PRF}},
+  booktitle = {Progress in Cryptology -- INDOCRYPT 2012},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {7668},
+  pages     = {489--508},
+  publisher = {Springer},
+  year      = {2012},
+  doi       = {10.1007/978-3-642-34931-7_28}
+}
+
+@misc{aumassonslides,
+  author       = {Jean-Philippe Aumasson and Daniel J. Bernstein and Martin Bo{\ss}let},
+  title        = {Hash-Flooding {DoS} Reloaded: Attacks and Defenses},
+  year         = {2012},
+  howpublished = {Presentation slides},
+  note         = {[Online]. Available: \url{https://www.aumasson.jp/siphash/siphashdos_appsec12_slides.pdf}}
+}
+
+@misc{linuxsiphash,
+  author       = {Jason A. Donenfeld},
+  title        = {{SipHash} -- A Short Input {PRF}},
+  howpublished = {Linux kernel documentation},
+  note         = {[Online]. Available: \url{https://docs.kernel.org/security/siphash.html}. Accessed: Oct. 13, 2026}
+}
+
+@misc{siphashref,
+  author       = {Jean-Philippe Aumasson},
+  title        = {{SipHash} and {HalfSipHash} Reference Implementation},
+  note         = {[Online]. Available: \url{https://github.com/veorq/SipHash}. Accessed: Oct. 13, 2026}
+}
+
 @misc{murmur3,
   author       = {Austin Appleby},
-  title        = {{MurmurHash3}, {SMHasher}},
-  howpublished = {\url{https://github.com/aappleby/smhasher}}
+  title        = {{MurmurHash3}, in {SMHasher}},
+  note         = {[Online]. Available: \url{https://github.com/aappleby/smhasher}. Accessed: Oct. 13, 2026}
 }
-% status: VERIFIED: audited for this work
-@misc{metis,
-  author       = {Adhyan Jain and Shubhi Singh},
-  title        = {{METIS}: symbol-table research repository, commit 7b3dacf},
-  howpublished = {\url{https://github.com/adhyan-jain/Metis}},
-  year         = {2026}
-}% status: VERIFIED: repository cloned, commit 90d1f7f patched and built
+
+@misc{llvmsht,
+  author       = {{LLVM Project}},
+  title        = {{ScopedHashTable.h}, {LLVM} {ADT} Library},
+  note         = {[Online]. Available: \url{https://llvm.org/doxygen/ScopedHashTable_8h_source.html}. Accessed: Oct. 13, 2026}
+}
+
+@misc{tcc,
+  author       = {Fabrice Bellard and {TinyCC contributors}},
+  title        = {{Tiny C Compiler}, Commit 43c7708},
+  note         = {[Online]. Available: \url{https://repo.or.cz/tinycc.git}. Accessed: Oct. 11, 2026}
+}
+
 @misc{chibicc,
   author       = {Rui Ueyama},
-  title        = {chibicc: A Small {C} Compiler},
-  howpublished = {\url{https://github.com/rui314/chibicc}, commit 90d1f7f},
-  year         = {2020}
+  title        = {chibicc: A Small {C} Compiler, Commit 90d1f7f},
+  note         = {[Online]. Available: \url{https://github.com/rui314/chibicc}. Accessed: Oct. 11, 2026}
+}
+
+@misc{phmap,
+  author       = {Gregory Popovitch},
+  title        = {The Parallel Hashmap, Version 1.4.1},
+  note         = {[Online]. Available: \url{https://github.com/greg7mdp/parallel-hashmap}. Accessed: Oct. 13, 2026}
+}
+
+@misc{micropython,
+  author       = {{MicroPython Project}},
+  title        = {{MicroPython} String Interning},
+  note         = {[Online]. Available: \url{https://docs.micropython.org/en/latest/develop/qstr.html}. Accessed: Oct. 13, 2026}
+}
+
+@misc{rustchash,
+  author       = {{Rust Project Developers}},
+  title        = {rustc-hash: A Speedy, Non-Cryptographic Hashing Algorithm Used by rustc},
+  note         = {[Online]. Available: \url{https://github.com/rust-lang/rustc-hash}. Accessed: Oct. 13, 2026}
+}
+
+@misc{metis,
+  author       = {Adhyan Jain and Shubhi Singh},
+  title        = {{METIS}: Symbol-Table Research Repository, Commit 7b3dacf},
+  year         = {2026},
+  note         = {[Online]. Available: \url{https://github.com/adhyan-jain/Metis}. Accessed: Oct. 11, 2026}
+}
+
+@misc{strata,
+  author       = {Shubhi Singh and Adhyan Jain and Akshith Venkatataramana and Arjuman},
+  title        = {{STRATA}: Source Code, Traces, and Measurements},
+  year         = {2026},
+  note         = {[Online]. Available: \url{https://github.com/shubhisingh1510/cdesproject}}
+}
+
+@article{pagh2004,
+  author  = {Rasmus Pagh and Flemming Friche Rodler},
+  title   = {Cuckoo Hashing},
+  journal = {Journal of Algorithms},
+  volume  = {51},
+  number  = {2},
+  pages   = {122--144},
+  year    = {2004},
+  doi     = {10.1016/j.jalgor.2003.12.002}
+}
+
+@inproceedings{herlihy2008,
+  author    = {Maurice Herlihy and Nir Shavit and Moran Tzafrir},
+  title     = {Hopscotch Hashing},
+  booktitle = {Distributed Computing},
+  series    = {Lecture Notes in Computer Science},
+  pages     = {350--364},
+  publisher = {Springer},
+  year      = {2008},
+  doi       = {10.1007/978-3-540-87779-0_24}
 }

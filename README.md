@@ -19,24 +19,32 @@ a pinned commit and is not stored here.
 > Status: research artifact and paper draft. Not peer reviewed, not submitted, not integrated
 > into a compiler, run on an emulated microcontroller only. See `docs/LIMITATIONS.md`.
 
-## Update of 2026-10-13 (after the reported run)
+## Current results (2026-10-13)
 
-Three things changed after the run described below; details in `reports/` and
-`docs/PROBE_LIMIT_ANALYSIS.md`.
+Full pipeline on the final code: run `20261013-143828-paper`, 31 paired rounds, 8 TinyCC
+traces. Every number is in `docs/RESULTS.md` (regenerated from that run) and in the paper
+(`paper/main.pdf`, 14 pages; `paper/short.pdf`, 3 pages), whose numbers are generated from the
+same raw files by `manuscript/tools/make_numbers.py`.
 
-| What | Before | Now (run `20261013-125704-final`, 31 paired rounds, 8 TinyCC traces) |
-|---|---|---|
-| Replay time against the conventional single-buffer table | STRATA slower on 7 of 8 traces, 11-34% | level: faster on 2 (4.5%, 10.7%), slower on 3 (1.7-7.0%), not established on 3; memory advantage (16-18% smaller buffer) unchanged |
-| Replay time against METIS-X | faster on 7, slower on 1 | faster on 8 of 8, by 15.5% to 36.1% |
-| Why it was slower | not known | found: the whole index was rebuilt on every buffer growth, every name was hashed twice per rebuild, and each new name walked its probe path twice. All three removed; every correctness and memory figure is bit-identical (1 248 values compared) |
-| Untrusted input | identifiers that collide for every seed slow declarations 281-fold at 32 768 names | opt-in bounded mode: keyed hash, static index, probe limit with a defined refusal |
-| How to choose the probe limit | not addressed | a bound with proof and a measurement on 240 million samples; a limit of 64 is **not** safe at full load (0.8% refused), 512 is (bound 1.1e-7) |
-| Does the table degrade with use? | not addressed | no: after any sequence of operations the state is bit-for-bit that of a fresh table holding only the live declarations (canonical-state property, proved and tested) |
+| Question | Measured |
+|---|---|
+| Memory against a conventional single-buffer table (`arena_chain`) | smallest fixed buffer 16.4% to 17.9% smaller on every trace; 27 to 36 bytes per live declaration |
+| Replay time against `arena_chain` | not faster: slower on 2 traces (7.2%, 10.7%), no established difference on 6. An earlier run of the same code gave faster on 2, slower on 3. Both runs: within about 10% |
+| Against METIS-X (multi-allocation predecessor) | peak heap 23% to 76% lower; replay 15.9% to 36.7% faster on 8 of 8. The conventional table gets most of this too |
+| Why an earlier version was 11-34% slower than `arena_chain` | rebuild work: the index was rebuilt on every buffer growth, names were hashed twice per rebuild, new names walked their probe path twice. Removed; memory and correctness figures unchanged |
+| Inside a compiler (chibicc, variable scopes) | identical assembly on 158 of 158 units; whole-project compile time -3.7% to +2.2%: no end-to-end benefit in a hosted compiler |
+| Hostile identifiers | names that collide for every seed slow declarations about 300-fold at 32 768 names; the keyed hash removes it and costs 20% to 32% of replay time |
+| Probe limit | a limit of 64 refuses nothing on 15 compiler traces but is not safe in general (0.77% of fresh names exceed it at full load); the bound in `docs/PROBE_LIMIT_ANALYSIS.md` supports 512 |
+| Does the table degrade with use? | no: after any sequence of operations it is bit-for-bit a fresh table holding only the live declarations (argued and tested) |
+| Emulated Cortex-M3, 64 KiB, no heap | 5 traces pass in fixed mode and in bounded mode (probe limit 512, keyed hash); 2.7 KB of code. Not hardware |
 
-The tables below this section describe the reported run `20261011-165103-v3` and are kept as
-measured then.
+Status of the paper, the novelty assessment and what still needs human approval:
+`NOVELTY_GATE.md`, `SUBMISSION_READINESS.md`, `submission/`.
 
-## Results at a glance
+The section below is **historical**: it describes the first reported run `20261011-165103-v3`,
+made before the rebuild change, and is kept as measured then.
+
+## Results at a glance (historical, run of 2026-10-11)
 
 Run `20261011-165103-v3`: 31 paired rounds, 12 tables, 8 compiler traces (cJSON, littlefs,
 zlib, Lua, FreeRTOS-Kernel, Mbed TLS, TinyCC, SQLite as compiled by an instrumented Tiny C
@@ -124,7 +132,7 @@ Limits: names 1–255 bytes, scope depth 16 383, buffer 64 MiB, 32-bit value, 8-
 
 An audit (`reports/`) confirmed a weakness the limitations already named: the default hash is
 unkeyed, and C identifiers that collide in it **for every seed** can be constructed.
-Declaring 32 768 such names takes 1.25 s against 4.4 ms for ordinary names of the same length
+Declaring 32 768 such names takes about 300 times as long as ordinary names of the same length
 (`results/hardening/flood.csv`). Two opt-in defences were added; the default behaviour and the
 results above are unchanged.
 
@@ -141,11 +149,11 @@ strata::Table t(buffer, sizeof buffer, o);
 |---|---|
 | Does the attack still work? | Keyed hash: colliding and ordinary names cost the same (ratio 0.9–1.1). Probe limit with the unkeyed hash: all but 64 of the colliding names are refused and time grows linearly instead of quadratically. |
 | Does the limit get in the way of real programs? | On the 15 stored compiler traces (719 833 declarations) a limit of 64 refused nothing, 32 refused 51, 16 more than 500. That is an observation, not a guarantee: at full load (3/4) about 0.8% of fresh names need more than 64 probes. The analysis in `docs/PROBE_LIMIT_ANALYSIS.md` gives a refusal probability of at most 1.1e-7 per declaration for a limit of 512, and none was seen in 10 million samples. |
-| What does it cost? | Memory: identical peak to the growing index. Time: the keyed hash makes replay 19–31% slower on the 8 TinyCC traces. Code on Cortex-M3: +158 bytes for everything added on 2026-10-13. |
+| What does it cost? | Memory: identical peak to the growing index. Time: the keyed hash makes replay 20–32% slower on the 8 TinyCC traces. Code on Cortex-M3: +158 bytes for everything added on 2026-10-13. |
 | Does a refusal keep the all-or-nothing guarantee? | Yes; checked by the unit tests, 80.6 million exhaustively enumerated operation sequences and 14.5 million fuzzing runs (`reports/TEST_RESULTS.md`). |
 
 None of the mechanisms is new: keyed hashing against flooding and probe limits are established
-techniques. The honest novelty assessment after this work is 6.0/10 (`reports/NOVELTY_ASSESSMENT.md`).
+techniques. The assessment of what is and is not new is in `NOVELTY_GATE.md`.
 The paper in `paper/` does **not** describe this mode yet.
 
 ## Repository layout
