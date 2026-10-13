@@ -61,3 +61,14 @@ authors agree.
 C++14, header-only core, no dependency beyond the C library. Benchmarks need Linux/glibc
 (`malloc_usable_size`, `/proc`) and x86 (`rdtscp`); those parts are isolated in
 `benchmarks/common.hpp`.
+
+## Repository visibility: status on 2026-10-13
+
+The section above records the decision of 2026-10-11 to keep the repository private because of
+the patent advisory in the METIS repository and because the co-author had not been asked.
+On 2026-10-13 the repository owner (Shubhi Singh) made the repository **public** by explicit
+instruction, after being reminded of the advisory. This file does not record whether the
+co-authors, the guide or the institution agreed, or whether the advisory still applies. That
+question is **open** and is a human decision; it is listed in `SUBMISSION_READINESS.md`. The
+repository still contains no METIS code. Whatever its outcome, publication of this repository
+is a public disclosure that cannot be undone.
