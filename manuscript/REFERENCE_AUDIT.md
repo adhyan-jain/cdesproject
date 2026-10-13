@@ -1,7 +1,7 @@
 # Reference audit
 
-2026-10-13. All 25 entries of `overleaf/references.bib` are cited in `main.tex` and all 25
-citations resolve (checked by `tools/check_manuscript.py`). No duplicate keys.
+2026-10-13. All 27 entries of `paper/references.bib` (copied to `overleaf/references.bib`) are cited in
+`main.tex` and all 27 citations resolve (checked by `tools/check_manuscript.py`). No duplicate keys.
 
 Verification levels:
 
@@ -37,6 +37,8 @@ Verification levels:
 | 23 | `chibicc` | CODE | repository cloned, commit 90d1f7f patched and built (earlier session) | second trace source | none |
 | 24 | `phmap` | CODE | v1.4.1 at commit 22a7f6c fetched and compiled | Swiss-table baselines | none |
 | 25 | `strata` | CODE | this project's public repository | artifact | the entry lists the four authors in the manuscript's order; add a commit or release tag once the submission version is frozen |
+| 26 | `pagh2004` | DOI | 10.1016/j.jalgor.2003.12.002; Journal of Algorithms 51(2), pp. 122-144, 2004 | cuckoo hashing as a bounded-probe dictionary that moves keys | abstract level only |
+| 27 | `herlihy2008` | DOI | 10.1007/978-3-540-87779-0_24; "Hopscotch Hashing", in *Distributed Computing*, LNCS, pp. 350-364, 2008. The volume number is not in the Crossref record and is therefore not given | hopscotch hashing as a bounded-neighbourhood dictionary | abstract level only |
 
 ## Not cited, although considered
 

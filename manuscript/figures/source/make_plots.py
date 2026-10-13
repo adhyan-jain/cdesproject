@@ -17,7 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUTS = [os.path.join(HERE, ".."), os.path.join(HERE, "..", "..", "overleaf", "figures")]
+OUTS = [os.path.join(HERE, ".."), os.path.join(HERE, "..", "..", "..", "paper", "figures")]
 BLUE, ORANGE, AQUA, YELLOW = "#2a78d6", "#eb6834", "#1baf7d", "#eda100"
 INK, MUTED = "#222222", "#888888"
 plt.rcParams.update({
@@ -74,13 +74,11 @@ for y, r in zip(ys, rows):
 ax.axvline(0, color=INK, linewidth=0.6, zorder=1)
 ax.set_yticks(ys)
 ax.set_yticklabels([r["label"] for r in rows])
-ax.set_xlabel("Replay time of STRATA relative to the conventional table (%)")
+ax.set_xlabel("Replay time of STRATA relative to the conventional table\n(%; negative: STRATA is faster)")
 ax.xaxis.grid(True, zorder=0)
 ax.set_axisbelow(True)
 ax.set_ylim(-0.6, len(rows) - 0.4)
 ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2, handlelength=1.2, columnspacing=1.2)
-ax.text(0.6, -0.5, "slower", fontsize=6.5, color=MUTED, ha="left", va="bottom")
-ax.text(-0.6, -0.5, "faster", fontsize=6.5, color=MUTED, ha="right", va="bottom")
 save(fig, "fig_time.pdf")
 
 # ---- Fig.: hash flooding ----------------------------------------------------------------------

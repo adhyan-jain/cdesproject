@@ -107,6 +107,15 @@ A.~Pagh, R.~Pagh, and M.~Ru{\v{z}}i{\'c}, ``Linear probing with constant
 M.~Thorup, ``Linear probing with 5-independent hashing,'' arXiv:1509.04549,
   2015, [Online]. Available: \url{https://arxiv.org/abs/1509.04549}.
 
+\bibitem{pagh2004}
+R.~Pagh and F.~F. Rodler, ``Cuckoo hashing,'' \emph{Journal of Algorithms},
+  vol.~51, no.~2, pp. 122--144, 2004.
+
+\bibitem{herlihy2008}
+M.~Herlihy, N.~Shavit, and M.~Tzafrir, ``Hopscotch hashing,'' in
+  \emph{Distributed Computing}, ser. Lecture Notes in Computer Science.\hskip
+  1em plus 0.5em minus 0.4em\relax Springer, 2008, pp. 350--364.
+
 \bibitem{aumassonslides}
 J.-P. Aumasson, D.~J. Bernstein, and M.~Bo{\ss}let, ``Hash-flooding {DoS}
   reloaded: Attacks and defenses,'' Presentation slides, 2012, [Online].

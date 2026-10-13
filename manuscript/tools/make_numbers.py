@@ -6,8 +6,8 @@
 Reads the raw CSV files of one full run (default: the newest results/raw/*-paper), the two
 runs that bracket the rebuild change, and results/hardening/. Writes
 
-    manuscript/overleaf/generated_numbers.tex    scalar macros (\\newcommand)
-    manuscript/overleaf/tables/tab_*.tex         tabular bodies
+    paper/generated_numbers.tex    scalar macros (\\newcommand)
+    paper/tables/tab_*.tex         tabular bodies
     manuscript/figures/source/data_*.csv         the series plotted by make_plots.py
 
 No number in main.tex is typed by hand; change the data, rerun this, recompile.
@@ -23,7 +23,8 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 RUN = sys.argv[1] if len(sys.argv) > 1 else sorted(glob.glob(os.path.join(ROOT, "results/raw/*-paper")))[-1]
 BEFORE = os.path.join(ROOT, "results/raw/20261013-120345-audit")    # before the rebuild change
-OUT = os.path.join(ROOT, "manuscript/overleaf")
+OUT = os.path.join(ROOT, "paper")    # canonical; manuscript/tools/sync_body.py copies to the Overleaf project
+os.makedirs(os.path.join(OUT, "tables"), exist_ok=True)
 DATA = os.path.join(ROOT, "manuscript/figures/source")
 TRACES = ["cjson", "littlefs", "zlib", "lua", "freertos", "mbedtls", "tinycc", "sqlite"]
 LABEL = {"cjson": "cJSON", "littlefs": "littlefs", "zlib": "zlib", "lua": "Lua", "freertos": "FreeRTOS",
@@ -164,6 +165,23 @@ for t in TRACES:
             cells.append(verdict(lo, hi))
     lines.append(" & ".join(cells) + " \\\\")
 write("tab_time.tex", lines)
+# spread of the raw replay times: interquartile range over median, per table and trace
+iqr = []
+for (t, i), v in R.items():
+    if t in TRACES:
+        q = statistics.quantiles(v, n=4)
+        iqr.append((q[2] - q[0]) / statistics.median(v) * 100)
+macros["IqrMedian"] = f"{statistics.median(iqr):.0f}"
+# one compact table for the four-page version: memory and time per trace
+lines = []
+for t in TRACES:
+    st_ = int(B[(t, "packed", "1.00")]["min_buffer_bytes"])
+    ar_ = int(B[(t, "arena_chain", "1.00")]["min_buffer_bytes"])
+    p, lo, hi = res["sa"][t]
+    pm, lom, him = res["sm"][t]
+    lines.append(f"{LABEL[t]} & {st_ / 1024:.1f} & {ar_ / 1024:.1f} & {(1 - st_ / ar_) * 100:.1f} & "
+                 f"{pct(p)} [{pct(lo)}, {pct(hi)}] & {pct(pm)} [{pct(lom)}, {pct(him)}] \\\\")
+write("tab_short.tex", lines)
 
 
 def counts(k):
@@ -374,15 +392,47 @@ assert sum(int(r["wrong_lookups"]) for r in T) == 0 and sum(int(r["rebuilds"]) f
 ntr = len({r["trace"] for r in T})
 decl = sum(int(r["declares"]) for r in T if r["hash"] == "murmur3" and r["max_probe"] == "0")
 lines = []
-for L in ("4", "8", "16", "32", "64", "128"):
+for L in ("4", "8", "16", "32", "64", "128", "256", "512"):
     d = [r for r in T if r["max_probe"] == L and r["hash"] == "murmur3"]
     k = [r for r in T if r["max_probe"] == L and r["hash"] == "halfsiphash13"]
     lines.append(f"{L} & {num(sum(int(r['refused_probe_limit']) for r in d))} & {sum(1 for r in d if int(r['refused_probe_limit']))} & "
                  f"{num(sum(int(r['refused_probe_limit']) for r in k))} & {sum(1 for r in k if int(r['refused_probe_limit']))} \\\\")
 write("tab_bounded.tex", lines)
 macros.update(BoundedTraces=str(ntr), BoundedDecls=num(decl), BoundedLongest=str(max(int(r["longest_probe"]) for r in T)),
-              BoundedSamePeak=str(all(r["peak_used_bytes"] == r["growing_index_peak_used_bytes"] for r in T if r["max_probe"] in ("0", "64", "128"))))
+              BoundedSamePeak=str(all(r["peak_used_bytes"] == r["growing_index_peak_used_bytes"] for r in T if r["max_probe"] in ("0", "64", "128", "256", "512"))))
 assert macros["BoundedSamePeak"] == "True"
+
+# ---- end to end inside a compiler (chibicc) ---------------------------------------------------
+CH = os.path.join(ROOT, "results/chibicc")
+units = rows(os.path.join(CH, "units.csv"))
+ok_units = [u for u in units if u["original_compiles"] == "1"]
+macros.update(ChibiUnitsAll=str(len(units)), ChibiUnitsOK=str(len(ok_units)),
+              ChibiIdentStrata=str(sum(1 for u in ok_units if u["strata_identical_asm"] == "1")),
+              ChibiIdentArena=str(sum(1 for u in ok_units if u["arena_identical_asm"] == "1")))
+times = {}
+for r in rows(os.path.join(CH, "times.csv")):
+    times.setdefault((r["project"], r["variant"]), {})[int(r["round"])] = float(r["seconds"])
+macros["ChibiRounds"] = str(max(len(v) for v in times.values()))
+lines, cs_, ca_ = [], [], []
+for t in ["cjson", "littlefs", "zlib", "lua", "freertos", "mbedtls", "sqlite"]:
+    o = times[(t, "orig")]
+    rounds = sorted(o)
+    ps = paired([times[(t, "strata")][i] for i in rounds], [o[i] for i in rounds])
+    pa = paired([times[(t, "arena")][i] for i in rounds], [o[i] for i in rounds])
+    cs_.append(ps); ca_.append(pa)
+    n = sum(1 for u in ok_units if u["project"] == t)
+    lines.append(f"{LABEL[t]} & {n} & {statistics.median(o.values()):.2f} & {pct(ps[0])} [{pct(ps[1])}, {pct(ps[2])}] & {verdict(ps[1], ps[2])} & "
+                 f"{pct(pa[0])} [{pct(pa[1])}, {pct(pa[2])}] & {verdict(pa[1], pa[2])} \\\\")
+write("tab_chibicc.tex", lines)
+for name, v in (("ChibiStrata", cs_), ("ChibiArena", ca_)):
+    vs = [verdict(lo, hi) for _, lo, hi in v]
+    macros[name + "Faster"] = str(vs.count("faster"))
+    macros[name + "Slower"] = str(vs.count("slower"))
+    macros[name + "Lo"] = pct(min(p for p, _, _ in v))
+    macros[name + "Hi"] = pct(max(p for p, _, _ in v))
+rss = rows(os.path.join(CH, "rss.csv"))
+d = [abs(int(r["strata_peak_rss_kb"]) / int(r["orig_peak_rss_kb"]) - 1) * 100 for r in rss if int(r["orig_peak_rss_kb"])]
+macros["ChibiRssMedian"] = f"{statistics.median(d):.2f}"
 
 # ---- verification and embedded figures (from the logs named in the comments) ------------------
 def grab(path, key, cast=str):
