@@ -14,6 +14,6 @@ Status: **complete**.
 | `reports/phase_logs/PHASE_1.md` to `PHASE_8.md` | yes |
 | `reports/artifacts/` | logs of every run; no screenshots (no user interface) |
 
-Nothing was committed or pushed.
+Round 2 (`reports/ROUND_2_ADDENDUM.md`) followed the same day. At the owner's request everything was committed and pushed to `main`.
 
 Acceptance: met.

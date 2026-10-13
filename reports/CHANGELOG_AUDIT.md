@@ -1,5 +1,7 @@
 # Changes made during the audit
 
+> **Superseded in part by `ROUND_2_ADDENDUM.md`** (same day): STRATA is now level with the conventional table on speed, the suggested probe limit is 512, and the novelty score is 6.0/10. Read that file first; the text below is the first round as written.
+
 2026-10-13. Base: commit `cd3b4cc`. **Nothing was committed or pushed**; all changes are in the
 working tree for the authors to review. No existing file was deleted. The default behaviour
 of the library (hash values, layout, results) is unchanged; the table object is 24-32 bytes

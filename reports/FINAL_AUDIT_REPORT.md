@@ -1,5 +1,7 @@
 # Final audit report
 
+> **Superseded in part by `ROUND_2_ADDENDUM.md`** (same day): STRATA is now level with the conventional table on speed, the suggested probe limit is 512, and the novelty score is 6.0/10. Read that file first; the text below is the first round as written.
+
 Project: `cdesproject` (STRATA, a bounded-memory scoped symbol table). Audit date: 2026-10-13.
 Start state: commit `cd3b4cc`, clean. End state: the same commit plus uncommitted changes
 listed in `CHANGELOG_AUDIT.md`. Nothing was committed or pushed.

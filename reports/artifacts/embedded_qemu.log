@@ -7,14 +7,14 @@ lookup hits         18757
 refused operations  0
 buffer bytes        16384
 peak used bytes     16128
-stack bytes used    504
+stack bytes used    492
 static RAM bytes    16748
 checksum            1061675059
 expected (host run) 1061675059
 RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
-  2739
-whole image: text 191236, data 0, bss 16748  (text includes the embedded trace)
+  2715
+whole image: text 191212, data 0, bss 16748  (text includes the embedded trace)
 
 == littlefs   (host run: checksum 2980311151, refused 0, peak used 20468 bytes; buffer 20480 bytes)
 STRATA on bare-metal Cortex-M3 (QEMU mps2-an385)
@@ -25,14 +25,14 @@ lookup hits         9913
 refused operations  0
 buffer bytes        20480
 peak used bytes     20468
-stack bytes used    504
+stack bytes used    492
 static RAM bytes    20844
 checksum            2980311151
 expected (host run) 2980311151
 RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
-  2739
-whole image: text 81232, data 0, bss 20844  (text includes the embedded trace)
+  2715
+whole image: text 81208, data 0, bss 20844  (text includes the embedded trace)
 
 == cjson   (host run: checksum 2412655742, refused 0, peak used 30704 bytes; buffer 30720 bytes)
 STRATA on bare-metal Cortex-M3 (QEMU mps2-an385)
@@ -43,14 +43,14 @@ lookup hits         6095
 refused operations  0
 buffer bytes        30720
 peak used bytes     30704
-stack bytes used    504
+stack bytes used    492
 static RAM bytes    31084
 checksum            2412655742
 expected (host run) 2412655742
 RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
-  2739
-whole image: text 84140, data 0, bss 31084  (text includes the embedded trace)
+  2715
+whole image: text 84116, data 0, bss 31084  (text includes the embedded trace)
 
 == lua   (host run: checksum 2653795636, refused 0, peak used 36776 bytes; buffer 36864 bytes)
 STRATA on bare-metal Cortex-M3 (QEMU mps2-an385)
@@ -61,14 +61,14 @@ lookup hits         61745
 refused operations  0
 buffer bytes        36864
 peak used bytes     36776
-stack bytes used    504
+stack bytes used    492
 static RAM bytes    37228
 checksum            2653795636
 expected (host run) 2653795636
 RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
-  2739
-whole image: text 617136, data 0, bss 37228  (text includes the embedded trace)
+  2715
+whole image: text 617112, data 0, bss 37228  (text includes the embedded trace)
 
 == freertos   (host run: checksum 3112986313, refused 0, peak used 45008 bytes; buffer 45056 bytes)
 STRATA on bare-metal Cortex-M3 (QEMU mps2-an385)
@@ -79,12 +79,12 @@ lookup hits         12193
 refused operations  0
 buffer bytes        45056
 peak used bytes     45008
-stack bytes used    504
+stack bytes used    492
 static RAM bytes    45420
 checksum            3112986313
 expected (host run) 3112986313
 RESULT: PASS
 STRATA code size (sum of the strata:: functions in the object file, bytes):
-  2739
-whole image: text 157004, data 0, bss 45420  (text includes the embedded trace)
+  2715
+whole image: text 156980, data 0, bss 45420  (text includes the embedded trace)
 

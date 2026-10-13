@@ -75,13 +75,29 @@ No tombstone is written and no key is moved, so repeated scope entry and exit re
 index to exactly its earlier contents (`test_reclamation`, churn part: 20 000 cycles, used
 bytes unchanged).
 
-**Rebuild (index doubling, buffer growth or shrink).** First every first-declaration entry is
-rewritten from slot to identifier reference using the old index. The two stacks are moved
-(references are relative to region start and buffer end, so their contents stay valid), the
-index is cleared and the records are re-inserted **oldest first**, which re-establishes the
-property used in the claim above: each key's path holds only older keys. Then each
-first-declaration entry is rewritten back to its new slot.
-(`test_exit_under_collisions_and_rebuilds`.)
+**Rebuild (index doubling or halving).** The slots recorded in first-declaration entries are
+about to become meaningless, and each record will need its entry again. So first, using the
+old index, every such entry and its record swap one word: the record's value word receives
+the entry's position (relative to the end of the buffer), the entry keeps the value
+(`stash_undo`). The two stacks are moved (references are relative to region start and buffer
+end, so their contents stay valid), the index is cleared and the records are re-inserted
+**oldest first**, which re-establishes the property used in the claim above: each key's path
+holds only older keys. As each record is inserted, the swap is undone and the entry receives
+the new slot (`reindex`). Every record has exactly one first-declaration entry (I4), so every
+borrowed value word is restored. Each name is hashed once and no scratch memory is used.
+(Until 2026-10-13 the entries were converted to references and back, which hashed every name
+twice.)
+
+**Buffer growth or shrink with an unchanged index size.** Only the undo stack moves, as a
+block. The index, the records and the slots recorded in the undo stack are untouched, so
+nothing is re-hashed. (Until 2026-10-13 every buffer growth rebuilt the whole index.)
+
+**Insertion without a second walk.** `declare` first searches for the name. A search that
+fails ends at the first empty slot of the name's probe path, which is exactly where linear
+probing would insert it. That slot is remembered and used, unless the reservation step
+rebuilt the index in between, in which case the path is walked again.
+(`test_exit_under_collisions_and_rebuilds`, `test_canonical_state`, and the mutation check's
+M7-M9, which break each of these three steps and are detected.)
 
 ## 4. All-or-nothing on exhaustion
 

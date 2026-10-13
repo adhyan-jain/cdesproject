@@ -1,5 +1,7 @@
 # Improvement roadmap
 
+> **Superseded in part by `ROUND_2_ADDENDUM.md`** (same day): STRATA is now level with the conventional table on speed, the suggested probe limit is 512, and the novelty score is 6.0/10. Read that file first; the text below is the first round as written.
+
 Audit of 2026-10-13. Ordered by what most limits a credible submission. Effort estimates are
 rough.
 

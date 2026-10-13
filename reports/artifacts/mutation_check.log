@@ -1,10 +1,13 @@
 seconds per mutant: 60; compiler: clang++-21
 
 M1 | DETECTED after 0.1 s | scope exit does not empty the index slot of a removed name | FUZZ FAILURE: state after unwinding (operation 2)
-M2 | DETECTED after 0.1 s | record pointer not refreshed after the buffer may have moved | ==80680==ERROR: AddressSanitizer: heap-use-after-free on address 0x70668c9e4a04 at pc 0x61068e20a059 bp 0x7fff86c82770 sp 0x7fff86c82768
-M3 | DETECTED after 0.2 s | scope exit restores the hidden value but not its type and depth | FUZZ FAILURE: final sweep disagrees with the model (operation 9)
+M2 | DETECTED after 0.2 s | record pointer not refreshed after the buffer may have moved | ==527==ERROR: AddressSanitizer: heap-use-after-free on address 0x764a02be5a84 at pc 0x59292e2bb2fd bp 0x7fff51961b70 sp 0x7fff51961b68
+M3 | DETECTED after 0.2 s | scope exit restores the hidden value but not its type and depth | FUZZ FAILURE: final sweep disagrees with the model (operation 8)
 M4 | DETECTED after 0.1 s | probe limit not enforced when a new name is inserted | FUZZ FAILURE: invariant violated at the end (operation 2)
 M5 | DETECTED after 0.1 s | length of raw names not kept (names differing in trailing NUL bytes merge) | FUZZ FAILURE: declare: new/redeclared disagrees with the model (operation 2)
+M7 | DETECTED after 0.2 s | index rebuild does not restore the value words it borrowed | FUZZ FAILURE: final sweep disagrees with the model (operation 9)
+M8 | DETECTED after 0.2 s | undo entries not updated when the index is rebuilt | FUZZ FAILURE: invariant violated at the end (operation 9)
+M9 | DETECTED after 0.2 s | new name placed at the remembered slot although the index was rebuilt | FUZZ FAILURE: invariant violated at the end (operation 9)
 M6 | DETECTED after 0.1 s | a refused shadowing declaration still overwrites the visible value | FUZZ FAILURE: refused declare changed the table (operation 7)
 
-detected 6 of 6 mutants
+detected 9 of 9 mutants

@@ -16,8 +16,17 @@
 //       for several probe limits, with and without the keyed hash: refused declarations,
 //       longest probe sequence, wrong lookups against the reference model, peak bytes.
 //
+//   hardening --mode probes --out FILE.csv [--reps N]
+//       How long are insertion probe sequences? For index sizes 2^10, 2^13, 2^16 and load
+//       factors 3/8, 1/2, 5/8, 3/4, with the default and the keyed hash: fills an index with
+//       random identifiers by linear probing (homes taken from the table's own hash), then
+//       measures, for fresh names, how many slots an insertion would examine. Reports the
+//       measured probability of exceeding a probe limit L next to the bound
+//       rho^L / (1 - rho), rho = a * e^(1 - a), derived in docs/PROBE_LIMIT_ANALYSIS.md.
+//
 //   hardening --mode names --count N --words W
 //       Prints N colliding identifiers of 5*W characters (W even), one per line.
+#include <cmath>
 #include <cstring>
 
 #include "../include/strata/strata.hpp"
@@ -300,6 +309,75 @@ static int mode_traces(const std::string& path, const std::string& name, const s
     return 0;
 }
 
+// ---- insertion probe lengths against the analytical bound --------------------------------
+static std::string random_identifier() {
+    static const char alphabet[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
+    std::string s;
+    s.push_back(alphabet[rnd32() % 53]);
+    const uint32_t len = 6 + rnd32() % 19;                 // 6 .. 24 characters
+    while (s.size() < len) s.push_back(alphabet[rnd32() % 63]);
+    return s;
+}
+static int mode_probes(const std::string& out, int trials) {
+    FILE* fo = out.empty() ? stdout : std::fopen(out.c_str(), "a");
+    if (!fo) return 3;
+    const uint32_t limits[] = {8, 16, 32, 64, 128, 256, 512};
+    const int nl = static_cast<int>(sizeof limits / sizeof limits[0]);
+    if (out.empty() || std::ftell(fo) == 0) {
+        std::fprintf(fo, "hash,index_slots,load,names,trials,samples,mean_probes,knuth_mean,longest");
+        for (int i = 0; i < nl; ++i) std::fprintf(fo, ",measured_gt_%u,bound_gt_%u", limits[i], limits[i]);
+        std::fprintf(fo, "\n");
+    }
+    const uint32_t sizes[] = {1u << 10, 1u << 13, 1u << 16};
+    const double loads[] = {0.375, 0.5, 0.625, 0.75};
+    for (int keyed = 0; keyed < 2; ++keyed)
+        for (size_t si = 0; si < 3; ++si)
+            for (size_t ai = 0; ai < 4; ++ai) {
+                const uint32_t m = sizes[si], n = static_cast<uint32_t>(loads[ai] * m), mask = m - 1;
+                const size_t fresh_per_trial = 20000;
+                unsigned long long over[16] = {0}, samples = 0, total = 0;
+                uint32_t longest = 0;
+                std::vector<char> used;
+                used.assign(m, 0);
+                for (int tr = 0; tr < trials; ++tr) {
+                    strata::Options o;
+                    o.keyed = keyed != 0;
+                    o.key[0] = rnd32();
+                    o.key[1] = rnd32();
+                    strata::Table t(o);                      // used only for its hash of a name
+                    std::fill(used.begin(), used.end(), 0);
+                    strata::Key k;
+                    for (uint32_t i = 0; i < n; ++i) {       // names repeat with negligible probability
+                        std::string s = random_identifier();
+                        t.make_key(s.data(), s.size(), k);
+                        uint32_t j = k.hash & mask;
+                        while (used[j]) j = (j + 1) & mask;
+                        used[j] = 1;
+                    }
+                    for (size_t f = 0; f < fresh_per_trial; ++f) {
+                        std::string s = random_identifier();
+                        t.make_key(s.data(), s.size(), k);
+                        uint32_t j = k.hash & mask, steps = 1;
+                        while (used[j]) { j = (j + 1) & mask; ++steps; }
+                        total += steps;
+                        ++samples;
+                        if (steps > longest) longest = steps;
+                        for (int i = 0; i < nl; ++i) if (steps > limits[i]) ++over[i];
+                    }
+                }
+                const double a = static_cast<double>(n) / m, rho = a * std::exp(1.0 - a);
+                std::fprintf(fo, "%s,%u,%.3f,%u,%d,%llu,%.3f,%.3f,%u", keyed ? "halfsiphash13" : "murmur3", m, a, n, trials, samples,
+                             static_cast<double>(total) / static_cast<double>(samples), 0.5 * (1.0 + 1.0 / ((1.0 - a) * (1.0 - a))), longest);
+                for (int i = 0; i < nl; ++i)
+                    std::fprintf(fo, ",%.3e,%.3e", static_cast<double>(over[i]) / static_cast<double>(samples),
+                                 std::pow(rho, static_cast<double>(limits[i])) / (1.0 - rho));
+                std::fprintf(fo, "\n");
+                std::fflush(fo);
+            }
+    if (fo != stdout) std::fclose(fo);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     std::string mode, path, name, out;
     int reps = 5, words = 4;
@@ -315,6 +393,7 @@ int main(int argc, char** argv) {
     if (reps < 1) reps = 1;
     if (mode == "flood") return mode_flood(out, reps);
     if (mode == "traces") return mode_traces(path, name.empty() ? path : name, out);
+    if (mode == "probes") return mode_probes(out, reps);
     if (mode == "names") {
         if (words < 2 || words > 50 || (words & 1) || count == 0 || (words / 2 < 40 && count > (static_cast<size_t>(1) << (words / 2)))) {
             std::fprintf(stderr, "--words must be even, 2..50, and --count at most 2^(words/2)\n");
@@ -324,6 +403,6 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < n.size(); ++i) std::printf("%s\n", n[i].c_str());
         return 0;
     }
-    std::fprintf(stderr, "usage: hardening --mode flood|traces|names ...\n");
+    std::fprintf(stderr, "usage: hardening --mode flood|traces|probes|names ...\n");
     return 2;
 }

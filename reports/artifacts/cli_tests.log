@@ -29,7 +29,7 @@ C28 | PASS | budget: deep nesting trace | expected exit any | actual exit 0 |
 C29 | PASS | budget: random bytes | expected exit any | actual exit 2 | cannot load build/cli/random.trace 
 C30 | PASS | budget: --reps 0 (regression: indexed an empty vector) | expected exit 0 | actual exit 0 | 
 C30b | PASS | budget: --reps -3 | expected exit 0 | actual exit 0 | 
-C31 | PASS | hardening: no mode | expected exit 2 | actual exit 2 | usage: hardening --mode flood|traces|names ... 
+C31 | PASS | hardening: no mode | expected exit 2 | actual exit 2 | usage: hardening --mode flood|traces|probes|names ... 
 C32 | PASS | hardening: names, valid | expected exit 0 | actual exit 0 | 
 C33 | PASS | hardening: names, odd word count | expected exit 2 | actual exit 2 | --words must be even, 2..50, and --count at most 2^(words/2) 
 C34 | PASS | hardening: names, more than exist | expected exit 2 | actual exit 2 | --words must be even, 2..50, and --count at most 2^(words/2) 

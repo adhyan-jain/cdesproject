@@ -22,4 +22,6 @@ cat results/hardening/flood_verification.txt
 for f in build/traces/*.trace; do
   ./build/hardening --mode traces --trace "$f" --name "$(basename "$f" .trace)" --out results/hardening/traces.csv
 done
+rm -f results/hardening/probes.csv
+$PIN ./build/hardening --mode probes --reps "${PROBE_TRIALS:-200}" --out results/hardening/probes.csv
 echo "done: results/hardening"

@@ -281,7 +281,8 @@ public:
         Status s = make_key(name, len, k);
         if (s != kOk) return s;
         const uint32_t tag = static_cast<uint32_t>(type) << kTypeShift | depth_ << kDepthShift;
-        uint32_t ref = find(k);
+        uint32_t stop = kNoSlot;                       // where the search for the name ended
+        uint32_t ref = find(k, &stop);
         if (ref) {
             uint32_t* rec = ident(ref);
             if ((rec[1] >> kDepthShift) == depth_) {   // already declared in the current scope
@@ -304,8 +305,9 @@ public:
         }
         // new name: reserve everything first so that failure changes nothing
         if (itop_ + 2 + k.n > kRefMask) return kNoMemory;
+        const uint32_t idx_before = idx_;
         if (!ensure(2 + k.n + 1, 1)) return kNoMemory;
-        if (opt_.max_probe && !probe_fits(k.hash)) return kProbeLimit;
+        if (opt_.max_probe && stop == kNoSlot) return kProbeLimit;   // no empty slot within the limit
         ref = itop_;
         uint32_t* rec = ident(ref);
         rec[0] = static_cast<uint32_t>(value);
@@ -313,7 +315,17 @@ public:
         std::memcpy(rec + 2, k.w, k.n * 4);
         itop_ += 2 + k.n;
         ++nident_;
-        uint32_t slot = index_insert(k.hash, ref);
+        // The search above ended at the first empty slot of the name's probe path. Unless
+        // ensure() rebuilt the index, that slot is where the name goes: no second walk.
+        uint32_t slot;
+        if (stop != kNoSlot && idx_ == idx_before) {
+            slot = stop;
+            w_[slot] = slot_word(k.hash, ref);
+            const uint32_t steps = ((slot - home(k.hash)) & (idx_ - 1)) + 1;
+            if (steps > longest_) longest_ = steps;
+        } else {
+            slot = index_insert(k.hash, ref);
+        }
         undo_ += 1;
         w_[cap_ - undo_] = slot;
         ++ndecl_;
@@ -471,7 +483,7 @@ private:
     //   bits 0-6 name words | 7 raw | 8-9 raw length mod 4 | 10-17 type | 18-31 scope depth
     enum : uint32_t {
         kRefMask = 0x00FFFFFFu, kShadowBit = 0x01000000u, kMinWords = 32, kMaxWords = 0x00FFFFFFu,
-        kWordsMask = 0x7Fu, kKeyBits = 0x3FFu, kTypeShift = 10, kDepthShift = 18, kInitialIndex = 16,
+        kNoSlot = 0xFFFFFFFFu, kWordsMask = 0x7Fu, kKeyBits = 0x3FFu, kTypeShift = 10, kDepthShift = 18, kInitialIndex = 16,
         kShrinkPatience = 64
     };
 
@@ -512,16 +524,10 @@ private:
     uint32_t hash_of(const uint32_t* w, uint32_t n, uint32_t meta) const {
         return opt_.keyed ? detail::halfsiphash13(w, n, meta, opt_.key[0], opt_.key[1]) : detail::hash_words(w, n, meta);
     }
-    // Bounded mode: is there an empty slot among the first max_probe slots of the path?
-    bool probe_fits(uint32_t h) const {
-        const uint32_t mask = idx_ - 1;
-        uint32_t i = home(h);
-        for (uint32_t steps = 0; steps < opt_.max_probe; ++steps, i = (i + 1) & mask)
-            if (w_[i] == 0) return true;
-        return false;
-    }
-
-    uint32_t find(const Key& k) const {
+    // Returns the identifier reference of the name, or 0. When the search ends at an empty
+    // slot and `stop` is given, *stop is that slot (the place a new name would take); it is
+    // left untouched when the search ends at the probe limit instead.
+    uint32_t find(const Key& k, uint32_t* stop = 0) const {
         uint32_t fp = k.hash >> 24;
         if (!fp) fp = 1;
         const uint32_t mask = idx_ - 1;
@@ -530,7 +536,7 @@ private:
         uint32_t left = opt_.max_probe ? opt_.max_probe : 0xFFFFFFFFu;
         for (uint32_t i = home(k.hash); left; i = (i + 1) & mask, --left) {
             uint32_t s = w_[i];
-            if (s == 0) return 0;
+            if (s == 0) { if (stop) *stop = i; return 0; }
             if ((s >> 24) != fp) continue;
             const uint32_t* rec = ident(s & kRefMask);
             if ((rec[1] & kKeyBits) != k.meta) continue;
@@ -548,23 +554,36 @@ private:
         if (steps > longest_) longest_ = steps;
         return i;
     }
-    // Rewrites the undo entries of first declarations: slot -> identifier reference
-    // (to_slots == false, before the index is rebuilt) and back (to_slots == true).
-    void retarget_undo(bool to_slots) {
+    // Before the index is rebuilt: every first-declaration undo entry holds an index slot
+    // that is about to become meaningless. Its record needs the entry again when it is
+    // re-inserted, so the two words are swapped: the record's value word keeps the entry's
+    // position (relative to the end of the buffer), the entry keeps the value. reindex()
+    // swaps them back and writes the new slot. No name is hashed more than once per rebuild
+    // and no scratch memory is needed.
+    void stash_undo() {
         for (uint32_t pos = undo_, mark = mark_; pos > 0;) {
             uint32_t* e = w_ + cap_ - pos;
             if (pos == mark) { mark = e[1]; pos -= kMarkWords; continue; }
             if (e[0] & kShadowBit) { pos -= 3; continue; }
-            if (to_slots) {
-                const uint32_t* rec = ident(e[0]);
-                uint32_t h = hash_of(rec + 2, rec[1] & kWordsMask, rec[1] & kKeyBits);
-                uint32_t want = slot_word(h, e[0]), i = home(h);
-                while (w_[i] != want) i = (i + 1) & (idx_ - 1);
-                e[0] = i;
-            } else {
-                e[0] = w_[e[0]] & kRefMask;
-            }
+            uint32_t* rec = ident(w_[e[0]] & kRefMask);
+            const uint32_t value = rec[0];
+            rec[0] = pos;
+            e[0] = value;
             pos -= 1;
+        }
+    }
+    // Clears the index and re-inserts every name, oldest first (which keeps the "newest
+    // keys can be emptied" property), completing what stash_undo() began.
+    void reindex() {
+        std::memset(w_, 0, static_cast<size_t>(idx_) * 4);
+        for (uint32_t r = 1; r < itop_;) {
+            uint32_t* rec = ident(r);
+            const uint32_t n = rec[1] & kWordsMask;
+            const uint32_t slot = index_insert(hash_of(rec + 2, n, rec[1] & kKeyBits), r);
+            uint32_t* e = w_ + cap_ - rec[0];
+            rec[0] = e[0];
+            e[0] = slot;
+            r += 2 + n;
         }
     }
 
@@ -601,37 +620,30 @@ private:
         if (cap < cap_) relocate(cap, idx);
     }
     // Moves to a buffer of `cap` words with `idx` index slots (in place when cap == cap_).
-    // Identifier and undo references are relative, so only the index is rebuilt; names
-    // are re-inserted oldest first, which keeps the "newest keys can be emptied" property.
+    // Identifier and undo references are relative, so the two stacks are moved as blocks.
+    // The index is rebuilt only when its size changes: when just the buffer grows or
+    // shrinks, the index and the slots recorded in the undo stack stay valid as they are.
     bool relocate(uint32_t cap, uint32_t idx) {
         const size_t ib = static_cast<size_t>(itop_) * 4, ub = static_cast<size_t>(undo_) * 4;
+        const bool resize_index = idx != idx_;
         if (cap > cap_) {            // grow: extend the block, then slide the two stacks outwards
             uint32_t* nw = resize_block(cap);
             if (!nw) return false;
             w_ = nw;
-            retarget_undo(false);    // nothing below can fail any more
+            if (resize_index) stash_undo();   // nothing below can fail any more
             std::memmove(w_ + cap - undo_, w_ + cap_ - undo_, ub);
-            if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
+            if (resize_index) std::memmove(w_ + idx, w_ + idx_, ib);
         } else if (cap < cap_) {     // shrink: slide the stacks inwards, then give the tail back
-            retarget_undo(false);
-            if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
+            if (resize_index) { stash_undo(); std::memmove(w_ + idx, w_ + idx_, ib); }
             std::memmove(w_ + cap - undo_, w_ + cap_ - undo_, ub);
             uint32_t* nw = resize_block(cap);
             if (nw) w_ = nw;         // if the allocator refuses, the larger block is simply kept
-        } else {
-            retarget_undo(false);
-            if (idx != idx_) std::memmove(w_ + idx, w_ + idx_, ib);
+        } else if (resize_index) {
+            stash_undo();
+            std::memmove(w_ + idx, w_ + idx_, ib);
         }
         cap_ = cap;
-        idx_ = idx;
-        std::memset(w_, 0, static_cast<size_t>(idx_) * 4);
-        for (uint32_t r = 1; r < itop_;) {
-            const uint32_t* rec = ident(r);
-            uint32_t n = rec[1] & kWordsMask;
-            index_insert(hash_of(rec + 2, n, rec[1] & kKeyBits), r);
-            r += 2 + n;
-        }
-        retarget_undo(true);
+        if (resize_index) { idx_ = idx; reindex(); }
         ++rebuilds_;
         touch();
         return true;

@@ -1,5 +1,7 @@
 # Test results
 
+> **Superseded in part by `ROUND_2_ADDENDUM.md`** (same day): STRATA is now level with the conventional table on speed, the suggested probe limit is 512, and the novelty score is 6.0/10. Read that file first; the text below is the first round as written.
+
 Audit of 2026-10-13. Every result below comes from a command that was run; the log file is
 named in the last column. Host: WSL 2 (Ubuntu 22.04) on an Intel Core Ultra 7 258V, g++ 11.4,
 clang 21.1.8 (`reports/artifacts/environment.txt`).

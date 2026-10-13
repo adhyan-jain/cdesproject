@@ -2,6 +2,7 @@
 // properties in docs/METHODOLOGY.md. Exit code is non-zero if any check fails.
 #define STRATA_TEST_HOOKS
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -601,6 +602,61 @@ static void test_bounded_mode() {
     Table::degenerate_hash() = false;
 }
 
+// 16: canonical state. With a static index, the complete state after ANY sequence of
+// operations is bit-for-bit the state of a fresh table into which only the declarations
+// that are still live were made, in their original order. Scope exits leave no trace
+// (no tombstones, no moved keys), so the table cannot degrade with use, and results about
+// insertion-only linear probing apply to it at every moment.
+static void test_canonical_state() {
+    struct LiveDecl { std::string name; int32_t value; uint8_t type; };
+    for (int cfg = 0; cfg < 6; ++cfg) {
+        const bool degenerate = cfg & 1;
+        Table::degenerate_hash() = degenerate;
+        strata::Options o;
+        o.index_slots = 512;
+        o.keyed = cfg >= 4;
+        o.key[0] = 77u + static_cast<uint32_t>(cfg);
+        o.pack_names = cfg != 2;
+        std::vector<uint32_t> a(8192), b(8192);
+        Table t(&a[0], a.size() * 4, o);
+        std::vector<std::vector<LiveDecl> > live(1);
+        std::vector<std::string> pool;
+        for (uint32_t i = 0; i < 300; ++i) pool.push_back(name_of(i, static_cast<int>(i % 3)));
+        for (int step = 1; step <= 30000; ++step) {
+            uint32_t r = rnd() % 100;
+            if (r < 14 && live.size() < 12) {
+                if (t.enter_scope() == strata::kOk) live.push_back(std::vector<LiveDecl>());
+            } else if (r < 30) {
+                if (live.size() > 1) { CHECK(t.exit_scope() == strata::kOk); live.pop_back(); }
+            } else {
+                const std::string& nm = pool[rnd() % pool.size()];
+                const uint8_t ty = static_cast<uint8_t>(step);
+                int st = decl(t, nm, step, ty);
+                if (st == strata::kOk) {
+                    LiveDecl d = {nm, step, ty};
+                    live.back().push_back(d);
+                } else if (st == strata::kRedeclared) {
+                    for (size_t i = 0; i < live.back().size(); ++i)
+                        if (live.back()[i].name == nm) { live.back()[i].value = step; live.back()[i].type = ty; }
+                }
+            }
+            if (step % 500 == 0) {
+                Table fresh(&b[0], b.size() * 4, o);
+                bool ok = true;
+                for (size_t sc = 0; sc < live.size(); ++sc) {
+                    if (sc) ok = ok && fresh.enter_scope() == strata::kOk;
+                    for (size_t i = 0; i < live[sc].size(); ++i)
+                        ok = ok && decl(fresh, live[sc][i].name, live[sc][i].value, live[sc][i].type) == strata::kOk;
+                }
+                CHECK(ok);
+                CHECK(fresh.state_digest() == t.state_digest());
+                CHECK(std::memcmp(&a[0], &b[0], t.stats().index_bytes + t.stats().ident_bytes) == 0);
+            }
+        }
+    }
+    Table::degenerate_hash() = false;
+}
+
 int main() {
     test_scoping(true);
     test_scoping(false);
@@ -624,6 +680,7 @@ int main() {
     test_deep_shadowing();
     test_keyed_hash();
     test_bounded_mode();
+    test_canonical_state();
     std::printf("%d checks, %d failed\n", g_checks, g_failed);
     return g_failed ? 1 : 0;
 }

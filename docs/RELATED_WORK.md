@@ -79,8 +79,8 @@ as a baseline.
 
 ## 4. Novelty assessment (internal rubric, 2026-10-11)
 
-*Superseded by `reports/NOVELTY_ASSESSMENT.md` (2026-10-13), which uses a different, weighted
-rubric and includes the bounded mode. The table below is kept as written.*
+*Superseded by `reports/NOVELTY_ASSESSMENT.md` and `reports/ROUND_2_ADDENDUM.md` (2026-10-13),
+which use a different, weighted rubric (6.0/10). The table below is kept as written.*
 
 Scale per criterion: 0-2 none, 3-4 minor, 5-6 solid incremental, 7-8 clearly new, 9-10 major.
 

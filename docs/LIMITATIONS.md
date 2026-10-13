@@ -18,17 +18,24 @@
 
 ## Where STRATA is worse (measured; see `RESULTS.md`)
 
-* **Speed against a conventional allocator-free table.** `arena_chain`, a plain chained
-  table over an entry arena, is faster than STRATA on 7 of the 8 compiler traces (median
-  30%) while needing 16-18% more memory. Most of STRATA's improvement over METIS-X is also
-  obtained by this simpler design; it is not specific to STRATA.
+* **Speed against a conventional allocator-free table.** In the reported run
+  (`20261011-165103-v3`) `arena_chain`, a plain chained table over an entry arena, was faster
+  than STRATA on 7 of the 8 compiler traces (median 30%) while needing 16-18% more memory.
+  The cause was found on 2026-10-13: STRATA rebuilt its whole index on every buffer growth,
+  hashed every name twice per rebuild and walked the probe path twice per new name. With
+  those three things removed (run `20261013-125704-final`) the two tables are level: STRATA is
+  faster on 2 traces (by 4.5% and 10.7%), slower on 3 (by 1.7% to 7.0%), and on 3 the
+  difference is not established. STRATA
+  is still **not faster** than the conventional design; it now costs no time for its smaller
+  buffer. Most of the improvement over METIS-X is still obtained by the simpler design too.
 
 * **Speed against an interning flat map.** `swiss_interned` replays every compiler trace
   faster than STRATA. It never removes a name within a translation unit and so does almost
   nothing at scope exit; it pays with the largest memory of all tables.
-* **Rebuilds cost more than before.** Since version 2 the undo entries record index slots
-  (which made scope exit 77-86% faster than in version 1); the price is that every index
-  rebuild re-hashes each live name twice instead of once.
+* **Rebuilds.** Since version 2 the undo entries record index slots (which made scope exit
+  77-86% faster than in version 1). Until 2026-10-13 the price was that every index rebuild
+  re-hashed each live name twice; it is now once, and a buffer growth re-hashes nothing.
+  A rebuild is still O(live names) inside one call.
 * **Name packing costs time for little memory.** It reduces the minimum buffer by 5.5-9.0% and
   is slower than storing raw bytes on 5 of the 8 compiler traces (by up to 10%).
 * **Lookup latency is not improved** over METIS-X on the compiler traces (p95 lower on 3 of
@@ -92,8 +99,10 @@
 * The exception-safety defect of METIS-X (audit item D3) was established by reading the code,
   not by triggering it.
 * The correctness argument in `CORRECTNESS.md` is informal; nothing was machine-checked.
-* Why STRATA is slower than `arena_chain` (query packing, or open addressing against
-  chains) was not separated experimentally.
+* Why STRATA was slower than `arena_chain` was not separated experimentally in the reported
+  run. On 2026-10-13 it was: neither packing (raw names are no faster) nor open addressing as
+  such, but rebuild work in `declare` (see above). A remaining difference of about 5-10% in
+  lookup latency against a half-full index was not investigated further.
 * The patch for TCC was applied to one commit only.
 
 ## Added after the third review round (run 20261011-165103-v3, extra experiments)

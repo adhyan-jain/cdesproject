@@ -27,7 +27,7 @@ step V04 "command-line robustness tests under sanitizers" bash scripts/audit/cli
 step V05 "warnings, static analyzers, ARM header build, clang sanitizers" bash -c 'bash scripts/audit/static_analysis.sh > sa.out; cat sa.out; ! grep -q -E "^exit=[1-9]" reports/artifacts/static_analysis.log && grep -q "warnings in log: 0" sa.out'
 step V06 "keyed hash against reference HalfSipHash" bash scripts/audit/halfsiphash_check.sh
 step V07 "differential fuzzing, 2 workers x 90 s on the saved corpus" bash scripts/audit/fuzz.sh 90 2
-step V08 "fuzzer detects injected defects" bash -c 'python3 scripts/audit/mutation_check.py 30 | tee m.out; grep -q "detected 6 of 6" m.out'
+step V08 "fuzzer detects injected defects" bash -c 'python3 scripts/audit/mutation_check.py 30 | tee m.out; grep -q "detected 9 of 9" m.out'
 step V09 "hardening experiments run and verify the collisions" bash -c 'bash scripts/audit/hardening.sh 1 && python3 -c "
 import csv,sys
 r=list(csv.DictReader(open(\"results/hardening/flood.csv\")))
