@@ -21,6 +21,27 @@ struct Tab {
     uint32_t peak() const { return (uint32_t)t.peak_used_bytes(); }
 };
 #define TABLE_NAME "arena_chain"
+#elif defined(TABLE_BOUNDED)
+// STRATA with a static index (-DINDEX_SLOTS), a probe limit (-DMAX_PROBE) and the keyed hash.
+static strata::Options bounded_options() {
+    strata::Options o;
+    o.index_slots = INDEX_SLOTS;
+    o.max_probe = MAX_PROBE;
+    o.keyed = true;
+    o.key[0] = 0x0a1b2c3du;      // a device would draw this from its entropy source
+    o.key[1] = 0x4e5f6071u;
+    return o;
+}
+struct Tab {
+    strata::Table t;
+    Tab(void* b, size_t n) : t(b, n, bounded_options()) {}
+    bool enter() { return t.enter_scope() == strata::kOk; }
+    void leave() { t.exit_scope(); }
+    int declare(const char* s, size_t n, int32_t v) { return t.declare(s, n, v); }
+    bool resolve(const char* s, size_t n, int32_t* v) { return t.resolve(s, n, v); }
+    uint32_t peak() const { return (uint32_t)t.stats().peak_used_bytes; }
+};
+#define TABLE_NAME "STRATA bounded (static index, probe limit, keyed hash)"
 #else
 struct Tab {
     strata::Table t;

@@ -201,6 +201,7 @@ int main(int argc, char** argv) {
     RUN(StrataRaw)
     RUN(StrataNoShrink)
     RUN(StrataSparse)
+    RUN(StrataKeyed)
     RUN(ArenaChain)
     RUN(ScopeMapStack)
     RUN(StdUndoLog)

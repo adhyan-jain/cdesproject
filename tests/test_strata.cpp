@@ -440,6 +440,167 @@ static void test_deep_shadowing() {
     CHECK(t.check_invariants());
 }
 
+// 14: keyed hash. Same behaviour as the default hash under every key; different keys place
+// names differently; rebuilds (which re-hash stored names) keep the table consistent.
+static void test_keyed_hash() {
+    const uint32_t keys[4][2] = {{0, 0}, {1, 0}, {0x01234567u, 0x89abcdefu}, {0xffffffffu, 0xffffffffu}};
+    uint32_t first_hash[4];
+    for (int ki = 0; ki < 4; ++ki) {
+        strata::Options o;
+        o.initial_bytes = 64;
+        o.keyed = true;
+        o.key[0] = keys[ki][0];
+        o.key[1] = keys[ki][1];
+        Table t(o);
+        strata::Key k;
+        CHECK(t.make_key("count", 5, k) == strata::kOk);
+        first_hash[ki] = k.hash;
+        ReferenceModel ref;
+        std::vector<std::string> pool;
+        for (uint32_t i = 0; i < 600; ++i) pool.push_back(name_of(i, static_cast<int>(i % 3)));
+        for (int step = 0; step < 60000; ++step) {
+            uint32_t r = rnd() % 100;
+            const std::string& nm = pool[rnd() % pool.size()];
+            if (r < 12 && ref.depth() < 10) { CHECK(t.enter_scope() == strata::kOk); ref.enter(); }
+            else if (r < 24) { CHECK((t.exit_scope() == strata::kOk) == ref.exit()); }
+            else if (r < 60) { CHECK(decl(t, nm, step, static_cast<uint8_t>(step)) == ref.declare(nm, step, static_cast<uint8_t>(step))); }
+            else { int32_t b = -1; if (!ref.resolve(nm, &b)) b = -1; CHECK(look(t, nm) == b); }
+            if (step % 5000 == 0) CHECK(t.check_invariants() && agrees(t, ref, pool));
+        }
+        CHECK(t.stats().rebuilds > 0);
+        CHECK(t.check_invariants() && agrees(t, ref, pool));
+    }
+    CHECK(first_hash[0] != first_hash[1] && first_hash[1] != first_hash[2] && first_hash[2] != first_hash[3]);
+    // the default hash is unchanged by the presence of the option
+    strata::Options plain;
+    Table a(plain), b;
+    strata::Key ka, kb;
+    a.make_key("mbedtls_ssl_context", 19, ka);
+    b.make_key("mbedtls_ssl_context", 19, kb);
+    CHECK(ka.hash == kb.hash);
+}
+
+// 15: bounded mode (static index, optional probe limit).
+static void test_bounded_mode() {
+    std::vector<uint32_t> buf(4096);
+    {   // configurations that must be rejected, not silently unbounded
+        strata::Options o;
+        o.max_probe = 8;                                   // probe limit without a static index
+        Table t1(&buf[0], buf.size() * 4, o);
+        CHECK(!t1.valid() && t1.declare("a", 1, 1) == strata::kNoMemory);
+        o.index_slots = 48;                                // not a power of two
+        Table t2(&buf[0], buf.size() * 4, o);
+        CHECK(!t2.valid());
+        o.index_slots = 8;                                 // too small
+        Table t3(&buf[0], buf.size() * 4, o);
+        CHECK(!t3.valid());
+        o.index_slots = 4096;                              // does not fit the buffer
+        Table t4(&buf[0], buf.size() * 4, o);
+        CHECK(!t4.valid());
+        o.index_slots = 64;
+        Table t5(&buf[0], buf.size() * 4, o);
+        CHECK(t5.valid() && t5.check_invariants() && t5.stats().index_bytes == 256);
+        strata::Options g;                                 // growable mode ignores both fields
+        g.index_slots = 64;
+        g.max_probe = 1;
+        Table t6(g);
+        CHECK(t6.valid());
+        for (uint32_t i = 0; i < 200; ++i) CHECK(decl(t6, name_of(i, 0), 1) == strata::kOk);
+    }
+    {   // the static index is never rebuilt; the load limit refuses with nothing changed
+        strata::Options o;
+        o.index_slots = 16;
+        Table t(&buf[0], buf.size() * 4, o);
+        for (uint32_t i = 0; i < 12; ++i) CHECK(decl(t, name_of(i, 0), static_cast<int>(i)) == strata::kOk);
+        uint64_t d = t.state_digest();
+        CHECK(decl(t, name_of(12, 0), 12) == strata::kNoMemory && t.state_digest() == d);
+        CHECK(t.enter_scope() == strata::kOk);
+        CHECK(decl(t, name_of(3, 0), 99) == strata::kOk);          // shadowing needs no index slot
+        CHECK(look(t, name_of(3, 0)) == 99);
+        CHECK(t.exit_scope() == strata::kOk && look(t, name_of(3, 0)) == 3);
+        CHECK(t.stats().rebuilds == 0 && t.stats().index_bytes == 64 && t.check_invariants());
+    }
+    {   // probe limit with every key in one cluster
+        Table::degenerate_hash() = true;
+        strata::Options o;
+        o.index_slots = 64;
+        o.max_probe = 4;
+        Table t(&buf[0], buf.size() * 4, o);
+        for (uint32_t i = 0; i < 4; ++i) CHECK(decl(t, name_of(i, 0), static_cast<int>(i)) == strata::kOk);
+        uint64_t d = t.state_digest();
+        CHECK(decl(t, name_of(4, 0), 4) == strata::kProbeLimit);
+        CHECK(t.state_digest() == d && t.check_invariants());
+        CHECK(look(t, name_of(4, 0)) == -1 && look(t, name_of(3, 0)) == 3 && look(t, name_of(0, 0)) == 0);
+        CHECK(t.enter_scope() == strata::kOk);
+        CHECK(decl(t, name_of(1, 0), 77) == strata::kOk && look(t, name_of(1, 0)) == 77);   // shadowing still works
+        CHECK(decl(t, name_of(5, 0), 5) == strata::kProbeLimit);
+        CHECK(t.exit_scope() == strata::kOk && look(t, name_of(1, 0)) == 1);
+        CHECK(t.stats().longest_probe == 4);
+        Table::degenerate_hash() = false;
+        // scope exit frees the slots, so the limit refuses only while the cluster is full
+        Table::degenerate_hash() = true;
+        Table u(&buf[0], buf.size() * 4, o);
+        CHECK(u.enter_scope() == strata::kOk);
+        for (uint32_t i = 0; i < 4; ++i) CHECK(decl(u, name_of(i, 0), 1) == strata::kOk);
+        CHECK(decl(u, name_of(9, 0), 1) == strata::kProbeLimit);
+        CHECK(u.exit_scope() == strata::kOk);
+        CHECK(decl(u, name_of(9, 0), 1) == strata::kOk && u.check_invariants());
+        Table::degenerate_hash() = false;
+    }
+    // randomized differential runs: refusals of either kind leave the state untouched and
+    // are not applied to the model; everything else must agree with it
+    for (int cfg = 0; cfg < 12; ++cfg) {
+        const bool degenerate = cfg & 1, keyed = cfg & 2;
+        const uint32_t limits[3] = {0, 3, 16};
+        Table::degenerate_hash() = degenerate;
+        strata::Options o;
+        o.index_slots = 256;
+        o.max_probe = limits[cfg / 4];
+        o.keyed = keyed;
+        o.key[0] = 0xC0FFEEu + static_cast<uint32_t>(cfg);
+        o.key[1] = 0x5EEDu;
+        Table t(&buf[0], 6000, o);
+        ReferenceModel ref;
+        std::vector<std::string> pool;
+        for (uint32_t i = 0; i < 400; ++i) pool.push_back(name_of(i, static_cast<int>(i % 3)));
+        size_t refused_probe = 0, refused_memory = 0;
+        for (int step = 0; step < 40000; ++step) {
+            uint32_t r = rnd() % 100;
+            const std::string& nm = pool[rnd() % pool.size()];
+            if (r < 10 && ref.depth() < 8) {
+                uint64_t d = t.state_digest();
+                if (t.enter_scope() == strata::kOk) ref.enter();
+                else CHECK(t.state_digest() == d);
+            } else if (r < 20) {
+                CHECK((t.exit_scope() == strata::kOk) == ref.exit());
+            } else if (r < 60) {
+                uint64_t d = t.state_digest();
+                int s = decl(t, nm, step);
+                if (s == strata::kProbeLimit || s == strata::kNoMemory) {
+                    CHECK(t.state_digest() == d);
+                    CHECK(s == strata::kNoMemory || o.max_probe != 0);
+                    if (s == strata::kProbeLimit) ++refused_probe; else ++refused_memory;
+                } else {
+                    CHECK(s == ref.declare(nm, step));
+                }
+            } else {
+                int32_t b = -1;
+                if (!ref.resolve(nm, &b)) b = -1;
+                CHECK(look(t, nm) == b);
+            }
+            if (step % 4000 == 0) CHECK(t.check_invariants() && agrees(t, ref, pool));
+        }
+        CHECK(t.check_invariants() && agrees(t, ref, pool));
+        CHECK(t.stats().rebuilds == 0);
+        CHECK(o.max_probe == 0 || t.stats().longest_probe <= o.max_probe);
+        if (degenerate && o.max_probe) CHECK(refused_probe > 0);
+        if (o.max_probe == 0) CHECK(refused_memory > 0);   // without a probe limit the 6000-byte buffer runs out
+        while (ref.depth() > 0) { CHECK(t.exit_scope() == strata::kOk); ref.exit(); }
+        CHECK(agrees(t, ref, pool));
+    }
+    Table::degenerate_hash() = false;
+}
+
 int main() {
     test_scoping(true);
     test_scoping(false);
@@ -461,6 +622,8 @@ int main() {
     test_all_or_nothing();
     test_exit_under_collisions_and_rebuilds();
     test_deep_shadowing();
+    test_keyed_hash();
+    test_bounded_mode();
     std::printf("%d checks, %d failed\n", g_checks, g_failed);
     return g_failed ? 1 : 0;
 }

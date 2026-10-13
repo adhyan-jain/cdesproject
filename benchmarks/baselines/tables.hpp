@@ -57,6 +57,24 @@ typedef StrataT<true, true, false> Strata;            // default configuration
 typedef StrataT<false, true, false> StrataRaw;        // ablation: names stored as raw bytes
 typedef StrataT<true, false, false> StrataNoShrink;   // ablation: the buffer is never given back
 typedef StrataT<true, true, true> StrataSparse;       // option: index at most half full
+// option: keyed hash (HalfSipHash-1-3) instead of the unkeyed Murmur mixer
+struct StrataKeyed {
+    strata::Table t;
+    static strata::Options options() {
+        strata::Options o = strata_options(true, true, false);
+        o.keyed = true;
+        o.key[0] = 0x0a1b2c3du;
+        o.key[1] = 0x4e5f6071u;
+        return o;
+    }
+    StrataKeyed() : t(options()) {}
+    static const char* id() { return "strata_keyed"; }
+    bool enter() { return t.enter_scope() == strata::kOk; }
+    bool exit() { return t.exit_scope() == strata::kOk; }
+    int declare(const std::string& s, int32_t v) { return t.declare(s.data(), s.size(), v); }
+    bool resolve(const std::string& s, int32_t* v) const { return t.resolve(s.data(), s.size(), v); }
+    size_t used_peak() const { return t.stats().peak_used_bytes; }
+};
 
 // ---- conventional allocator-free design: chained table over an entry arena ----------
 inline void* arena_realloc(void* p, size_t n) {

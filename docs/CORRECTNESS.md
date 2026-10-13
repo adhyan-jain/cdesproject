@@ -127,3 +127,55 @@ failing after *k* = 1..10 calls, leak check) cover the same property through con
 * 32-bit targets were exercised only through the Cortex-M3 emulator run
   (`results/embedded/`), which replays compiler traces and compares a checksum with the host;
   the full unit-test suite was not run there.
+
+## 7. Bounded mode and keyed hash (added 2026-10-13)
+
+`Table(buffer, bytes, options)` with `options.index_slots != 0` gives a fixed-mode table whose
+index has a static size. `options.max_probe = L` adds a probe limit; `options.keyed` replaces
+the hash by HalfSipHash-1-3 under `options.key`.
+
+**B1 (no rebuild).** With a static index `ensure` never calls `relocate`: it returns false when
+the load limit or the free space would be exceeded and true otherwise, without writing. So no
+operation contains a step proportional to the number of live names, and the layout of the
+index is only ever changed by one insertion (`declare` of a new name) or by emptying slots
+(`exit_scope`).
+
+**B2 (probe bound).** With `max_probe = L`, every stored name lies within the first L slots of
+its probe path. *Argument.* A name is inserted only after `probe_fits` found an empty slot
+among the first L slots of its path, and `index_insert` takes the first empty slot, which is
+that one or an earlier one. A stored name never moves (B1), and scope exit only empties slots.
+∎ Consequently `find` may stop after L slots without missing a stored name, and a lookup or
+declaration examines at most L index slots. Each examined slot whose 8-bit fingerprint matches
+costs one comparison of at most 64 words, so the work of one call is bounded by a constant
+that depends on L and the name-length limit, not on the table's contents.
+
+**B3 (refusal).** `declare` returns `kProbeLimit` before writing anything; the argument of
+section 4 applies unchanged. A name that shadows a visible one needs no index slot and is
+never refused for this reason.
+
+**B4 (section 3 still holds).** Emptying the newest key's slot cuts no remaining key's path
+(the claim of section 3 does not depend on the index size being able to change), and the stop
+after L slots is sound by B2.
+
+**B5 (configuration errors fail closed).** A probe limit without a static index, an index size
+that is not a power of two of at least 16, or one that does not fit the buffer gives an invalid
+table on which every call returns `kNoMemory`. Growable mode ignores both fields.
+
+**Keyed hash.** Correctness never depended on the hash (section 5); the key only changes where
+names are placed. Rebuilds in the other modes re-hash stored names with the same key
+(`hash_of`). The implementation is compared with the reference HalfSipHash source on 200 000
+random inputs (`tests/halfsiphash_conformance.cpp`, little-endian hosts only).
+
+What the bound does **not** cover: `exit_scope` takes time proportional to the number of
+declarations of the scope being left; `make_key` is linear in the name length (at most 255
+bytes). The probe limit bounds work per call, it does not make an attack impossible to
+*attempt*: with the unkeyed hash an attacker can still fill a cluster and have further names
+refused. Whether the keyed hash resists a determined attacker rests on HalfSipHash-1-3 with a
+64-bit key, which its authors and the Linux kernel documentation describe as adequate for
+hash-table flooding only.
+
+**Tests.** `test_bounded_mode` and `test_keyed_hash` in `tests/test_strata.cpp`;
+`tests/exhaustive_small.cpp` (every operation sequence up to a fixed length over six
+operations, eight configurations, five of them bounded or keyed); `tests/fuzz_strata.cpp`
+(differential fuzzing of all modes under ASan + UBSan); `scripts/audit/mutation_check.py`
+(injected defects that the fuzzer must detect). Results: `reports/TEST_RESULTS.md`.

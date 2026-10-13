@@ -34,9 +34,18 @@
 //   growable  Table(options): grows the buffer on demand (up to options.max_bytes) and
 //             gives memory back when less than a quarter is in use. A failed allocation
 //             leaves the table unchanged.
+//   bounded   Table(buffer, bytes, options) with options.index_slots != 0: a fixed-mode
+//             table whose index has a static size and is never rebuilt, so no operation
+//             contains a hidden O(n) step. With options.max_probe = L, a lookup or a
+//             declaration examines at most L index slots; a new name that would need a
+//             longer probe sequence is refused with kProbeLimit and nothing changes.
+//             options.keyed selects a keyed hash (HalfSipHash-1-3) so that the positions
+//             of names cannot be predicted without the key.
 // No exceptions are thrown and none are needed. Not thread-safe.
 //
 // Limits: names 1..255 bytes; scope depth <= 16383; buffer <= 64 MiB; type tag 0..255.
+// The keyed hash reads name words in host order; its agreement with the reference
+// HalfSipHash is checked on little-endian hosts only.
 #ifndef STRATA_STRATA_HPP
 #define STRATA_STRATA_HPP
 
@@ -54,7 +63,8 @@ enum Status {
     kNameTooLong = -2, // more than kMaxNameLen bytes
     kEmptyName = -3,
     kNoScope = -4,     // exit_scope() at the outermost scope
-    kTooDeep = -5      // more than kMaxDepth open scopes
+    kTooDeep = -5,     // more than kMaxDepth open scopes
+    kProbeLimit = -6   // bounded mode: the name would need more than max_probe index probes; nothing was changed
 };
 
 enum { kMaxNameLen = 255, kMaxNameWords = 64, kMaxDepth = 16383, kMarkWords = 2 };
@@ -73,8 +83,12 @@ struct Options {
     FreeFn free;           // default: free
     ReallocFn realloc;     // default: realloc, or alloc + copy + free when only alloc/free are given
     void* user;
+    bool keyed;            // hash names with HalfSipHash-1-3 under `key` instead of the unkeyed Murmur mixer
+    uint32_t key[2];       // secret 64-bit key for `keyed`; must come from a source the input's author cannot predict
+    uint32_t index_slots;  // fixed mode only: static index of this many slots (power of two >= 16), never rebuilt; 0 = grow in place
+    uint32_t max_probe;    // with a static index: index slots examined per operation at most; 0 = no limit
     Options() : initial_bytes(1024), max_bytes(0), pack_names(true), shrink(true), sparse_index(false),
-                alloc(0), free(0), realloc(0), user(0) {}
+                alloc(0), free(0), realloc(0), user(0), keyed(false), index_slots(0), max_probe(0) { key[0] = key[1] = 0; }
 };
 
 struct Stats {
@@ -84,6 +98,7 @@ struct Stats {
     size_t index_bytes, ident_bytes, undo_bytes;
     size_t live_declarations, live_identifiers, depth;
     size_t rebuilds;         // index or buffer relocations so far
+    size_t longest_probe;    // most index slots any insertion has examined so far (1 = home slot was free)
 };
 
 // A name prepared for lookup: packed (or raw) words, key bits of the meta word, hash.
@@ -130,6 +145,28 @@ inline uint32_t hash_words(const uint32_t* w, uint32_t n, uint32_t meta) {
     for (uint32_t i = 0; i < n; ++i) h = hash_step(h, w[i]);
     return hash_finish(h, meta);
 }
+// HalfSipHash-1-3 (J.-P. Aumasson; reference code CC0) of the message formed by the name
+// words followed by the meta word, each taken as four little-endian bytes. 64-bit key,
+// 32-bit result. On a little-endian machine the result equals the reference
+// halfsiphash() of those bytes built with one compression and three finalization rounds.
+inline void sipround(uint32_t& v0, uint32_t& v1, uint32_t& v2, uint32_t& v3) {
+    v0 += v1; v1 = rotl(v1, 5); v1 ^= v0; v0 = rotl(v0, 16);
+    v2 += v3; v3 = rotl(v3, 8); v3 ^= v2;
+    v0 += v3; v3 = rotl(v3, 7); v3 ^= v0;
+    v2 += v1; v1 = rotl(v1, 13); v1 ^= v2; v2 = rotl(v2, 16);
+}
+inline uint32_t halfsiphash13(const uint32_t* w, uint32_t n, uint32_t meta, uint32_t k0, uint32_t k1) {
+    uint32_t v0 = k0, v1 = k1, v2 = 0x6c796765u ^ k0, v3 = 0x74656462u ^ k1;
+    for (uint32_t i = 0; i <= n; ++i) {
+        const uint32_t m = i < n ? w[i] : meta;
+        v3 ^= m; sipround(v0, v1, v2, v3); v0 ^= m;
+    }
+    const uint32_t b = ((n + 1) * 4) << 24;   // length in bytes, top byte of the final block
+    v3 ^= b; sipround(v0, v1, v2, v3); v0 ^= b;
+    v2 ^= 0xff;
+    sipround(v0, v1, v2, v3); sipround(v0, v1, v2, v3); sipround(v0, v1, v2, v3);
+    return v1 ^ v3;
+}
 inline void* default_alloc(size_t n, void*) { return std::malloc(n); }
 inline void default_free(void* p, void*) { std::free(p); }
 inline void* default_realloc(void* p, size_t, size_t n, void*) { return std::realloc(p, n); }
@@ -150,8 +187,25 @@ public:
         valid_ = w_ != 0 && cap_ >= kMinWords;
         if (valid_) reset_layout();
     }
+    // Fixed mode with options: pack_names, sparse_index, keyed/key, index_slots, max_probe
+    // are used; the allocation fields are ignored. An index_slots that is not a power of
+    // two >= 16 or does not fit the buffer, or a max_probe without index_slots, gives an
+    // invalid table (every call returns kNoMemory) rather than a silently unbounded one.
+    Table(void* buffer, size_t bytes, const Options& o)
+        : w_(static_cast<uint32_t*>(buffer)),
+          cap_(bytes / 4 > kMaxWords ? static_cast<uint32_t>(kMaxWords) : static_cast<uint32_t>(bytes / 4)),
+          fixed_(true), opt_(o) {
+        init_hooks();
+        const uint32_t n = o.index_slots;
+        bool ok = w_ != 0 && cap_ >= kMinWords;
+        if (n) ok = ok && n >= kInitialIndex && !(n & (n - 1)) && n < cap_;
+        else ok = ok && o.max_probe == 0;
+        valid_ = ok;
+        if (valid_) reset_layout();
+    }
     // Growable mode.
     explicit Table(const Options& o = Options()) : w_(0), cap_(0), fixed_(false), opt_(o) {
+        opt_.index_slots = opt_.max_probe = 0;   // a static index exists in fixed mode only
         init_hooks();
         size_t words = o.initial_bytes / 4;
         if (words < kMinWords) words = kMinWords;
@@ -251,6 +305,7 @@ public:
         // new name: reserve everything first so that failure changes nothing
         if (itop_ + 2 + k.n > kRefMask) return kNoMemory;
         if (!ensure(2 + k.n + 1, 1)) return kNoMemory;
+        if (opt_.max_probe && !probe_fits(k.hash)) return kProbeLimit;
         ref = itop_;
         uint32_t* rec = ident(ref);
         rec[0] = static_cast<uint32_t>(value);
@@ -308,6 +363,7 @@ public:
         s.live_identifiers = nident_;
         s.depth = depth_;
         s.rebuilds = rebuilds_;
+        s.longest_probe = longest_;
         return s;
     }
     // Structural self-check used by the tests: every identifier is reachable through the
@@ -321,12 +377,13 @@ public:
             const uint32_t* rec = ident(r);
             uint32_t n = rec[1] & kWordsMask;
             if (n == 0 || n > kMaxNameWords || (rec[1] >> kDepthShift) > depth_) return false;
-            uint32_t h = detail::hash_words(rec + 2, n, rec[1] & kKeyBits);
+            uint32_t h = hash_of(rec + 2, n, rec[1] & kKeyBits);
             uint32_t i = home(h), steps = 0;
             while (w_[i] != slot_word(h, r)) {
                 if (w_[i] == 0 || ++steps > idx_) return false;  // unreachable from its home slot
                 i = (i + 1) & (idx_ - 1);
             }
+            if (opt_.max_probe && steps >= opt_.max_probe) return false;  // beyond the probe limit
             ++idents;
             r += 2 + n;
         }
@@ -399,7 +456,8 @@ public:
         // packed names need no length: a code is never 0, so the padding is unambiguous
         k.n = n;
         k.meta = n | raw << 7 | tail << 8;
-        k.hash = raw ? detail::hash_words(k.w, n, k.meta) : detail::hash_finish(h, k.meta);
+        if (opt_.keyed) k.hash = detail::halfsiphash13(k.w, n, k.meta, opt_.key[0], opt_.key[1]);
+        else k.hash = raw ? detail::hash_words(k.w, n, k.meta) : detail::hash_finish(h, k.meta);
         return kOk;
     }
 
@@ -424,11 +482,11 @@ private:
         if (!opt_.alloc && !opt_.free && !opt_.realloc) opt_.realloc = detail::default_realloc;
         if (!opt_.alloc) opt_.alloc = detail::default_alloc;
         if (!opt_.free) opt_.free = detail::default_free;
-        idx_ = itop_ = undo_ = mark_ = peak_ = calm_ = 0;
+        idx_ = itop_ = undo_ = mark_ = peak_ = calm_ = longest_ = 0;
         ndecl_ = nident_ = depth_ = rebuilds_ = 0;
     }
     void reset_layout() {
-        idx_ = kInitialIndex;
+        idx_ = opt_.index_slots ? opt_.index_slots : static_cast<uint32_t>(kInitialIndex);
         std::memset(w_, 0, static_cast<size_t>(idx_) * 4);
         itop_ = 1;  // reference 0 means "none"
         undo_ = mark_ = 0;
@@ -451,11 +509,26 @@ private:
         return h & (idx_ - 1);
     }
 
+    uint32_t hash_of(const uint32_t* w, uint32_t n, uint32_t meta) const {
+        return opt_.keyed ? detail::halfsiphash13(w, n, meta, opt_.key[0], opt_.key[1]) : detail::hash_words(w, n, meta);
+    }
+    // Bounded mode: is there an empty slot among the first max_probe slots of the path?
+    bool probe_fits(uint32_t h) const {
+        const uint32_t mask = idx_ - 1;
+        uint32_t i = home(h);
+        for (uint32_t steps = 0; steps < opt_.max_probe; ++steps, i = (i + 1) & mask)
+            if (w_[i] == 0) return true;
+        return false;
+    }
+
     uint32_t find(const Key& k) const {
         uint32_t fp = k.hash >> 24;
         if (!fp) fp = 1;
         const uint32_t mask = idx_ - 1;
-        for (uint32_t i = home(k.hash);; i = (i + 1) & mask) {
+        // No name is ever stored beyond max_probe slots from its home (declare refuses,
+        // and a static index is never rebuilt), so the search may stop there.
+        uint32_t left = opt_.max_probe ? opt_.max_probe : 0xFFFFFFFFu;
+        for (uint32_t i = home(k.hash); left; i = (i + 1) & mask, --left) {
             uint32_t s = w_[i];
             if (s == 0) return 0;
             if ((s >> 24) != fp) continue;
@@ -465,12 +538,14 @@ private:
             while (j < k.n && rec[2 + j] == k.w[j]) ++j;
             if (j == k.n) return s & kRefMask;
         }
+        return 0;
     }
     uint32_t index_insert(uint32_t h, uint32_t ref) {
         const uint32_t mask = idx_ - 1;
-        uint32_t i = home(h);
-        while (w_[i]) i = (i + 1) & mask;
+        uint32_t i = home(h), steps = 1;
+        while (w_[i]) { i = (i + 1) & mask; ++steps; }
         w_[i] = slot_word(h, ref);
+        if (steps > longest_) longest_ = steps;
         return i;
     }
     // Rewrites the undo entries of first declarations: slot -> identifier reference
@@ -482,7 +557,7 @@ private:
             if (e[0] & kShadowBit) { pos -= 3; continue; }
             if (to_slots) {
                 const uint32_t* rec = ident(e[0]);
-                uint32_t h = detail::hash_words(rec + 2, rec[1] & kWordsMask, rec[1] & kKeyBits);
+                uint32_t h = hash_of(rec + 2, rec[1] & kWordsMask, rec[1] & kKeyBits);
                 uint32_t want = slot_word(h, e[0]), i = home(h);
                 while (w_[i] != want) i = (i + 1) & (idx_ - 1);
                 e[0] = i;
@@ -498,6 +573,8 @@ private:
     bool ensure(uint32_t words, uint32_t new_idents) {
         uint32_t idx = idx_;
         const uint64_t num = opt_.sparse_index ? 2 : 3;   // maximum load factor num/4
+        if (opt_.index_slots)                             // static index: never rebuilt
+            return static_cast<uint64_t>(nident_ + new_idents) * 4 <= static_cast<uint64_t>(idx) * num && free_words() >= words;
         while (static_cast<uint64_t>(nident_ + new_idents) * 4 > static_cast<uint64_t>(idx) * num) idx *= 2;
         if (idx == idx_ && free_words() >= words) return true;
         uint64_t need = static_cast<uint64_t>(idx) + itop_ + undo_ + words;
@@ -551,7 +628,7 @@ private:
         for (uint32_t r = 1; r < itop_;) {
             const uint32_t* rec = ident(r);
             uint32_t n = rec[1] & kWordsMask;
-            index_insert(detail::hash_words(rec + 2, n, rec[1] & kKeyBits), r);
+            index_insert(hash_of(rec + 2, n, rec[1] & kKeyBits), r);
             r += 2 + n;
         }
         retarget_undo(true);
@@ -577,6 +654,7 @@ private:
     uint32_t mark_;      // current scope mark (undo-stack reference), 0 at the outermost scope
     uint32_t peak_;
     uint32_t calm_;      // consecutive scope exits with the buffer at most a quarter full
+    uint32_t longest_;   // most index slots examined by any insertion
     uint32_t ndecl_, nident_, depth_, rebuilds_;
     bool fixed_, valid_;
     Options opt_;
