@@ -1,0 +1,79 @@
+# STRATA frontend (interactive demo)
+
+A small web interface for showing what STRATA does: declarations, lookups, nested scopes,
+shadowing, scope exit, and a fixed buffer that refuses cleanly when it is full.
+
+**It is connected to the real table.** Every operation is executed by `strata::Table` from
+`include/strata/strata.hpp` in fixed mode, inside a C++ engine (`engine/strata_engine.cpp`).
+Nothing about the table is re-implemented in JavaScript. The page shows:
+
+* statuses (`kOk`, `kRedeclared`, `kNoMemory`, `kNoScope`, ...) exactly as the table returns them;
+* byte counts from `Table::stats()`;
+* the buffer layout (index slots, identifier records, undo stack) read back from the buffer the
+  table lives in, following the format documented at the top of `strata.hpp`;
+* the table's `state_digest()` before and after every call, so a refused call can be seen to
+  change nothing;
+* three checks after every request: `check_invariants()`, every decoded record equals what
+  `resolve()` returns, and every answer equals `tests/reference_model.hpp`.
+
+The page has three parts:
+
+* **Operations / Write code** (left): click operations one by one, or type a small C program
+  (int, float, char, bool, blocks, functions, if/while/for) and Run or Step through it. The code
+  is translated into the calls a compiler makes on its symbol table (declare, lookup, enter and
+  exit scope); nothing is evaluated. Each event shows the source line it came from.
+* **Symbol table and memory buffer** (right): the table's state after the last operation.
+* **Accuracy & performance** (below): headline figures and tables read from the recorded paper
+  run by `web/scripts/make-results.mjs` (`npm run results` regenerates `src/data/recorded.json`),
+  and a live check that replays any of the 8 stored compiler traces through STRATA and the
+  conventional single-buffer table (`benchmarks/baselines/arena_chain.hpp`) in the engine,
+  checking every answer against the reference model. Live times are from this machine and vary;
+  the reported timing is the paper's 31-round run.
+
+The demo was added for the project review. It does not change the library, the tests, the
+benchmarks or any result.
+
+## Run it
+
+Needs Node.js 18+ and `g++` with C++14 (MinGW on Windows is fine; set `CXX` to use another
+compiler). No internet is needed after `npm install`.
+
+```bash
+cd frontend/web
+npm install        # once
+npm start          # builds the engine and the page, serves http://localhost:5199 and opens it
+```
+
+On Windows you can also double-click `frontend/start-demo.cmd`.
+
+Other commands, all in `frontend/web`:
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | development server with hot reload on port 5199 |
+| `npm test` | 24 checks: the engine against the real table, the code window's C subset, the live trace check |
+| `npm run build` | type check and production build into `dist/` |
+| `npm run serve` | serve an existing `dist/` without rebuilding |
+
+## How it fits together
+
+```
+browser (React, frontend/web/src)
+   │  POST /api/run {capacity, ops[]}        the page keeps the list of operations
+   ▼
+server/api.mjs                               validates names, types, values, limits
+   │  stdin: CAP 256 / D count 0 1 / E / X / L count
+   ▼
+engine/strata_engine.cpp                     replays the list on a fresh strata::Table
+   │  stdout: JSON (per-operation results, stats, decoded buffer, checks)
+   ▼
+browser renders it
+```
+
+Each request replays the whole list on a new table, so the C++ table is always the source of
+truth, reset is exact, and the guided demo is deterministic. The engine is started with a fixed
+path and no shell; requests can only become its input script. Limits: 400 operations, buffers
+of 128 B to 64 KiB, names that are C identifiers of up to 64 characters.
+
+The demo stores a C type in STRATA's 8-bit type tag (`int`, `float`, `char`, `bool`) and the
+value in its 32-bit value field (a `float` as its IEEE-754 bit pattern).
