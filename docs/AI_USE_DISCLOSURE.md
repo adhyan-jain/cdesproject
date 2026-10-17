@@ -43,7 +43,7 @@ output except by running the programs listed below, and it can be wrong.
 * The proofs of Theorem 2 (undo), Theorem 4 (exactness) and Proposition 5 (orphans) are short; the proof of the exact refusal law (Theorem 7, proved in Appendix A of the
   manuscript) is the longest and the one most worth reading line by line. It is validated
   numerically, which is strong evidence but not a proof.
-* The separation corollary (Corollary 6) quotes two published results. The AI read the
+* The probe-complexity theorem (Theorem 6) quotes published results. The AI read the
   relevant statements in the primary text of Farach-Colton, Krapivin, Kuszmaul (arXiv
   2501.02305) and of Bender et al., *Tiny Pointers* (arXiv 2111.12800), and did not re-prove them or
   the reduction between them.
