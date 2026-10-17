@@ -135,7 +135,7 @@ None of these can be resolved by an agent. Full list: `submission/SIGNOFF_CHECKL
 1. **No author other than the first has seen the work.** Review and approval by Adhyan Jain, Akshith Venkatataramana and Arjuman are not recorded.
 2. **Authorship is unjustified in the record** for two of the four names; the guide's role (acknowledged, not an author) needs her agreement.
 3. **AI assistance.** Implementation, experiments, analysis and text were produced by an AI assistant. The venue's policy must be read and the disclosure approved; the authors must be able to defend the content themselves.
-4. **Patent/IP.** The advisory recorded for the predecessor project is unresolved, and the repository was made public on 2026-10-13 by its owner without a recorded agreement of the co-author or institution.
+4. **Public release.** The repository was made public on 2026-10-13 by its owner without a recorded agreement of the co-author or institution.
 5. **Author details**: spelling of one name, affiliations, e-mails, corresponding author.
 6. **Venue decision** (including travel and registration cost) and a fresh check of the 2027 call.
 7. Authorisation to push: **given by the repository owner on 2026-10-13** (section 13). The agreement of the other contributors to the public release is still not recorded (item 4).

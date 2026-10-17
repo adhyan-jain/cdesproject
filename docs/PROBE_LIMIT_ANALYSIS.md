@@ -1,5 +1,8 @@
 # The canonical-state property and how to choose the probe limit
 
+> **Update 2026-10-17:** see `docs/ADDENDUM_2026-10-17.md`; the bound below is valid but looser than stated, and an exact law replaces it (`theory/`).
+
+
 Added 2026-10-13. Two statements about STRATA, each with an argument and a test or
 measurement. Neither uses a new technique: the first follows from the removal rule proved in
 `CORRECTNESS.md`, the second is the standard interval-counting argument for linear probing

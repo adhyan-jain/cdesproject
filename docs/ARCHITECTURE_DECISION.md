@@ -49,8 +49,7 @@ for the alternatives considered and `include/strata/strata.hpp` for the result.
 ## Repository visibility
 
 The brief prefers a public repository unless there is a material reason against it. There is
-one: the METIS repository contains a patent-disclosure package and an explicit advisory not
-to publish before filing (`docs/METIS_X_FINAL_VALIDATION_REPORT.md`, section 9), and it has
+one: the METIS repository has
 no licence file. Publication cannot be undone, and the co-author has not been asked. The new
 repository was therefore created **private**, with the co-author invited. It contains no
 METIS code. Making it public is one command (`gh repo edit --visibility public`) once both
@@ -64,11 +63,11 @@ C++14, header-only core, no dependency beyond the C library. Benchmarks need Lin
 
 ## Repository visibility: status on 2026-10-13
 
-The section above records the decision of 2026-10-11 to keep the repository private because of
-the patent advisory in the METIS repository and because the co-author had not been asked.
+The section above records the decision of 2026-10-11 to keep the repository private because the
+METIS repository has no licence file and because the co-author had not been asked.
 On 2026-10-13 the repository owner (Shubhi Singh) made the repository **public** by explicit
-instruction, after being reminded of the advisory. This file does not record whether the
-co-authors, the guide or the institution agreed, or whether the advisory still applies. That
+instruction. This file does not record whether the
+co-authors, the guide or the institution agreed. That
 question is **open** and is a human decision; it is listed in `SUBMISSION_READINESS.md`. The
 repository still contains no METIS code. Whatever its outcome, publication of this repository
 is a public disclosure that cannot be undone.

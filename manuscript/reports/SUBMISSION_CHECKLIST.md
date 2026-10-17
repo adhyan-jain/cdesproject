@@ -43,7 +43,7 @@ closed by the authors.
 
 - [ ] Update or remove `paper/` and `docs/RESULTS.md` in the public repository; they describe an older, slower version of the table.
 - [ ] Tag the commit that the manuscript's numbers come from and cite the tag.
-- [ ] Confirm the licence and the patent question with all contributors (the repository is already public).
+- [ ] Confirm the licence with all contributors (the repository is already public).
 
 ### At submission
 

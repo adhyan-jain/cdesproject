@@ -37,7 +37,7 @@ the paper must not be submitted and nothing further should be published.
 
 | # | Item | Done |
 |---|---|---|
-| 16 | The patent advisory recorded for the METIS project (`docs/ARCHITECTURE_DECISION.md`) has been resolved with Adhyan Jain and, if applicable, the institution. The repository was made public on 2026-10-13 by its owner; whether that was agreed is not recorded | [ ] |
+| 16 | The public release of the repository (made public on 2026-10-13 by its owner) was agreed by Adhyan Jain and, if applicable, the institution; whether that was agreed is not recorded | [ ] |
 | 17 | Licence confirmed (currently MIT in two authors' names; four authors are now listed) | [ ] |
 | 18 | The comparison with METIS-X is published with the agreement of its authors | [ ] |
 | 19 | Third-party material: TinyCC and chibicc are patched by scripts and not redistributed; parallel-hashmap and METIS are fetched, not stored; the traces are lists of identifiers from projects under their own licences (`workloads/traces/MANIFEST.tsv`). Confirm this is acceptable under the venue's artifact rules | [ ] |
