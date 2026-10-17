@@ -22,6 +22,13 @@ risk. Numbering is the manuscript's. All programs are in `verify/` and run by
 | **Props 11-13** Keys | ideal-hash model; coupon collector; geometric trials | re-derived | `adaptive_key_demo.cpp`: about 2 071 queries per collider (m = 2 048), 1-5.5 % honest refusals with a persistent key, 0 % otherwise (illustration of Prop 13, idealised oracle) | low for the statements; **the model oracle is not a timing channel** |
 | **Prop 14** Ledger | subtraction of the stated layout formulas | re-derived | `proof_checks.py`: the four identities hold at 848 449 instants of the eight traces; closed forms equal the independent simulation's peaks for all 5 layouts x 8 traces; `space_model.py` reproduces all 24 measured minima of the repository exactly | low |
 
+## Second pass (2026-10-19)
+
+An independent cold referee and an independent re-implementation (code written without reading `verify/`) were run on
+the manuscript. No fatal error; formulas matched by brute force. Corrections made are listed in NOVELTY.md section 5a.
+Still unchecked by a human: the window/coupling argument of Prop 5(b), the FKK theorem numbers and conditions behind
+Thm 6, and the elastic-hashing counter assumption.
+
 ## Places where a mistake is most likely to be found
 
 1. Thm 7, Step 1: the bijection between home-count vectors and cyclic arrangements of blocks
