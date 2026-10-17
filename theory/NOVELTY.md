@@ -94,6 +94,28 @@ LIFO level of the workload hierarchy or for the order-level characterisation. A 
 Note: the referee still flags that the Theta-optimality of Thm 6 rests on FKK theorem numbering/conditions that were
 read but not re-verified line by line.
 
+## 5c. Third pass (2026-10-19): two outside suggestions checked
+
+* **Petersson (Uppsala thesis 2009, Janson and Louchard advising): asymptotic distribution of the maximum displacement
+  of linear probing**, nearly full (Paper I) and all loads in (0,1) (Paper II). A refusal-free fill with limit L is the
+  event max displacement < L (keys never move), so the large-m behaviour behind claims 8 and 9 is expected to follow
+  from it. Not extracted (thesis text not read). Re-tagged: exact finite-size forms and design values are ours; the
+  limit regime is likely Petersson's. Credited in the manuscript.
+* **Krapivin-Kuszmaul-Wang, arXiv:2607.17494 (Jul 2026, v2 Sep 2026), interlinear probing**: stable non-greedy linear
+  probing, O(x log x) worst-case expected insertion for the first (1-1/x)n insertions (x <= n^0.49 known in advance),
+  lower bound Omega(x sqrt(log x)) for any stable strategy. Layer chosen from layer occupancies plus a private routing
+  coin, so it plausibly fits Def 1 (read in the primary text; not proved). Added as Thm 6(iv) and a table row: under
+  stack discipline stable linear probing is x (log x)^Theta(1) against Theta(x^2) greedy. Also noted: Zamir,
+  arXiv:2607.16390 (locality lower bound, insertions only).
+* **Bounded-process success probability** (Alharbi-Banderier-Bouillaguet's open question): their conclusion asks for the
+  number of successful insertions with at most p = alpha n probes, i.e. the discard-and-redraw RETRY process. That is
+  a different process from our refuse-and-stop event; dropped as our problem.
+* **Refusal law for arbitrary scope trees**: simulated on random depth walks (m = 256): the union bound (Prop 9) is
+  5-8x too large; observed refusal probability is within ~2x of P(W>0) (Prop 11) at the deepest depth reached.
+  A first-bad-node union bound is even looser (failures cluster on shared prefixes: a Cox-mixture structure). No
+  depth-profile statistic was found; a rigorous limit theorem (Chen-Stein under strong dependence) remains open work.
+  Not claimed as a result; recorded as an observation in Section 4.
+
 ## 5b. Directions tried and dropped (2026-10-19)
 
 * **Uniform probing is optimal for the refusal probability among non-reordering schemes**: false. A search over

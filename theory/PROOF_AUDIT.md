@@ -22,6 +22,12 @@ risk. Numbering is the manuscript's. All programs are in `verify/` and run by
 | **Props 12-14** Keys | ideal-hash model; coupon collector; geometric trials | re-derived | `adaptive_key_demo.cpp`: about 2 071 queries per collider (m = 2 048), 1-5.5 % honest refusals with a persistent key, 0 % otherwise (illustration of Prop 14, idealised oracle) | low for the statements; **the model oracle is not a timing channel** |
 | **Prop 15** Ledger | subtraction of the stated layout formulas | re-derived | `proof_checks.py`: the four identities hold at 848 449 instants of the eight traces; closed forms equal the independent simulation's peaks for all 5 layouts x 8 traces; `space_model.py` reproduces all 24 measured minima of the repository exactly | low |
 
+## Third pass (2026-10-19)
+
+Thm 6(iv) (interlinear probing) rests on reading its algorithm as satisfying Def 1 (layer chosen from layer occupancies;
+routing coin treated as part of the name's data) and on the stated bounds of arXiv:2607.17494; not independently
+re-derived. Petersson's thesis was not read (abstract only); claims 8-9 asymptotics may be implied by it.
+
 ## Second pass (2026-10-19)
 
 An independent cold referee and an independent re-implementation (code written without reading `verify/`) were run on

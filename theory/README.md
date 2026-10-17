@@ -1,6 +1,6 @@
 # theory/: a theory manuscript on stack-disciplined open addressing
 
-`paper/main.tex` is a self-contained article (about 23 pages, standard `article` class):
+`paper/main.tex` is a self-contained article (about 24 pages, standard `article` class):
 **Stack-Disciplined Open Addressing: Exact Undo, an Exact Refusal Law, and Key-Lifetime Rules for
 Bounded-Memory Scoped Tables.** It is a theory/analysis paper; it contains no new benchmark. The
 earlier empirical paper is in `../paper/`.
@@ -31,6 +31,7 @@ bash theory/verify/run_all.sh      # about 9 minutes; writes tables/ and data/, 
 | Program | Checks |
 |---|---|
 | `verify/exact_law.py` | the exact refusal law against brute-force enumeration of every home sequence, in exact rational arithmetic (258 triples) |
+| `verify/tree_schedule_check.py` | re-entrant depth-walk schedules on the real process: union bound vs observed refusals vs P(W>0) |
 | `verify/fill_law.py` | Theorem 10 against brute force over every home sequence, its closed form, and the whole-fill design table |
 | `verify/orphan_law.py` | Theorem 4(a) (397 562 assignment-order pairs), the finite-size orphan law against enumeration of every home sequence (exact rationals), the identity behind Corollary 8(b), and the M/D/1 limit |
 | `verify/lifo_check.py` | Theorem 2 (488 919 state comparisons, five insertion rules), Theorem 4 (every assignment x every deletion order, 18 settings), Proposition 5 |
