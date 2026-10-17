@@ -1,6 +1,6 @@
 """Machine checks of the remaining claims of the manuscript.
 
-1. Proposition 13 (ledger): the four identities hold at EVERY instant of EVERY translation unit of the eight
+1. Proposition 14 (ledger): the four identities hold at EVERY instant of EVERY translation unit of the eight
    traces, and the closed-form word counts reproduce the peaks of the independent simulation in space_model.py.
 2. Corollary 8(b): R_m(n,L) -> R_inf(alpha,L) as m grows (differences shrink, monotone in m at fixed L).
 3. Corollary 8(c): R_inf / asymptotic -> 1 as L grows.

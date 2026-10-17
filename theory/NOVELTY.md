@@ -13,9 +13,10 @@ the evidence supports; the manuscript was edited to claim no more than this file
 | 3 | **Orphan law** (Prop 5): `orph(x) = Y_c - 1` with `Y` the queue length of the linear-probing chain; mean `alpha/(2(1-alpha))` (Knuth's displacement); explicit finite-size law (Lukasiewicz-path weights, exact); limit law = discrete M/D/1 queue, so the fraction of keys removable out of order is `(1-alpha)(e^alpha-1)/alpha` | **new to our knowledge; modest** (mean is classical) | the queue picture of linear probing is classical; no source found stating the dependent-count law or the out-of-order fraction; proof of the limit is a window argument, rate not proved |
 | 4 | **Separation by deletion order** (Cor 6) | **observation, conditional** | combines Thm 2 with Farach-Colton, Krapivin, Kuszmaul (FOCS 2024) and the dynamic lower bound they cite from *Tiny Pointers*; part (ii) is quoted, not proved here |
 | 5 | **Refusal probability** (Thm 7, Cor 8) | **classical content; new use** | the quantity is the tail of the unsuccessful-search cost; its exact generating function and Poisson limit are in Janson-Viola (Algorithmica 2016, Thm 11.1, Eq. 11.4) and Knuth's run-length analysis. **Not claimed as new**: the law. **New**: an elementary derivation of an explicit finite-size sum; the proof that the Chernoff-type bound used for probe limits loses a factor `Theta(L^{3/2})`; the design table (258 vs 455); validation against a real probe-limited table |
-| 6 | **Key lifetime** (Props 10-12) | **small; model-based** | adaptivity against hash tables is known (Lipton-Naughton 1993; Naor-Yogev 2015); new is the exact accounting for a probe-limited table, with a fresh-key theorem and a persistent-key attack cost. No timing measurement |
+| 6 | **Key lifetime** (Props 11-13) | **small; model-based** | adaptivity against hash tables is known (Lipton-Naughton 1993; Naor-Yogev 2015); new is the exact accounting for a probe-limited table, with a fresh-key theorem and a persistent-key attack cost. No timing measurement |
+| 8 | **Refusal-free fill** (Thm 10): exact probability that a monotone fill to `n` keys has no refusal, `n! m^-n (m/k) [z^n] Phi_L(z)^k`, with `Phi_L` the EGF of `l`-interval parking functions (`l = L-1`), a closed form `e^-Q / (1 - L int e^-Q)` from a Bernoulli ODE, and a design table | **known combinatorics, new use** | the counting sequence is that of `l`-interval parking functions (Colaric et al. 2021; Aguilar-Fraga et al. 2024, which give recursions and generating functions for specific `l`); the almost-full-table decomposition and a nonlinear ODE are in Alharbi-Banderier-Bouillaguet (AofA 2026) for a *different* process. Not found: the ring with `n<m` as a refusal-free-fill probability, the closed form, or its comparison with the union bound. Practical effect: the whole-fill probe limit is 24 % lower than the earlier `N R_max` rule at m = 4096, eps = 1e-6 (306 vs 402) and within 2 % of the sum rule |
 | 5b | **Uniform probing** (paragraph "Other probing rules") | **trivial maths; useful comparison** | refusal probability `C(n,L)/C(m,L)` for any occupied set, so probe limits about five times smaller than for linear probing (49 vs 258 at load 3/4); stated for design guidance, not as a theorem |
-| 7 | **Space ledger** (Prop 13, Table 4) | **new for this design; accounting** | exact identities for five layouts; shows the earlier 16-18 % saving over the repository's baseline is a stored hash word plus packing, with interning space-neutral. Corrects an impression left by the earlier empirical paper |
+| 7 | **Space ledger** (Prop 14, Table 4) | **new for this design; accounting** | exact identities for five layouts; shows the earlier 16-18 % saving over the repository's baseline is a stored hash word plus packing, with interning space-neutral. Corrects an impression left by the earlier empirical paper |
 
 ## 2. What the manuscript may and may not claim
 
@@ -64,7 +65,7 @@ not a citable source.
 
 ## 5. Verdict
 
-A correct, carefully checked, but **modest** contribution: an elementary yet previously
+A correct, carefully checked, but **modest** contribution (after the second novelty pass: the strongest items are claims 2-3 and the closed-form refusal-free-fill law of claim 8, whose combinatorial core is known): an elementary yet previously
 unstated characterization of stack-ordered deletion (claims 1-2: undo, the exact set of safe
 deletion orders of a table as the linear extensions of a dependency relation, and stack order as
 the only universally safe one), an exact law for the number of dependent keys (claim 3, the
@@ -76,6 +77,16 @@ one. The novelty work is complete in the sense that every claim is classified, a
 and limited as above; it cannot be strengthened further without new mathematics (candidates
 that would: a trajectory-level law for refusals over a whole run, the refusal probability for
 quadratic probing and double hashing, a machine-checked development).
+
+## 5b. Directions tried and dropped (2026-10-19)
+
+* **Uniform probing is optimal for the refusal probability among non-reordering schemes**: false. A search over
+  probe-sequence distributions on m = 4, 5 found schemes whose refusal probability at high load is far below
+  `C(n,L)/C(m,L)` (e.g. 0.087 against 0.25 at m = 4, n = L = 3). This agrees with Farach-Colton, Krapivin, Kuszmaul
+  (funnel hashing beats uniform probing); not a new result.
+* **Trajectory law for monotone fills**: derived (claim 8), but the combinatorics is known; kept as an application.
+* **Success probability of the bounded process with redraws at a fill ratio** (listed as open by Alharbi et al.): not
+  attempted; it is a different, hard problem.
 
 ## 6. External review of the claims (2026-10-18) and what was done with it
 

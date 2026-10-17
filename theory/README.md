@@ -1,6 +1,6 @@
 # theory/: a theory manuscript on stack-disciplined open addressing
 
-`paper/main.tex` is a self-contained article (about 19 pages, standard `article` class):
+`paper/main.tex` is a self-contained article (about 20 pages, standard `article` class):
 **Stack-Disciplined Open Addressing: Exact Undo, an Exact Refusal Law, and Key-Lifetime Rules for
 Bounded-Memory Scoped Tables.** It is a theory/analysis paper; it contains no new benchmark. The
 earlier empirical paper is in `../paper/`.
@@ -14,8 +14,9 @@ earlier empirical paper is in `../paper/`.
 | Proposition 5 | the number of keys that depend on a key is a queue length minus one: exact finite-size law, limit law of a discrete M/D/1 queue (mean `alpha / (2 (1 - alpha))`; fraction of keys removable out of order `(1-alpha)(e^alpha-1)/alpha`) |
 | Corollary 6 | separation by deletion order, combining Theorem 2 with published results on open addressing without reordering (conditional on them) |
 | Theorem 7, Corollary 8 | refusal probability of a probe-limited linear-probing table (the tail of the classical unsuccessful-search cost): an elementary derivation of the explicit finite-size sum, its tail `C rho^L L^{-3/2}`, and the proof that the Chernoff-type bound used earlier is loose by a factor growing like `L^{3/2}`; the law itself is classical (Knuth; Janson-Viola) |
-| Propositions 10-12 | with an independent key per table the exact law holds against arbitrary adversarial names; with a persistent key and a probe oracle it does not; costs of the attack |
-| Proposition 13 | exact space-ledger identities; on the eight traces the compact layout's saving is a stored hash word plus packing, and interning is space-neutral |
+| Theorem 10 | exact probability that a monotone fill has no refusal (`l`-interval parking-function counts, closed-form generating function); the whole-fill probe limit is about a quarter below the union-bound rule |
+| Propositions 11-13 | with an independent key per table the exact law holds against arbitrary adversarial names; with a persistent key and a probe oracle it does not; costs of the attack |
+| Proposition 14 | exact space-ledger identities; on the eight traces the compact layout's saving is a stored hash word plus packing, and interning is space-neutral |
 
 ## Reproduce everything
 
@@ -29,6 +30,7 @@ bash theory/verify/run_all.sh      # about 9 minutes; writes tables/ and data/, 
 | Program | Checks |
 |---|---|
 | `verify/exact_law.py` | the exact refusal law against brute-force enumeration of every home sequence, in exact rational arithmetic (258 triples) |
+| `verify/fill_law.py` | Theorem 10 against brute force over every home sequence, its closed form, and the whole-fill design table |
 | `verify/orphan_law.py` | Theorem 4(a) (397 562 assignment-order pairs), the finite-size orphan law against enumeration of every home sequence (exact rationals), the identity behind Corollary 8(b), and the M/D/1 limit |
 | `verify/lifo_check.py` | Theorem 2 (488 919 state comparisons, five insertion rules), Theorem 4 (every assignment x every deletion order, 18 settings), Proposition 5 |
 | `verify/design_table.py` | the law against the repository's stored 240-million-sample simulation |
