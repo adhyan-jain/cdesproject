@@ -1,0 +1,7 @@
+m=2048 L=512 honest names=700 seeds=5
+colliders  queries/collider   refused(same key)   refused(fresh key)   refused(random names, same count)
+      400             2071       1.00% (max  1.29%)       0.00% (max  0.00%)       0.00%
+      512             2071       5.51% (max  6.14%)       0.00% (max  0.00%)       0.00%
+      600             2071       4.71% (max  6.00%)       0.00% (max  0.00%)       0.00%
+      700             2071       5.14% (max  5.71%)       0.00% (max  0.00%)       0.00%
+      800             2071       5.14% (max  6.00%)       0.00% (max  0.00%)       0.00%
