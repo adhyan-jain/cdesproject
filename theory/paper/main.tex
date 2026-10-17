@@ -300,6 +300,25 @@ The numbers $A_L(j)$ are those of the $\ell$-interval parking functions with $\e
 \input{tables/tab_fill.tex}
 \end{table}
 
+\begin{proposition}[Unlimited run at fixed occupancy]\label{prop:sustain}
+Consider a table holding $n=m-k$ live keys ($k\ge1$) and any number of oblivious push/pop pairs of fresh names on top of it. Until the first refusal the table is the same $\Ins(a)$ after every pop (Theorem~\ref{thm:undo}), so given the table the pushes are independent, a push is refused with probability $W/m$ where $W=\sum_{\text{blocks}}(g-L)^+$, and the probability that \emph{no} push is ever refused is
+\[
+\Prob(W=0)\;=\;\frac{[z^m]\bigl(\sum_{g=1}^{L}B(g)z^g\bigr)^{k}}{[z^m]\bigl(\sum_{g\ge1}B(g)z^g\bigr)^{k}} ,
+\]
+the probability that every block has at most $L$ cells. After $N$ pairs the probability of no refusal is $\E[(1-W/m)^N]$, which decreases to this value as $N\to\infty$; the union bound $N\,R_m(n,L)$ of Proposition~\ref{prop:run} exceeds $1$ for large $N$ and so says nothing in that regime.
+\end{proposition}
+\begin{proof}
+Given the table, the home of each fresh name is uniform and independent of it, and the name is refused iff its home starts a window of $L$ occupied cells; in a block of $g$ cells exactly $(g-L)^+$ homes do (Appendix~\ref{app:proof}, Step~4). Hence $W=0$ iff all blocks have at most $L$ cells, and the probability follows from Steps~1--3 by summing the weights $\prod B(g_i)$ over compositions of $m$ into $k$ parts, each at most $L$, against the unrestricted sum. (The cyclic factor $m/k$ is common to both.)
+\end{proof}
+
+Table~\ref{tab:sustain} shows the price of this guarantee. Sustaining an unlimited run costs about $\ln m/\ln(1/\rho)$ extra probes over the limit that suffices for one push ($\rho=\alpha e^{1-\alpha}$): the longest block of a random table grows like this logarithm, which is Pittel's asymptotic for the largest cluster of linear probing~\cite{pittel1987}; the exact finite-size values are what the table adds. At $m=4096$, load $3/4$ and $\varepsilon=10^{-6}$ the limit rises from $242$ to $349$.
+
+\begin{table}[t]
+\centering\small
+\caption{Smallest probe limit $L$ at load $3/4$ such that one fresh push is refused with probability at most $\varepsilon$ (Theorem~\ref{thm:law}), and such that no fresh name is ever refused on the table, however many push/pop pairs are made (Proposition~\ref{prop:sustain}).}\label{tab:sustain}
+\input{tables/tab_sustain.tex}
+\end{table}
+
 \begin{table}[t]
 \centering\small
 \caption{Smallest probe limit $L$ with per-insertion refusal probability at most $\varepsilon$: exact finite-size law for index sizes $m$, its Poisson limit ($m\to\infty$), and the limit that the Chernoff-type bound would require.}\label{tab:design}
@@ -428,7 +447,7 @@ Table~\ref{tab:ladder} evaluates the ledger on the traces. The compact layout ne
 \begin{itemize}[leftmargin=*]
 \item \textbf{Ideal hashing.} Theorem~\ref{thm:law} and Corollary~\ref{cor:marginal} assume independent uniform homes. Real identifiers are not random strings; the repository's compiler traces are consistent with uniform spreading but do not prove it. A keyed hash is treated as an ideal function; HalfSipHash-1-3 with a 64-bit key is documented as adequate for hash-table flooding only.
 \item \textbf{Orphan law: limit by a local argument.} Proposition~\ref{prop:orphans}(b) is proved by a window argument and the Poisson limit of home counts; the rate of convergence ($O(1/m)$ in the checks) is not proved. The law concerns clearing one key from a table built by insertions, not a sequence of out-of-order deletions.
-\item \textbf{Trajectories.} Theorem~\ref{thm:fill} is exact for a monotone fill from empty. For a general push/pop schedule only the union bound of Proposition~\ref{prop:run} is available; the number (not just the occurrence) of refusals in a run, and schedules that oscillate near a fixed table, are not derived.
+\item \textbf{Trajectories.} Theorem~\ref{thm:fill} is exact for a monotone fill from empty and Proposition~\ref{prop:sustain} for unlimited oscillation at a fixed occupancy. For a general push/pop schedule only the union bound of Proposition~\ref{prop:run} is available; the number (not just the occurrence) of refusals in a run, and schedules that oscillate near a fixed table, are not derived.
 \item \textbf{The law is a known quantity.} Theorem~\ref{thm:law} and Corollary~\ref{cor:limit}(b) restate classical results (Remark~\ref{rem:classical}); the new parts are the Chernoff gap, the design rule, the validation against an implementation, and the link to stack discipline (Corollary~\ref{cor:marginal}).
 \item \textbf{Two probing rules in the refusal law.} Theorems~\ref{thm:undo} and~\ref{thm:exact} cover the general class and greedy schemes respectively; the refusal probability is exact for linear probing (Theorem~\ref{thm:law}) and for uniform probing (a one-line product), not for quadratic probing or double hashing.
 \item \textbf{The probe-complexity theorem leans on published bounds.} Theorem~\ref{thm:sep}(ii) combines the exact transfer of Theorem~\ref{thm:undo} with the upper and lower bounds of~\cite{fkk2024}, whose proofs we read but did not re-derive, under their conditions on $\delta$; part~(iii) quotes a reduction from tiny pointers that we did not re-prove. It concerns expected probe indices in the random-function model against oblivious workloads.

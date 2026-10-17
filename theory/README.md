@@ -1,6 +1,6 @@
 # theory/: a theory manuscript on stack-disciplined open addressing
 
-`paper/main.tex` is a self-contained article (about 20 pages, standard `article` class):
+`paper/main.tex` is a self-contained article (about 23 pages, standard `article` class):
 **Stack-Disciplined Open Addressing: Exact Undo, an Exact Refusal Law, and Key-Lifetime Rules for
 Bounded-Memory Scoped Tables.** It is a theory/analysis paper; it contains no new benchmark. The
 earlier empirical paper is in `../paper/`.
@@ -15,8 +15,9 @@ earlier empirical paper is in `../paper/`.
 | Theorem 6 | tight probe complexity under stack discipline, combining Theorem 2 with the bounds of Farach-Colton-Krapivin-Kuszmaul: Theta(log 1/delta) (non-greedy) and Theta(log^2 1/delta) (greedy), worst-case and amortised; strictly between insertion-only (amortised O(1)) and random deletions (delta^-Omega(1)); conditional on their published bounds |
 | Theorem 7, Corollary 8 | refusal probability of a probe-limited linear-probing table (the tail of the classical unsuccessful-search cost): an elementary derivation of the explicit finite-size sum, its tail `C rho^L L^{-3/2}`, and the proof that the Chernoff-type bound used earlier is loose by a factor growing like `L^{3/2}`; the law itself is classical (Knuth; Janson-Viola) |
 | Theorem 10 | exact probability that a monotone fill has no refusal (`l`-interval parking-function counts, closed-form generating function); the whole-fill probe limit is about a quarter below the union-bound rule |
-| Propositions 11-13 | with an independent key per table the exact law holds against arbitrary adversarial names; with a persistent key and a probe oracle it does not; costs of the attack |
-| Proposition 14 | exact space-ledger identities; on the eight traces the compact layout's saving is a stored hash word plus packing, and interning is space-neutral |
+| Proposition 11 | probability that a persistent table can never refuse a fresh name (every block at most `L` cells); the probe limit for an unlimited run exceeds the one-push limit by about `ln m / ln(1/rho)` |
+| Propositions 12-14 | with an independent key per table the exact law holds against arbitrary adversarial names; with a persistent key and a probe oracle it does not; costs of the attack |
+| Proposition 15 | exact space-ledger identities; on the eight traces the compact layout's saving is a stored hash word plus packing, and interning is space-neutral |
 
 ## Reproduce everything
 
