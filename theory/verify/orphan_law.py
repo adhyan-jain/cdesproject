@@ -181,6 +181,7 @@ def check_limit(write=True):
         for m in (64, 128, 256):
             fin = finite_float(m, int(a*m), J)
             errs.append(max(abs(f-l) for f, l in zip(fin, lim)))
+            if a == 0.75: ZERO75[m] = fin[0]
         assert errs[0] > errs[1] > errs[2] and errs[2] < 0.02, errs
         rows.append((a, lim, errs))
     print("O  M/D/1 pmf: sums to 1, mean orphan count = alpha/(2(1-alpha)), P(orph=0) = (1-alpha)(e^alpha-1)/alpha")
@@ -199,9 +200,11 @@ def check_limit(write=True):
             f.write("\\begin{tabular}{@{}lrrrrrr@{}}\n\\toprule\n$\\alpha$ & $j{=}0$ & $1$ & $2$ & $3$ & $4$ & mean \\\\\n\\midrule\n" + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n")
         with open(os.path.join(d, "orphan_summary.tex"), "w") as f:
             f.write("\\newcommand{\\SafeOrderPairs}{%s}\n" % SAFE_PAIRS)
+            f.write("\\newcommand{\\OrphZeroSmall}{%.3f}\n\\newcommand{\\OrphZeroBig}{%.3f}\n" % (ZERO75[128], ZERO75[256]))
         print("O  wrote tab_orphan.tex, orphan_summary.tex")
 
 SAFE_PAIRS = "0"
+ZERO75 = {}
 if __name__ == "__main__":
     check_P_count = check_P()
     SAFE_PAIRS = "{:,}".format(check_P_count).replace(",", "\\,")

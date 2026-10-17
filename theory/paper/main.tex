@@ -153,7 +153,7 @@ k\sum_{g=2}^{n+1}\frac{Q_{k-1}(m-g)}{Q_k(m)}\sum_{u=1}^{g-1}F_u(j)\,Q_{j+1}(g-u)
 where $F_0(0)=1$ and $F_{u+1}(h')=\sum_{y\ge0,\ h=h'+1-y\ge0}F_u(h)/y!$ (with $Q_j$ as in Section~\ref{sec:law}); dividing by $n$ gives the law for a random live key.
 \end{enumerate}
 \end{proposition}
-Table~\ref{tab:orphan} shows the limit law. At load $3/4$ only about a third of the live keys can be removed out of order without harm, and the count of dependents has a heavy right tail ($\rho=\alpha e^{1-\alpha}$ governs it, as for the refusal law).
+Table~\ref{tab:orphan} shows the limit law. At load $3/4$ only about a third of the live keys can be removed out of order without harm (the finite-size law of part~(c) gives $\OrphZeroSmall$ at $m=128$ and $\OrphZeroBig$ at $m=256$, against the limit $0.372$), and the count of dependents has a heavy right tail ($\rho=\alpha e^{1-\alpha}$ governs it, as for the refusal law).
 \begin{proof}
 (a) A key $y$ is orphaned by clearing $x$ iff $y\lhd x$ (Theorem~\ref{thm:exact}(a)), i.e.\ iff the cell $c$ of $x$ lies on the path of $y$ strictly before $y$'s own cell. The live keys whose path contains $c$ are those homed at $c$ and those whose path contains $c-1$ and whose cell is not $c-1$; if $c-1$ is occupied exactly one key whose path contains it has its cell there, and if it is empty no path contains it. This is the recursion for $Y_c$; $c$ is occupied iff $Y_c\ge1$, the key at $c$ is one of the $Y_c$, and the other $Y_c-1$ are the keys depending on it. Hence $\mathrm{orph}(x)=Y_{c(x)}-1$. Summing over occupied cells, $\sum_x\mathrm{orph}(x)=\sum_c(Y_c-1)^+$, which is the number of pairs (cell, key whose path passes through it strictly before the key's own cell), i.e.\ $\sum_y\delta_y$. The total displacement does not depend on the insertion order (it is a function of the home counts alone~\cite{knuth3}); its mean over independent uniform homes is $n(C_n-1)$, where $C_n$ is Knuth's expected cost of a successful search, and $C_n-1\to\tfrac12\bigl(\tfrac1{1-\alpha}-1\bigr)=\tfrac{\alpha}{2(1-\alpha)}$. That the newest key has no dependents is Theorem~\ref{thm:exact}.
 
@@ -191,6 +191,23 @@ Let $\mathcal S$ be non-reordering with independent probe sequences.
 \end{proof}
 
 Parts (i) and~(ii) give a complete and tight answer for the stack-disciplined case, and place it strictly between the two known regimes: the amortised optimum is $O(1)$ for insertions only, $\Theta(\log\delta^{-1})$ under stack discipline (the oscillating workload makes every push as expensive as the worst insertion; no amortisation survives), and $\delta^{-\Omega(1)}$ for random deletions. Deletion \emph{order} therefore moves the achievable probe complexity of open addressing without reordering from polynomial to polylogarithmic in $\delta^{-1}$, and a workload that never reorders but frees names in the order of their creation, as every scoped symbol table does, falls on the good side. The statements concern expected probe indices in the random-function model against oblivious workloads; they say nothing about worst-case schedules chosen with knowledge of the hashes.
+
+Table~\ref{tab:hier} lists the consequence for the four schemes with known bounds, at load $1-\delta$. For linear probing the worst-case insertion costs $\tfrac12(1+\delta^{-2})$ probes in expectation (Knuth) while the cost averaged over a fill is $\Theta(\delta^{-1})$; by Theorem~\ref{thm:sep}(i) stack discipline at the top load costs the full $\Theta(\delta^{-2})$ on every push, so the price of stack-ordered deletion for linear probing is a factor $\delta^{-1}$ in amortised cost, against a factor $\log\delta^{-1}$ for elastic hashing and none for the worst case.
+
+\begin{table}[t]
+\centering\small
+\caption{Expected probe index at load $1-\delta$ (orders of magnitude; $\delta\to0$). Insertion-only: worst single insertion / averaged over the fill. Stack discipline: worst push = averaged over the best oblivious schedule (Theorem~\ref{thm:sep}(i)). Linear and uniform probing: Knuth~\cite{knuth3}, Yao~\cite{yao1985}; funnel and elastic hashing: \cite{fkk2024}.}\label{tab:hier}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+scheme & insertion-only: worst / amortised & stack: worst = amortised \\
+\midrule
+linear probing & $\delta^{-2}\ /\ \delta^{-1}$ & $\delta^{-2}$ \\
+uniform probing & $\delta^{-1}\ /\ \log\delta^{-1}$ & $\delta^{-1}$ \\
+funnel hashing (greedy) & $\log^2\delta^{-1}\ /\ \log\delta^{-1}$ & $\log^2\delta^{-1}$ \\
+elastic hashing (non-greedy) & $\log\delta^{-1}\ /\ 1$ & $\log\delta^{-1}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{An Exact Refusal Law}\label{sec:law}
