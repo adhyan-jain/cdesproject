@@ -9,8 +9,8 @@ the evidence supports; the manuscript was edited to claim no more than this file
 | # | Claim (manuscript) | Status | Why |
 |---|---|---|---|
 | 1 | **Undo** (Thm 2, Cor 3): for every non-reordering open-addressing scheme, popping the newest key by clearing its cell is an exact undo; the table is always the insertion-only table of the live sequence; insertion-only laws hold at every moment | **new as a stated theorem; elementary** | no source found stating it (searches below). Likely folklore in backtracking code; the *statement for a general class of schemes, with the transfer of distributional results*, appears unpublished |
-| 2 | **Exactness** (Thm 4, Remark 1): stack order is the *only* deletion order for which clearing is safe for every hash assignment (greedy schemes) | **new to our knowledge; simple** | no source found; the converse is what turns the observation into a characterization |
-| 3 | **Orphans** (Prop 5): clearing a random live key orphans on average the mean displacement, `alpha/(2(1-alpha))` | **small** | a short corollary of Knuth's displacement; quantifies the cost of leaving the discipline |
+| 2 | **Exactness** (Thm 4, Remark 1): (a) for a given table the clear-safe deletion orders are exactly the linear extensions of the dependency relation `y < x` iff `y`'s probe path passes through `x`'s cell; (b) stack order is the *only* order safe for every hash assignment (greedy schemes) | **new to our knowledge; simple** | no source found; (a) is the exact characterisation of what a given table permits, (b) the universal converse, now derived from (a) |
+| 3 | **Orphan law** (Prop 5): `orph(x) = Y_c - 1` with `Y` the queue length of the linear-probing chain; mean `alpha/(2(1-alpha))` (Knuth's displacement); explicit finite-size law (Lukasiewicz-path weights, exact); limit law = discrete M/D/1 queue, so the fraction of keys removable out of order is `(1-alpha)(e^alpha-1)/alpha` | **new to our knowledge; modest** (mean is classical) | the queue picture of linear probing is classical; no source found stating the dependent-count law or the out-of-order fraction; proof of the limit is a window argument, rate not proved |
 | 4 | **Separation by deletion order** (Cor 6) | **observation, conditional** | combines Thm 2 with Farach-Colton, Krapivin, Kuszmaul (FOCS 2024) and the dynamic lower bound they cite from *Tiny Pointers*; part (ii) is quoted, not proved here |
 | 5 | **Refusal probability** (Thm 7, Cor 8) | **classical content; new use** | the quantity is the tail of the unsuccessful-search cost; its exact generating function and Poisson limit are in Janson-Viola (Algorithmica 2016, Thm 11.1, Eq. 11.4) and Knuth's run-length analysis. **Not claimed as new**: the law. **New**: an elementary derivation of an explicit finite-size sum; the proof that the Chernoff-type bound used for probe limits loses a factor `Theta(L^{3/2})`; the design table (258 vs 455); validation against a real probe-limited table |
 | 6 | **Key lifetime** (Props 10-12) | **small; model-based** | adaptivity against hash tables is known (Lipton-Naughton 1993; Naor-Yogev 2015); new is the exact accounting for a probe-limited table, with a fresh-key theorem and a persistent-key attack cost. No timing measurement |
@@ -65,7 +65,10 @@ not a citable source.
 ## 5. Verdict
 
 A correct, carefully checked, but **modest** contribution: an elementary yet previously
-unstated characterization of stack-ordered deletion (claims 1-2) with a conditional
+unstated characterization of stack-ordered deletion (claims 1-2: undo, the exact set of safe
+deletion orders of a table as the linear extensions of a dependency relation, and stack order as
+the only universally safe one), an exact law for the number of dependent keys (claim 3, the
+strongest new mathematics in the manuscript) with a conditional
 separation (4); a refusal-probability analysis whose law is classical but whose use, gap to the
 earlier bound and validation are new (5); a precise key-lifetime rule (6); and an exact space
 decomposition (7). It is not a deep technical result and the manuscript does not present it as

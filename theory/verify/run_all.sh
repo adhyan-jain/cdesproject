@@ -7,6 +7,7 @@ cd "$(dirname "$0")"
 BUILD=${TMPDIR:-/tmp}/strata_theory_build; mkdir -p "$BUILD"
 echo "== exact refusal law vs brute-force enumeration (rational arithmetic)";   python3 exact_law.py
 echo "== stack-discipline results (undo, exactness, orphans)";                   python3 lifo_check.py
+echo "== safe deletion orders and the orphan law";                               python3 orphan_law.py
 echo "== exact law vs stored 240M-sample simulation";                            python3 design_table.py
 echo "== exact law vs the real strata::Table (z-test, bounded/unbounded agree)"
 g++ -std=c++14 -O2 -I../../include -o "$BUILD/law_vs_table" law_vs_table.cpp
