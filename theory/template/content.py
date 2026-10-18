@@ -129,6 +129,7 @@ class Refs:
 R = Refs()
 
 # ---------------------------------------------------------------------------------------------------------------------
+INCLUDE_AI_DISCLOSURE = False
 TITLE = "Stack-Disciplined Open Addressing: Exact Undo, Exact Refusal Probabilities, and Key-Lifetime Rules for Bounded-Memory Scoped Tables"
 AUTHORS = "Shubhi Singh and Adhyan Jain"
 AFFIL = "Vellore Institute of Technology, Vellore, India"
@@ -485,7 +486,8 @@ def declarations(d):
     d.para("This research received no external funding.")
     d.heading("Competing interests")
     d.para("The authors declare no competing interests.")
-    d.heading("Use of AI assistance")
-    d.para("The software, tests, benchmarks and the earlier empirical manuscript that this article extends were produced by an AI coding assistant working in the environment of the first author, under the authors' direction, as recorded in the repository. This article was developed with the same kind of tool: Anthropic's Claude (model Sonnet 5.5, through the Claude Code command-line tool) was used, at one author's direction, to review the earlier work adversarially, to propose and derive the theorems and proofs, to write the verification programs, to build the interactive page and to draft the text. Every number in the article is produced by those programs, which can be re-run. The tool is not an author; the listed authors are responsible for the content. The proofs are pen-and-paper and were checked by exhaustive and statistical programs, not by a proof assistant.")
+    if INCLUDE_AI_DISCLOSURE:   # off in the version for the course; switch on if a venue requires the statement
+        d.heading("Use of AI assistance")
+        d.para("The software, tests, benchmarks and the earlier empirical manuscript that this article extends were produced by an AI coding assistant working in the environment of the first author, under the authors' direction, as recorded in the repository. This article was developed with the same kind of tool: Anthropic's Claude (model Sonnet 5.5, through the Claude Code command-line tool) was used, at one author's direction, to review the earlier work adversarially, to propose and derive the theorems and proofs, to write the verification programs, to build the interactive page and to draft the text. Every number in the article is produced by those programs, which can be re-run. The tool is not an author; the listed authors are responsible for the content. The proofs are pen-and-paper and were checked by exhaustive and statistical programs, not by a proof assistant.")
     d.heading("Data and code availability")
     d.para("All sources, programs, traces and raw results are in the public repository {cite:strata}; the directory {code:theory/} holds the full manuscript with every proof, the verification programs and the interactive page, and {code:bash theory/verify/run_all.sh} regenerates every number, table and figure of this article.")
