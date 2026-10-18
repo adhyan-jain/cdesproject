@@ -52,7 +52,7 @@ export function RefusalLab() {
       <div className="card th-inputs">
         <div className="th-grid-inputs">
           <label className="field"><span className="th-label">Index slots m</span>
-            <select value={m} onChange={(e) => { setM(+e.target.value); setDesign(null); }}>{SIZES.map((x) => <option key={x}>{x}</option>)}</select></label>
+            <select value={m} onChange={(e) => { const nm = +e.target.value; setM(nm); setL((l) => Math.min(l, Math.min(nm, 400))); setDesign(null); }}>{SIZES.map((x) => <option key={x}>{x}</option>)}</select></label>
           <label className="field"><span className="th-label">Load α = {alpha.toFixed(2)} <small>(n = {n} keys)</small></span>
             <input type="range" min={0.3} max={0.9} step={0.05} value={alpha} onChange={(e) => { setAlpha(+e.target.value); setDesign(null); }} /></label>
           <label className="field"><span className="th-label">Probe limit L = {L}</span>

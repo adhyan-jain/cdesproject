@@ -1,16 +1,32 @@
 // The theory companion to the demo: the paper's results, with interactive versions of the main ones.
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { UndoLab } from "./UndoLab";
 import { RefusalLab } from "./RefusalLab";
 import { WindowLab } from "./WindowLab";
 
 type Tab = "undo" | "law" | "window" | "map";
+
+/** Arrow-key / Home / End navigation for a row of tabs (roving tabindex). */
+export function tabKeys<T extends string>(e: KeyboardEvent<HTMLElement>, ids: readonly T[], current: T, select: (id: T) => void) {
+  const i = ids.indexOf(current);
+  let n = -1;
+  if (e.key === "ArrowRight") n = (i + 1) % ids.length;
+  else if (e.key === "ArrowLeft") n = (i - 1 + ids.length) % ids.length;
+  else if (e.key === "Home") n = 0;
+  else if (e.key === "End") n = ids.length - 1;
+  if (n < 0) return;
+  e.preventDefault();
+  select(ids[n]);
+  e.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]')[n]?.focus();
+}
 const TABS: { id: Tab; label: string }[] = [
   { id: "undo", label: "Exact undo & deletion order" },
   { id: "law", label: "Refusal law & probe limit" },
   { id: "window", label: "Persistent names with churn" },
   { id: "map", label: "What is proved" },
 ];
+
+const TAB_IDS = TABS.map((t) => t.id);
 
 interface Result { ref: string; title: string; status: "new" | "ours" | "classical" | "conditional" | "small"; text: string }
 const STATUS: Record<Result["status"], string> = {
@@ -57,10 +73,12 @@ export function Theory() {
 
       <div className="th-tabs" role="tablist" aria-label="Theory sections">
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>{t.label}</button>
+          <button key={t.id} id={`th-tab-${t.id}`} role="tab" aria-selected={tab === t.id} aria-controls="th-panel" tabIndex={tab === t.id ? 0 : -1}
+            className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)} onKeyDown={(e) => tabKeys(e, TAB_IDS, tab, setTab)}>{t.label}</button>
         ))}
       </div>
 
+      <div id="th-panel" role="tabpanel" aria-labelledby={`th-tab-${tab}`}>
       {tab === "undo" && (
         <>
           <p className="th-lead"><b>Theorems 2 and 4, Proposition 5.</b> A scoped table pops names in last-in-first-out order. Clear the newest key and nothing else changes; clear any other and the keys that probed past it are lost.</p>
@@ -94,6 +112,7 @@ export function Theory() {
           </article>
         </div>
       )}
+      </div>
     </section>
   );
 }

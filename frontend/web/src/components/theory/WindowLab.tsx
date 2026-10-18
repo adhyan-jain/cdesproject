@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { attackChain, churnBound, mulberry32, randomTrunk, replayChain, vulnerabilityMonteCarlo, windowEmpties } from "../../lib/theory";
 
 const M = 96;
+const MC_TRIALS = 5000;
 const SIZE = 400, C = SIZE / 2, RAD = 150, R = 4.1;
 const pos = (c: number, r = RAD) => {
   const a = (2 * Math.PI * c) / M - Math.PI / 2;
@@ -17,7 +18,8 @@ export function WindowLab() {
   const [s, setS] = useState(2);
   const [seed, setSeed] = useState(4);
   const [replayed, setReplayed] = useState(false);
-  const [mc, setMc] = useState<{ v: number; trials: number } | null>(null);
+  const [mc, setMc] = useState<{ v: number; se: number; trials: number } | null>(null);
+  const [searchNote, setSearchNote] = useState<string | null>(null);
   const n = Math.floor(alpha * M);
 
   const occ = useMemo(() => randomTrunk(M, n, mulberry32(seed)), [n, seed]);
@@ -35,7 +37,13 @@ export function WindowLab() {
   const vulnerable = view.chain !== null;
   const refused = replayed && view.steps && view.steps[view.steps.length - 1].result === -1;
 
-  const touch = <T,>(f: (v: T) => void) => (v: T) => { f(v); setReplayed(false); setMc(null); };
+  const findVulnerable = () => {
+    for (let k = 1; k <= 600; k++) {
+      if (attackChain(randomTrunk(M, n, mulberry32(seed + k)), L, s)) { setSeed(seed + k); setReplayed(false); setMc(null); setSearchNote(null); return; }
+    }
+    setSearchNote("No vulnerable table among 600 draws at these settings: lower L or raise s.");
+  };
+  const touch = <T,>(f: (v: T) => void) => (v: T) => { f(v); setReplayed(false); setMc(null); setSearchNote(null); };
 
   return (
     <div className="th-lab">
@@ -72,6 +80,8 @@ export function WindowLab() {
           </div>
           <div className="th-row">
             <button className="btn small" onClick={() => touch(setSeed)(seed + 1)}>New random table</button>
+            <button className="btn small" onClick={findVulnerable}>Draw a vulnerable table</button>
+            {searchNote && <span className="th-hint">{searchNote}</span>}
           </div>
         </div>
 
@@ -84,6 +94,7 @@ export function WindowLab() {
         <div className="card th-controls">
           <div className="th-row">
             <button className="btn btn-primary small" onClick={() => setReplayed(true)} disabled={!vulnerable}>Run the chain on a probe-limited table</button>
+            {!vulnerable && <span className="th-hint">This table has no refusing chain. Lower L, raise s, or draw a vulnerable table.</span>}
             {replayed && <button className="btn btn-ghost small" onClick={() => setReplayed(false)}>Clear</button>}
           </div>
           {replayed && view.steps && (
@@ -100,13 +111,13 @@ export function WindowLab() {
 
         <div className="card th-controls">
           <div className="th-row">
-            <button className="btn small" onClick={() => setMc({ v: vulnerabilityMonteCarlo(M, n, L, s, 2000, seed * 7 + 1), trials: 2000 })}>Estimate over 2000 random tables</button>
+            <button className="btn small" onClick={() => { const v = vulnerabilityMonteCarlo(M, n, L, s, MC_TRIALS, seed * 7 + 1); setMc({ v, se: Math.sqrt(Math.max(v * (1 - v), 1e-6) / MC_TRIALS), trials: MC_TRIALS }); }}>Estimate over {MC_TRIALS} random tables</button>
           </div>
           <div className="th-stats flat">
-            <div className="th-stat"><span>Simulated probability that a table is {s}-vulnerable</span><b>{mc ? fmt(mc.v) : "–"}</b></div>
+            <div className="th-stat"><span>Simulated probability that a table is {s}-vulnerable</span><b>{mc ? <>{fmt(mc.v)}<small> ± {fmt(1.96 * mc.se)} (95%)</small></> : "–"}</b></div>
             <div className="th-stat"><span>Closed-form bound D<sub>{s}</sub> (Proposition 12c)</span><b>{fmt(bound)}</b></div>
           </div>
-          <p className="th-foot">The bound is an upper bound on the vulnerability probability, so the simulated value should sit below it (it does in every run of the test suite). This vulnerability probability is the supremum, over all schedules, of the chance of any refusal.</p>
+          <p className="th-foot">The bound is an upper bound on the exact vulnerability probability. The simulated value carries sampling error, so when the bound is tight the estimate can exceed it by up to the interval shown. This vulnerability probability is the supremum, over all schedules, of the chance of any refusal.</p>
         </div>
       </div>
     </div>

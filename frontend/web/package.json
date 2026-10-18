@@ -7,11 +7,11 @@
   "scripts": {
     "engine": "node scripts/build-engine.mjs",
     "results": "node scripts/make-results.mjs",
-    "dev": "node scripts/build-engine.mjs && vite",
+    "dev": "node scripts/make-theory-data.mjs && node scripts/build-engine.mjs && vite",
     "typecheck": "tsc --noEmit",
     "theory-data": "node scripts/make-theory-data.mjs",
     "build": "node scripts/make-theory-data.mjs && tsc --noEmit && vite build",
-    "start": "node scripts/build-engine.mjs && vite build && node server/serve.mjs",
+    "start": "node scripts/make-theory-data.mjs && node scripts/build-engine.mjs && vite build && node server/serve.mjs",
     "serve": "node server/serve.mjs",
     "test": "node scripts/build-engine.mjs && node --test tests/engine.test.mjs tests/code.test.mjs tests/theory.test.mjs"
   },

@@ -11,10 +11,11 @@ import { About } from "./components/About";
 import { describe } from "./lib/describe";
 import { CodeEditor } from "./components/CodeEditor";
 import { Accuracy } from "./components/Accuracy";
-import { Theory } from "./components/theory/Theory";
+import { Theory, tabKeys } from "./components/theory/Theory";
 import { CodeError, compile, EXAMPLES, type LineOp } from "./lib/minic";
 
 const DEFAULT_CAPACITY = 512;
+const PAGE_VIEWS = ["demo", "theory"] as const;
 const MAX_OPS = 400;
 const EXAMPLE: Op[] = [
   { op: "declare", name: "count", type: 0, value: 1 },
@@ -209,7 +210,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, [demo, busy, nextDemoStep]);
 
-  const startDemo = () => { setTab("ops"); setDemo({ active: true, step: 0, playing: true }); };
+  const startDemo = () => { setView("demo"); setTab("ops"); setDemo({ active: true, step: 0, playing: true }); };
   const restartDemo = () => {
     demoStepRef.current = 0;
     setDemo({ active: true, step: 0, playing: true });
@@ -225,14 +226,14 @@ export default function App() {
         health={engine}
         onRetry={() => void connect()}
         onRunDemo={startDemo}
-        onReset={() => { closeDemo(); void guarded(() => reset(capRef.current)); }}
+        onReset={() => { setView("demo"); closeDemo(); void guarded(() => reset(capRef.current)); }}
         demoActive={demo.active}
         busy={busy}
       />
       <main className="page">
         <nav className="viewtabs" role="tablist" aria-label="Page">
-          <button role="tab" aria-selected={view === "demo"} className={view === "demo" ? "on" : ""} onClick={() => setView("demo")}>Symbol table demo</button>
-          <button role="tab" aria-selected={view === "theory"} className={view === "theory" ? "on" : ""} onClick={() => setView("theory")}>Theory</button>
+          <button role="tab" aria-selected={view === "demo"} tabIndex={view === "demo" ? 0 : -1} className={view === "demo" ? "on" : ""} onClick={() => setView("demo")} onKeyDown={(e) => tabKeys(e, PAGE_VIEWS, view, setView)}>Symbol table demo</button>
+          <button role="tab" aria-selected={view === "theory"} tabIndex={view === "theory" ? 0 : -1} className={view === "theory" ? "on" : ""} onClick={() => setView("theory")} onKeyDown={(e) => tabKeys(e, PAGE_VIEWS, view, setView)}>Theory</button>
         </nav>
 
         {view === "theory" ? <Theory /> : (
