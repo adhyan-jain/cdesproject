@@ -30,6 +30,28 @@ The page has three parts:
   checking every answer against the reference model. Live times are from this machine and vary;
   the reported timing is the paper's 31-round run.
 
+### Theory view
+
+The **Theory** tab (next to *Symbol table demo*) accompanies the theory manuscript in `theory/`. It does not use the C++
+engine: it recomputes the manuscript's formulas in the browser (`web/src/lib/theory.ts`) and plays a small model of linear
+probing. Four pages:
+
+* **Exact undo & deletion order** (Theorems 2 and 4, Proposition 5): push keys on a 24-cell ring, pop the newest and see that the
+  table equals the insertion of the live keys; clear any other key and see which keys become unreachable and why.
+* **Refusal law & probe limit** (Theorem 7, Propositions 11 and 12): calculators for the refusal probability of one push, the chance
+  that a table can ever refuse a fresh name, and the schedule-free bound for bounded churn; a search for the smallest probe limit;
+  the paper's two design tables.
+* **Persistent names with churn** (Proposition 12): a concrete table, its densest window, the chain of pushes that gets a name
+  refused, and simulated probability against the closed-form bound.
+* **What is proved**: every result with its status (new, classical with a new finite-size form, conditional, small) and what the
+  paper does not claim.
+
+`npm run theory-data` regenerates `src/data/paper-tables.json` from `theory/paper/tables/` and copies the compiled paper to
+`public/strata-theory-paper.pdf` (it also runs as part of `npm run build`). `npm test` checks every formula against Python
+reference values (`theory/verify/make_frontend_reference.py` regenerates `tests/theory_reference.json`) and checks the model's
+claims by brute force: exact undo, that safe deletion orders are exactly the linear extensions of the dependency relation, and
+that the constructed chain of pushes is refused.
+
 The demo was added for the project review. It does not change the library, the tests, the
 benchmarks or any result.
 
@@ -51,7 +73,7 @@ Other commands, all in `frontend/web`:
 | Command | What it does |
 |---|---|
 | `npm run dev` | development server with hot reload on port 5199 |
-| `npm test` | 24 checks: the engine against the real table, the code window's C subset, the live trace check |
+| `npm test` | 33 checks: the engine against the real table, the code window's C subset, the live trace check, the Theory page's formulas and model |
 | `npm run build` | type check and production build into `dist/` |
 | `npm run serve` | serve an existing `dist/` without rebuilding |
 

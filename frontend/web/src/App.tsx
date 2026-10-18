@@ -11,6 +11,7 @@ import { About } from "./components/About";
 import { describe } from "./lib/describe";
 import { CodeEditor } from "./components/CodeEditor";
 import { Accuracy } from "./components/Accuracy";
+import { Theory } from "./components/theory/Theory";
 import { CodeError, compile, EXAMPLES, type LineOp } from "./lib/minic";
 
 const DEFAULT_CAPACITY = 512;
@@ -28,6 +29,7 @@ export default function App() {
   const [state, setState] = useState<EngineState | null>(null);
   const [status, setStatus] = useState<StatusSource>({ kind: "idle" });
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<"demo" | "theory">("demo");
   const [tab, setTab] = useState<"ops" | "code">("ops");
   const [code, setCode] = useState(EXAMPLES[0].code);
   const [compiled, setCompiled] = useState<{ ops: LineOp[]; src: string } | null>(null);
@@ -228,98 +230,107 @@ export default function App() {
         busy={busy}
       />
       <main className="page">
-        <div className="intro">
-          <h1>Bounded-memory symbol tables for compilers.</h1>
-          <p>
-            Every operation on this page runs on the real <code>strata::Table</code> from <code>include/strata/strata.hpp</code>, compiled into a local
-            C++ engine, inside one fixed buffer of <b className="mono">{capacity >= 1024 ? `${capacity / 1024} KiB` : `${capacity} bytes`}</b>.
-          </p>
-        </div>
+        <nav className="viewtabs" role="tablist" aria-label="Page">
+          <button role="tab" aria-selected={view === "demo"} className={view === "demo" ? "on" : ""} onClick={() => setView("demo")}>Symbol table demo</button>
+          <button role="tab" aria-selected={view === "theory"} className={view === "theory" ? "on" : ""} onClick={() => setView("theory")}>Theory</button>
+        </nav>
 
-        {demo.active && (
-          <GuidedDemo
-            step={demo.step}
-            outcome={status.kind === "op" ? describe(status.result) : undefined}
-            playing={demo.playing}
-            busy={busy}
-            onNext={() => void nextDemoStep()}
-            onTogglePlay={() => setDemo((d) => ({ ...d, playing: !d.playing }))}
-            onRestart={restartDemo}
-            onClose={closeDemo}
-          />
-        )}
-
-        {engine.state === "down" && (
-          <div className="card offline" role="alert">
-            <b>The local STRATA engine is not reachable.</b> Start it from the repository with <code>cd frontend/web</code> then <code>npm start</code>, and
-            press Retry. Nothing on this page is simulated, so it stays empty without the engine.
-            <button className="btn small" onClick={() => void connect()}>Retry</button>
+        {view === "theory" ? <Theory /> : (
+          <>
+          <div className="intro">
+            <h1>Bounded-memory symbol tables for compilers.</h1>
+            <p>
+              Every operation on this page runs on the real <code>strata::Table</code> from <code>include/strata/strata.hpp</code>, compiled into a local
+              C++ engine, inside one fixed buffer of <b className="mono">{capacity >= 1024 ? `${capacity / 1024} KiB` : `${capacity} bytes`}</b>.
+            </p>
           </div>
-        )}
 
-        <div className="workspace">
-          <div className="col-left">
-            <div className="tabs" role="tablist" aria-label="Input">
-              <button role="tab" aria-selected={tab === "ops"} className={tab === "ops" ? "on" : ""} onClick={() => setTab("ops")}>Operations</button>
-              <button role="tab" aria-selected={tab === "code"} className={tab === "code" ? "on" : ""} onClick={() => { setTab("code"); }} disabled={demo.active && demo.playing}>
-                Write code
-              </button>
-            </div>
-            {tab === "code" ? (
-              <CodeEditor
-                code={code}
-                onCode={(c) => { setCode(c); setCodeErrorLine(null); }}
-                capacity={capacity}
-                onCapacity={(c) => void guarded(async () => { await reset(c); setCodeDone(0); })}
-                disabled={controlsDisabled}
-                total={compiled && compiled.src === code ? compiled.ops.length : null}
-                done={codeDone}
-                currentLine={compiled && compiled.src === code && codeDone > 0 ? (compiled.ops[codeDone - 1]?.line ?? null) : null}
-                errorLine={codeErrorLine}
-                stale={compiled !== null && compiled.src !== code}
-                onRun={() => void codeRun()}
-                onStep={() => void codeStep()}
-                onRestart={() => void codeRestart()}
-              />
-            ) : (
-            <Controls
-              disabled={controlsDisabled}
-              capacity={capacity}
-              depth={state?.stats.depth ?? 0}
-              onOp={(op) => void guarded(() => apply(op))}
-              onInvalid={(message) => setStatus({ kind: "invalid", message, seq: ++seq.current })}
-              onCapacity={(c) => void guarded(() => reset(c))}
-              onResetExample={() => { closeDemo(); void guarded(() => reset(capRef.current, EXAMPLE)); }}
+          {demo.active && (
+            <GuidedDemo
+              step={demo.step}
+              outcome={status.kind === "op" ? describe(status.result) : undefined}
+              playing={demo.playing}
+              busy={busy}
+              onNext={() => void nextDemoStep()}
+              onTogglePlay={() => setDemo((d) => ({ ...d, playing: !d.playing }))}
+              onRestart={restartDemo}
+              onClose={closeDemo}
             />
-            )}
-            <StatusLine source={status} />
-            {state && <Timeline state={state} lines={lines} />}
-          </div>
-          <div className="col-right">
-            {state ? (
-              <>
-                <SymbolTable state={state} />
-                <MemoryInspector state={state} />
-              </>
-            ) : (
-              <div className="card placeholder">{engine.state === "checking" ? "Connecting to the C++ engine…" : "Waiting for the engine."}</div>
-            )}
-          </div>
-        </div>
+          )}
 
-        {state && (
-          <p className="verify mono">
-            engine {state.engine.source} · g++ {state.engine.compiler} · fixed mode · checks: invariants {state.checks.invariants ? "✓" : "✗"} · resolve()
-            agrees {state.checks.resolveAgrees ? "✓" : "✗"} · reference model agrees {state.checks.modelAgrees ? "✓" : "✗"} · digest {state.digest}
-          </p>
+          {engine.state === "down" && (
+            <div className="card offline" role="alert">
+              <b>The local STRATA engine is not reachable.</b> Start it from the repository with <code>cd frontend/web</code> then <code>npm start</code>, and
+              press Retry. Nothing on this page is simulated, so it stays empty without the engine.
+              <button className="btn small" onClick={() => void connect()}>Retry</button>
+            </div>
+          )}
+
+          <div className="workspace">
+            <div className="col-left">
+              <div className="tabs" role="tablist" aria-label="Input">
+                <button role="tab" aria-selected={tab === "ops"} className={tab === "ops" ? "on" : ""} onClick={() => setTab("ops")}>Operations</button>
+                <button role="tab" aria-selected={tab === "code"} className={tab === "code" ? "on" : ""} onClick={() => { setTab("code"); }} disabled={demo.active && demo.playing}>
+                  Write code
+                </button>
+              </div>
+              {tab === "code" ? (
+                <CodeEditor
+                  code={code}
+                  onCode={(c) => { setCode(c); setCodeErrorLine(null); }}
+                  capacity={capacity}
+                  onCapacity={(c) => void guarded(async () => { await reset(c); setCodeDone(0); })}
+                  disabled={controlsDisabled}
+                  total={compiled && compiled.src === code ? compiled.ops.length : null}
+                  done={codeDone}
+                  currentLine={compiled && compiled.src === code && codeDone > 0 ? (compiled.ops[codeDone - 1]?.line ?? null) : null}
+                  errorLine={codeErrorLine}
+                  stale={compiled !== null && compiled.src !== code}
+                  onRun={() => void codeRun()}
+                  onStep={() => void codeStep()}
+                  onRestart={() => void codeRestart()}
+                />
+              ) : (
+              <Controls
+                disabled={controlsDisabled}
+                capacity={capacity}
+                depth={state?.stats.depth ?? 0}
+                onOp={(op) => void guarded(() => apply(op))}
+                onInvalid={(message) => setStatus({ kind: "invalid", message, seq: ++seq.current })}
+                onCapacity={(c) => void guarded(() => reset(c))}
+                onResetExample={() => { closeDemo(); void guarded(() => reset(capRef.current, EXAMPLE)); }}
+              />
+              )}
+              <StatusLine source={status} />
+              {state && <Timeline state={state} lines={lines} />}
+            </div>
+            <div className="col-right">
+              {state ? (
+                <>
+                  <SymbolTable state={state} />
+                  <MemoryInspector state={state} />
+                </>
+              ) : (
+                <div className="card placeholder">{engine.state === "checking" ? "Connecting to the C++ engine…" : "Waiting for the engine."}</div>
+              )}
+            </div>
+          </div>
+
+          {state && (
+            <p className="verify mono">
+              engine {state.engine.source} · g++ {state.engine.compiler} · fixed mode · checks: invariants {state.checks.invariants ? "✓" : "✗"} · resolve()
+              agrees {state.checks.resolveAgrees ? "✓" : "✗"} · reference model agrees {state.checks.modelAgrees ? "✓" : "✗"} · digest {state.digest}
+            </p>
+          )}
+
+          <Accuracy ready={ready} />
+
+          <About />
+          </>
         )}
-
-        <Accuracy ready={ready} />
-
-        <About />
       </main>
       <footer className="foot">
-        STRATA research artifact · interactive demo in <code>frontend/</code>, added for the project review; the table itself is unchanged.
+        STRATA research artifact · interactive demo in <code>frontend/</code>, added for the project review; the table itself is unchanged. The Theory pages accompany the theory manuscript in <code>theory/</code>.
       </footer>
     </div>
   );
