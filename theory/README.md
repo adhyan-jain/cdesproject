@@ -1,7 +1,7 @@
 # theory/: a theory manuscript on stack-disciplined open addressing
 
 `paper/main.tex` is a self-contained article (about 26 pages, standard `article` class):
-**Stack-Disciplined Open Addressing: Exact Undo, an Exact Refusal Law, and Key-Lifetime Rules for
+**Stack-Disciplined Open Addressing: Exact Undo, Exact Refusal Probabilities, and Key-Lifetime Rules for
 Bounded-Memory Scoped Tables.** It is a theory/analysis paper; it contains no new benchmark. The
 earlier empirical paper is in `../paper/`.
 
@@ -48,6 +48,10 @@ bash theory/verify/run_all.sh      # about 9 minutes; writes tables/ and data/, 
 Every number in the manuscript is written by these programs into `paper/tables/` and
 `paper/data/`; none is typed by hand. A program that finds a mismatch exits non-zero and
 `run_all.sh` stops.
+
+## Presenting it
+
+`PRESENTATION_GUIDE.md`: a slide-by-slide plan for a 20-minute talk with three live demos (the **Theory** tab of the frontend in `../frontend/web`), cut lists for 10 and 30 minutes, the questions to expect with honest answers, and what not to claim.
 
 ## Audit documents
 

@@ -48,7 +48,7 @@ export function Theory() {
       <div className="intro">
         <h1 id="theory-title">Stack-disciplined open addressing: the theory.</h1>
         <p>
-          The companion to the paper <i>Stack-Disciplined Open Addressing: Exact Undo, an Exact Refusal Law, and Key-Lifetime Rules for Bounded-Memory Scoped Tables</i>.
+          The companion to the paper <i>Stack-Disciplined Open Addressing: Exact Undo, Exact Refusal Probabilities, and Key-Lifetime Rules for Bounded-Memory Scoped Tables</i>.
           Everything on these pages is computed in your browser from the paper&rsquo;s formulas and a small model of linear probing; it does not use the C++ engine.
           The same code is checked against the Python programs that produce the paper&rsquo;s tables when you run <code>npm test</code>.{" "}
           <a className="th-link" href="/strata-theory-paper.pdf" target="_blank" rel="noreferrer">Open the paper (PDF)</a>
