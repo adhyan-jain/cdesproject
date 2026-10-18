@@ -1,0 +1,116 @@
+% Plots for the template manuscript (one per performance metric). Data: build/data/*.csv, written by make_figures.py
+% from the paper's generated tables and data files. Each tikzpicture is one page.
+\documentclass[multi=tikzpicture,border=5pt]{standalone}
+\usepackage{amsmath}
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+\usepgfplotslibrary{groupplots}
+\begin{document}
+\pgfplotsset{every axis/.append style={width=13.4cm,height=6.0cm,grid=both,grid style={gray!25},tick label style={font=\small},
+  label style={font=\small},legend style={font=\small},legend cell align=left,line width=1.0pt}}
+
+% P1: refusal probability against the probe limit
+\begin{tikzpicture}
+\begin{axis}[ymode=log,xlabel={probe limit $L$},ylabel={refusal probability},legend pos=south west,ymin=1e-12,ymax=2,xmin=0,xmax=600]
+\addplot[thick,blue] table[col sep=comma,x=L,y=exact]{data/fig_law.csv};
+\addlegendentry{exact law (Theorem 7)}
+\addplot[thick,red,dashed] table[col sep=comma,x=L,y=chernoff]{data/fig_law.csv};
+\addlegendentry{Chernoff-type bound}
+\addplot[only marks,mark=*,black,mark size=1.9pt] table[col sep=comma,x=L,y=simulated]{data/fig_sim.csv};
+\addlegendentry{simulation (10 million samples)}
+\end{axis}
+\end{tikzpicture}
+
+% P2: smallest probe limit against the load
+\begin{tikzpicture}
+\begin{axis}[ymode=log,xlabel={load $\alpha$},ylabel={smallest $L$ for $\varepsilon=10^{-6}$},legend pos=north west,xmin=0.2,xmax=0.85]
+\addplot[thick,blue,mark=*,mark size=1.4pt] table[col sep=comma,x=load,y=finite4096]{data/fig_design.csv};
+\addlegendentry{exact, $m=4096$}
+\addplot[thick,teal,mark=square*,mark size=1.4pt] table[col sep=comma,x=load,y=poisson]{data/fig_design.csv};
+\addlegendentry{exact, $m{\to}\infty$}
+\addplot[thick,red,dashed,mark=triangle*,mark size=1.6pt] table[col sep=comma,x=load,y=chernoff]{data/fig_design.csv};
+\addlegendentry{Chernoff-type rule}
+\end{axis}
+\end{tikzpicture}
+
+% P3: whole-fill probe limits
+\begin{tikzpicture}
+\begin{axis}[ybar,bar width=11pt,xlabel={target failure probability of the whole fill ($m=4096$)},ylabel={smallest $L$},symbolic x coords={a,b,c},xtick=data,xticklabels={$10^{-2}$,$10^{-4}$,$10^{-6}$},
+  legend pos=north west,ymin=0,ymax=480,enlarge x limits=0.28,nodes near coords,every node near coord/.append style={font=\scriptsize}]
+\addplot[fill=blue!55] table[col sep=comma,x=eps,y=exact]{data/fill.csv};
+\addlegendentry{exact (Theorem 10)}
+\addplot[fill=teal!55] table[col sep=comma,x=eps,y=sum]{data/fill.csv};
+\addlegendentry{sum of per-push bounds}
+\addplot[fill=red!55] table[col sep=comma,x=eps,y=union]{data/fill.csv};
+\addlegendentry{$n\,R_{\max}$}
+\end{axis}
+\end{tikzpicture}
+
+% P4: orphan distribution
+\begin{tikzpicture}
+\begin{axis}[xlabel={number of keys that depend on a key, $j$},ylabel={probability},legend pos=north east,xtick={0,1,2,3,4},ymin=0,ymax=0.9]
+\addplot[thick,blue,mark=*] table[col sep=comma,x=j,y=a25]{data/orphan.csv};
+\addlegendentry{$\alpha=0.25$}
+\addplot[thick,teal,mark=square*] table[col sep=comma,x=j,y=a50]{data/orphan.csv};
+\addlegendentry{$\alpha=0.5$}
+\addplot[thick,orange!85!black,mark=triangle*] table[col sep=comma,x=j,y=a75]{data/orphan.csv};
+\addlegendentry{$\alpha=0.75$}
+\addplot[thick,red,mark=diamond*] table[col sep=comma,x=j,y=a90]{data/orphan.csv};
+\addlegendentry{$\alpha=0.9$}
+\end{axis}
+\end{tikzpicture}
+
+% P5: price of churn depth
+\begin{tikzpicture}
+\begin{axis}[xlabel={churn depth $s$ (live names above the persistent ones)},ylabel={smallest $L$ with $D_s\le\varepsilon$},legend pos=north west,xtick={1,2,4,8},xmode=log,log ticks with fixed point,ymin=100]
+\addplot[thick,blue,mark=*] table[col sep=comma,x=s,y=m1024e6]{data/band.csv};
+\addlegendentry{$m=1024$, $\varepsilon=10^{-6}$}
+\addplot[thick,teal,mark=square*] table[col sep=comma,x=s,y=m4096e6]{data/band.csv};
+\addlegendentry{$m=4096$, $\varepsilon=10^{-6}$}
+\addplot[thick,orange!85!black,mark=triangle*] table[col sep=comma,x=s,y=m1024e2]{data/band.csv};
+\addlegendentry{$m=1024$, $\varepsilon=10^{-2}$}
+\addplot[thick,red,mark=diamond*] table[col sep=comma,x=s,y=m4096e2]{data/band.csv};
+\addlegendentry{$m=4096$, $\varepsilon=10^{-2}$}
+\end{axis}
+\end{tikzpicture}
+
+% P6: space saving per trace
+\begin{tikzpicture}
+\begin{axis}[ybar,bar width=7pt,xlabel={compiler trace},ylabel={saving over the baseline layout (\%)},symbolic x coords={zlib,cJSON,littlefs,FreeRTOS,Lua,Mbed TLS,TinyCC,SQLite},xtick=data,
+  x tick label style={rotate=25,anchor=east,font=\scriptsize},legend pos=outer north east,ymin=0,ymax=21,enlarge x limits=0.08]
+\addplot[fill=blue!55] table[col sep=comma,x=trace,y=hash]{data/ladder.csv};
+\addlegendentry{stored hash word}
+\addplot[fill=teal!55] table[col sep=comma,x=trace,y=pack]{data/ladder.csv};
+\addlegendentry{packing}
+\addplot[fill=orange!70] table[col sep=comma,x=trace,y=total]{data/ladder.csv};
+\addlegendentry{total}
+\end{axis}
+\end{tikzpicture}
+
+% P7: z-scores of the law against the real table
+\begin{tikzpicture}
+\begin{axis}[xlabel={setting (index slots $m$, keys $n$, probe limit $L$)},ylabel={$z$-score},ymin=-3,ymax=3,symbolic x coords={s1,s2,s3,s4,s5,s6,s7},xtick=data,xticklabels={256/128/8,256/160/16,256/190/24,256/190/40,1024/760/48,1024/760/96,1024/512/24},
+  x tick label style={rotate=20,anchor=east,font=\scriptsize},enlarge x limits=0.08,legend pos=north east]
+\fill[green!15] (axis cs:s1,-1.96) rectangle (axis cs:s7,1.96);
+\addplot[only marks,mark=*,mark size=2.6pt,blue] table[col sep=comma,x=setting,y=z]{data/lawcheck.csv};
+\addlegendentry{observed}
+\addplot[dashed,black,domain=0:1] coordinates {(s1,1.96) (s7,1.96)};
+\addlegendentry{$\pm1.96$}
+\addplot[dashed,black,forget plot] coordinates {(s1,-1.96) (s7,-1.96)};
+\end{axis}
+\end{tikzpicture}
+
+% P8: effect of the key policy
+\begin{tikzpicture}
+\begin{axis}[xlabel={colliders found by the adversary},ylabel={honest names refused (\%)},legend pos=north west,xmin=350,xmax=850,ymin=-0.3,ymax=7.5]
+\addplot[thick,red,mark=*] table[col sep=comma,x=colliders,y=persistent]{data/adaptive.csv};
+\addlegendentry{persistent key}
+\addplot[thick,blue,mark=square*] table[col sep=comma,x=colliders,y=fresh]{data/adaptive.csv};
+\addlegendentry{fresh key per table}
+\addplot[thick,teal,dashed,mark=triangle*] table[col sep=comma,x=colliders,y=random]{data/adaptive.csv};
+\addlegendentry{random names}
+\end{axis}
+\end{tikzpicture}
+\end{document}

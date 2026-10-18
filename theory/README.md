@@ -49,6 +49,20 @@ Every number in the manuscript is written by these programs into `paper/tables/`
 `paper/data/`; none is typed by hand. A program that finds a mismatch exits non-zero and
 `run_all.sh` stops.
 
+## Manuscript in the institution's template
+
+`template/` builds the same work in the Word template of the course (`Paper Template-2.docx`, kept outside the repository): the template's
+own styles, numbering and footer are reused, the figures are drawn from the paper's generated data, the equations are native Word equations
+and the text follows the template's section plan. `STRATA_Theory_Manuscript.pdf` and `.docx` are the outputs.
+
+```bash
+python3 theory/template/make_figures.py                      # diagrams and plots -> template/build/figs
+python3 theory/template/build_docx.py "/path/to/Paper Template-2.docx"   # docx, then PDF through LibreOffice
+```
+
+`template/refs/*.json` hold the verified records of the recent references (each checked against Crossref, arXiv or a publisher page; the
+`read_level` field says what was read). `template/content.py` takes every table value from `paper/tables/`.
+
 ## Presenting it
 
 `PRESENTATION_GUIDE.md`: a slide-by-slide plan for a 20-minute talk with three live demos (the **Theory** tab of the frontend in `../frontend/web`), cut lists for 10 and 30 minutes, the questions to expect with honest answers, and what not to claim.
