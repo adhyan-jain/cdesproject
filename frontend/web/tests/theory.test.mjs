@@ -31,6 +31,7 @@ test("design values reproduce the paper's tables", () => {
   assert.equal(T.smallestL((L) => T.refusalProbability(4096, n, L), 1e-2), 59);        // Table sustain, one push
   assert.equal(T.smallestL((L) => T.unlimitedRunProbability(4096, n, L), 1e-2), 161);  // unlimited run
   assert.equal(T.smallestL((L) => T.churnBound(4096, n, 8, L), 1e-6, 300, 600), 410);  // Table band, s = 8
+  assert.equal(T.smallestL((L) => T.unlimitedRunProbability(1024, 768, L), 1e-6), 259);  // unlimited run at 1e-6
 });
 
 const randomRing = (m, n, seed) => {

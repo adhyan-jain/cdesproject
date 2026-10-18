@@ -9,6 +9,7 @@ const SIZES = [256, 1024, 4096];
 const EPS = [1e-2, 1e-4, 1e-6];
 const fmt = (p: number) => (p === 0 ? "0" : p >= 0.001 ? p.toFixed(p >= 0.1 ? 3 : 4) : p.toExponential(2));
 const SUP: Record<string, string> = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+const fmtW = (p: number) => (p < 1e-7 ? "< 10⁻⁷" : fmt(p));   // 1 − P(W=0) cannot be resolved below about 10⁻⁸ in floating point
 const fmtEps = (e: number) => "10" + String(Math.round(Math.log10(e))).replace(/./g, (c) => SUP[c]);
 
 type Point = Extract<TheoryResult, { kind: "point" }>;
@@ -72,8 +73,8 @@ export function RefusalLab() {
         </div>
         <div className="card th-metric">
           <h3>Some fresh name <i>can</i> be refused</h3>
-          <div className="th-big">{point ? fmt(point.unlimited) : "…"}</div>
-          <p>Proposition 11: the probability that the table holds a block longer than <i>L</i>. If it does, enough push/pop pairs will eventually hit it, so this is the failure chance of an unlimited run at this occupancy.</p>
+          <div className="th-big">{point ? fmtW(point.unlimited) : "…"}</div>
+          <p>Proposition 11: the probability that the table holds a block longer than <i>L</i>. If it does, enough push/pop pairs will eventually hit it, so this is the failure chance of an unlimited run at this occupancy.{point && point.unlimited < 1e-7 ? " The exact value is below the numerical resolution of this computation." : ""}</p>
         </div>
         <div className="card th-metric accent">
           <h3>Refusal anywhere, with churn depth {s}</h3>

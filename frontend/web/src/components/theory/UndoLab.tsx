@@ -124,7 +124,7 @@ export function UndoLab() {
         <div className="th-stats">
           <div className="th-stat"><span>Table equals the insertion of the live keys</span><b className={info.same ? "ok" : "bad"}>{info.same ? "yes ✓" : "no ✗"}</b></div>
           <div className="th-stat"><span>Live keys no longer found</span><b className={info.lost.length ? "bad" : "ok"}>{info.lost.length}</b></div>
-          <div className="th-stat"><span>Mean keys that depend on a key</span><b>{info.mean.toFixed(2)}<small> · limit law at this load {alpha > 0 && alpha < 1 ? orphanMean(alpha).toFixed(2) : "–"}</small></b></div>
+          <div className="th-stat"><span>Mean keys that depend on a key</span><b>{info.mean.toFixed(2)}<small> · limit law (large tables) {alpha > 0 && alpha < 1 ? orphanMean(alpha).toFixed(2) : "–"}</small></b></div>
         </div>
 
         <div className="card th-table-card">

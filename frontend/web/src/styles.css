@@ -6,7 +6,7 @@
   --border-strong: #d6d2c8;
   --text: #1d1d1b;
   --muted: #6c6961;
-  --faint: #9b978e;
+  --faint: #716d64;
 
   --accent: #4a54c1;
   --accent-ink: #3a43a3;
@@ -438,13 +438,13 @@ button { font: inherit; color: inherit; }
 
 .th-calc { display: flex; flex-direction: column; gap: 14px; }
 .th-inputs { padding: 14px 16px; }
-.th-grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px 22px; }
+.th-grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 14px 22px; }
 .th-grid-inputs.one { grid-template-columns: 1fr; gap: 12px; }
 .th-label { font-size: 12.5px; color: var(--muted); font-weight: 560; }
 .th-label small { font-weight: 450; color: var(--faint); }
 .th-inputs select, .th-design select { height: 32px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 0 8px; background: var(--surface); font: inherit; }
 .th-inputs input[type="range"], .th-controls input[type="range"] { width: 100%; accent-color: var(--accent); }
-.th-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.th-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 14px; }
 .th-metric { padding: 14px 16px; }
 .th-metric h3 { font-size: 13.5px; font-weight: 620; }
 .th-metric p { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
@@ -458,22 +458,22 @@ button { font: inherit; color: inherit; }
 .th-design-out span { font-size: 12px; color: var(--muted); }
 .th-design-out b { font: 650 24px var(--mono); }
 .th-design-out small { color: var(--c-undo-mark); font: 500 12px var(--mono); }
-.th-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.th-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; }
 .th-tables .card { overflow: auto; }
 .th-tt { font-size: 13px; font-weight: 620; padding: 12px 14px 4px; }
 .th-tables .th-table tbody tr { cursor: default; }
 
-.th-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; }
+.th-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); gap: 14px; }
 .th-result { padding: 14px 16px; }
 .th-result.wide { grid-column: 1 / -1; }
 .th-result h3 { font-size: 14px; font-weight: 620; margin: 6px 0 4px; }
 .th-result p { margin: 0; font-size: 13px; color: var(--muted); }
-.th-result-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.th-result-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 10px; align-items: center; }
 .th-ref { font: 600 12px var(--mono); color: var(--accent-ink); }
-.th-chip { font-size: 11.5px; font-weight: 560; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.th-chip { font-size: 11.5px; font-weight: 560; padding: 2px 8px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--muted); max-width: 100%; }
 .th-chip.new { background: var(--ok-soft); border-color: #c4e0d1; color: #1f5a41; }
 .th-chip.ours { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
-.th-chip.conditional { background: var(--warn-soft); border-color: #ecd9ae; color: var(--warn); }
+.th-chip.conditional { background: var(--warn-soft); border-color: #ecd9ae; color: #855510; }
 .th-chip.classical { background: var(--surface-2); }
 
 @media (max-width: 860px) {
@@ -487,4 +487,10 @@ button { font: inherit; color: inherit; }
 .th-stat b small { white-space: nowrap; }
 @media (max-width: 1000px) {
   .brand-sub, .brand-sep, .pill-meta { display: none; }
+}
+@media (max-width: 680px) {
+  .topbar { position: static; }          /* the three-row bar would otherwise cover a sixth of a phone screen */
+}
+@media (max-width: 420px) {
+  .seg-legend { grid-template-columns: minmax(0, 1fr); }
 }
