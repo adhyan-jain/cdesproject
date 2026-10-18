@@ -19,8 +19,9 @@ risk. Numbering is the manuscript's. All programs are in `verify/` and run by
 | **Cor 8**(c) tail | Stirling + dominated convergence | re-derived | `proof_checks.py`: exact/asymptotic ratio 0.472, 0.772, 0.929, 0.981 at L = 64, 256, 1024, 4096 (converges at rate about `1/((1-rho) L)`) | low |
 | **Thm 10** Refusal-free fill | block decomposition at empty cells; last-key decomposition of a filled line (`A_L` recursion); Bernoulli ODE `Phi' = Phi (L Phi - P_L)`; union bound | re-derived; the `(m/k)` cyclic factor and the interleaving counts checked against enumeration | `fill_law.py`: equals brute force over every home sequence (135 `(m,n,L)` cases, exact rationals), the closed form equals the recursion to degree 12 for `L` in {1,2,3,4,5,7}, float and 60-digit decimal evaluations agree with the exact one, `1-P <= sum_t R_t` on test cases | low-medium: the large-`m` values (Table 2) rest on the recursion, which was verified exhaustively only for `m <= 8` |
 | **Prop 9** Run | Cor 3, Cor 8(a), union bound | re-derived; requires names distinct from live ones | none beyond Thm 7 | low |
-| **Props 12-14** Keys | ideal-hash model; coupon collector; geometric trials | re-derived | `adaptive_key_demo.cpp`: about 2 071 queries per collider (m = 2 048), 1-5.5 % honest refusals with a persistent key, 0 % otherwise (illustration of Prop 14, idealised oracle) | low for the statements; **the model oracle is not a timing channel** |
-| **Prop 15** Ledger | subtraction of the stated layout formulas | re-derived | `proof_checks.py`: the four identities hold at 848 449 instants of the eight traces; closed forms equal the independent simulation's peaks for all 5 layouts x 8 traces; `space_model.py` reproduces all 24 measured minima of the repository exactly | low |
+| **Prop 12** Bounded churn | Thm 2 (table = Ins of live sequence); window argument; gap law of Thm 7's proof (Steps 1-3); up-crossing + Markov for `D_s` | re-derived; (c) needs `sn < kT` (checked in code) | `band_law.py`: every trunk home sequence and every chain through the real insertion code (16 920 trunk multisets), then 36 432 occupancy sets at non-degenerate sizes: window rule, `q > 0` iff vulnerable, `V_s` equals the gap-law sum in exact rationals, `V <= D <= U`, monotone limit and `V(1-e^(-N/m^s))` lower bound; Monte Carlo (6000 trunks) never above `D_s` + 3 se, and `D_1` within 10 % of the exact law | low for (a),(b); medium for (c) (the Markov step is easy but the index bookkeeping is the place to check) |
+| **Props 13-15** Keys | ideal-hash model; coupon collector; geometric trials | re-derived | `adaptive_key_demo.cpp`: about 2 071 queries per collider (m = 2 048), 1-5.5 % honest refusals with a persistent key, 0 % otherwise (illustration of Prop 14, idealised oracle) | low for the statements; **the model oracle is not a timing channel** |
+| **Prop 16** Ledger | subtraction of the stated layout formulas | re-derived | `proof_checks.py`: the four identities hold at 848 449 instants of the eight traces; closed forms equal the independent simulation's peaks for all 5 layouts x 8 traces; `space_model.py` reproduces all 24 measured minima of the repository exactly | low |
 
 ## Third pass (2026-10-19)
 
@@ -57,3 +58,16 @@ attacks worth trying: break Thm 4 for a greedy scheme whose probe sequences cann
 arbitrary cell; break Definition 1 for the funnel and elastic schemes; fault the
 window argument of Prop 5(b) or the claim that orph depends only on the cell (Prop 5(a)); and read the quoted results behind Thm 6 for a
 condition the manuscript dropped.
+
+## Fourth pass: Proposition 12 (bounded churn), 2026-10-18
+
+A cold referee run re-derived the window rule, the gap rule and `D_s` by its own brute force (multisets of homes at
+m = 10-22, every s and L) and found no mathematical error. It found four overclaims, all fixed in the manuscript:
+the counting convention (the key being pushed counts toward `s`; without it (a) is false, 6 472 violations in its
+test), the trunk (any never-popped keys, possibly pushed interleaved with churn: the proof now says why), the refused
+trunk construction in (b) (`q := 1`), and the claim that the union bound is better 'up to `m^s` chains' (the crossover is
+at tens to hundreds of pushes; (b) certifies sharpness only as `N` grows). Also fixed: 'five to eight times' (now
+3.6-7), 'vacuous' (now 'uninformative'), the 10 % claim for `D_1` (now stated against `P(W>0)`), and the caption of the
+design table (minimality of each entry is empirical). Figures quoted in the text are asserted in `band_law.py`.
+Observation kept: (a) uses no property of the churn keys other than their number, so it also covers reused or
+adaptively chosen names provided the trunk's homes are independent of the choice.

@@ -1,6 +1,6 @@
 # theory/: a theory manuscript on stack-disciplined open addressing
 
-`paper/main.tex` is a self-contained article (about 24 pages, standard `article` class):
+`paper/main.tex` is a self-contained article (about 26 pages, standard `article` class):
 **Stack-Disciplined Open Addressing: Exact Undo, an Exact Refusal Law, and Key-Lifetime Rules for
 Bounded-Memory Scoped Tables.** It is a theory/analysis paper; it contains no new benchmark. The
 earlier empirical paper is in `../paper/`.
@@ -16,8 +16,9 @@ earlier empirical paper is in `../paper/`.
 | Theorem 7, Corollary 8 | refusal probability of a probe-limited linear-probing table (the tail of the classical unsuccessful-search cost): an elementary derivation of the explicit finite-size sum, its tail `C rho^L L^{-3/2}`, and the proof that the Chernoff-type bound used earlier is loose by a factor growing like `L^{3/2}`; the law itself is classical (Knuth; Janson-Viola) |
 | Theorem 10 | exact probability that a monotone fill has no refusal (`l`-interval parking-function counts, closed-form generating function); the whole-fill probe limit is about a quarter below the union-bound rule |
 | Proposition 11 | probability that a persistent table can never refuse a fresh name (every block at most `L` cells); the probe limit for an unlimited run exceeds the one-push limit by about `ln m / ln(1/rho)` |
-| Propositions 12-14 | with an independent key per table the exact law holds against arbitrary adversarial names; with a persistent key and a probe oracle it does not; costs of the attack |
-| Proposition 15 | exact space-ledger identities; on the eight traces the compact layout's saving is a stored hash word plus packing, and interning is space-neutral |
+| Proposition 12 | schedule-free bound for bounded churn above a persistent trunk: any refusal implies a window of `L` cells with at most `s-1` empty cells; this is the supremum over schedules; closed-form bound `D_s` and the price in probes per churn level |
+| Propositions 13-15 | with an independent key per table the exact law holds against arbitrary adversarial names; with a persistent key and a probe oracle it does not; costs of the attack |
+| Proposition 16 | exact space-ledger identities; on the eight traces the compact layout's saving is a stored hash word plus packing, and interning is space-neutral |
 
 ## Reproduce everything
 
@@ -31,6 +32,7 @@ bash theory/verify/run_all.sh      # about 9 minutes; writes tables/ and data/, 
 | Program | Checks |
 |---|---|
 | `verify/exact_law.py` | the exact refusal law against brute-force enumeration of every home sequence, in exact rational arithmetic (258 triples) |
+| `verify/band_law.py` | Proposition 12: window rule and `q > 0` iff vulnerable through the real insertion code on every trunk and chain, gap law in exact rationals, the bound `D_s`, Monte Carlo, and the churn design table |
 | `verify/tree_schedule_check.py` | re-entrant depth-walk schedules on the real process: union bound vs observed refusals vs P(W>0) |
 | `verify/fill_law.py` | Theorem 10 against brute force over every home sequence, its closed form, and the whole-fill design table |
 | `verify/orphan_law.py` | Theorem 4(a) (397 562 assignment-order pairs), the finite-size orphan law against enumeration of every home sequence (exact rationals), the identity behind Corollary 8(b), and the M/D/1 limit |

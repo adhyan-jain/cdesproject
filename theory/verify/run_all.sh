@@ -11,6 +11,7 @@ echo "== safe deletion orders and the orphan law";                              
 echo "== refusal-free fill law (brute force, closed form, design table)";    python3 fill_law.py
 echo "== unlimited-run (sustainability) law";                                 python3 sustain_law.py
 echo "== re-entrant scope schedules";                                          python3 tree_schedule_check.py
+echo "== bounded churn above a persistent trunk";                             python3 band_law.py
 echo "== exact law vs stored 240M-sample simulation";                            python3 design_table.py
 echo "== exact law vs the real strata::Table (z-test, bounded/unbounded agree)"
 g++ -std=c++14 -O2 -I../../include -o "$BUILD/law_vs_table" law_vs_table.cpp
