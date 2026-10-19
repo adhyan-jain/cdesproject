@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EngineError, health, runOps, type EngineState, type Op } from "./lib/engine";
-import { Header, type EngineHealth } from "./components/Header";
+import { Header, PAGES, type EngineHealth, type Page } from "./components/Header";
 import { Controls } from "./components/Controls";
 import { StatusLine, type StatusSource } from "./components/StatusLine";
 import { SymbolTable } from "./components/SymbolTable";
 import { MemoryInspector } from "./components/MemoryInspector";
 import { Timeline } from "./components/Timeline";
 import { GuidedDemo, DEMO_CAPACITY, DEMO_STEPS } from "./components/GuidedDemo";
-import { About } from "./components/About";
 import { describe } from "./lib/describe";
 import { CodeEditor } from "./components/CodeEditor";
-import { Accuracy } from "./components/Accuracy";
 import { CodeError, compile, EXAMPLES, type LineOp } from "./lib/minic";
+import { Overview } from "./pages/Overview";
+import { Benchmarks } from "./pages/Benchmarks";
+import { Stress } from "./pages/Stress";
+import { Method } from "./pages/Method";
+
+const pageFromHash = (): Page => {
+  const h = window.location.hash.replace(/^#\/?/, "");
+  return (PAGES.find((p) => p.id === h)?.id ?? "overview");
+};
 
 const DEFAULT_CAPACITY = 512;
 const MAX_OPS = 400;
@@ -23,6 +30,17 @@ const EXAMPLE: Op[] = [
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function App() {
+  const [page, setPage] = useState<Page>(pageFromHash);
+  useEffect(() => {
+    const on = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  const go = useCallback((p: Page) => {
+    if (window.location.hash !== `#/${p}`) window.location.hash = `/${p}`;
+    setPage(p);
+    window.scrollTo({ top: 0 });
+  }, []);
   const [engine, setEngine] = useState<EngineHealth>({ state: "checking" });
   const [capacity, setCapacity] = useState(DEFAULT_CAPACITY);
   const [state, setState] = useState<EngineState | null>(null);
@@ -207,7 +225,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, [demo, busy, nextDemoStep]);
 
-  const startDemo = () => { setTab("ops"); setDemo({ active: true, step: 0, playing: true }); };
+  const startDemo = () => { go("lab"); setTab("ops"); setDemo({ active: true, step: 0, playing: true }); };
   const restartDemo = () => {
     demoStepRef.current = 0;
     setDemo({ active: true, step: 0, playing: true });
@@ -220,6 +238,8 @@ export default function App() {
   return (
     <div className="app">
       <Header
+        page={page}
+        onPage={go}
         health={engine}
         onRetry={() => void connect()}
         onRunDemo={startDemo}
@@ -228,13 +248,19 @@ export default function App() {
         busy={busy}
       />
       <main className="page">
-        <div className="intro">
-          <h1>Bounded-memory symbol tables for compilers.</h1>
+        {page === "overview" && <Overview go={go} />}
+        {page === "benchmarks" && <Benchmarks ready={ready} />}
+        {page === "stress" && <Stress />}
+        {page === "method" && <Method />}
+        {page === "lab" && (<>
+        <header className="page-head">
+          <h1>Live lab</h1>
           <p>
-            Every operation on this page runs on the real <code>strata::Table</code> from <code>include/strata/strata.hpp</code>, compiled into a local
+            Every operation here runs on the real <code>strata::Table</code> from <code>include/strata/strata.hpp</code>, compiled into a local
             C++ engine, inside one fixed buffer of <b className="mono">{capacity >= 1024 ? `${capacity / 1024} KiB` : `${capacity} bytes`}</b>.
+            Declare names, open and close scopes, or write a small C program and step through the calls a compiler would make.
           </p>
-        </div>
+        </header>
 
         {demo.active && (
           <GuidedDemo
@@ -313,13 +339,11 @@ export default function App() {
             agrees {state.checks.resolveAgrees ? "✓" : "✗"} · reference model agrees {state.checks.modelAgrees ? "✓" : "✗"} · digest {state.digest}
           </p>
         )}
-
-        <Accuracy ready={ready} />
-
-        <About />
+        </>)}
       </main>
       <footer className="foot">
-        STRATA research artifact · interactive demo in <code>frontend/</code>, added for the project review; the table itself is unchanged.
+        <span>STRATA · compiler design project, SCOPE, VIT Vellore</span>
+        <span>Figures from recorded run <code>{"20261013-143828-paper"}</code> · interface in <code>frontend/</code>; the table itself is unchanged.</span>
       </footer>
     </div>
   );

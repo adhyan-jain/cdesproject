@@ -1,4 +1,12 @@
 export type EngineHealth = { state: "checking" } | { state: "ready"; compiler: string } | { state: "down" };
+export type Page = "overview" | "lab" | "benchmarks" | "stress" | "method";
+export const PAGES: { id: Page; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "lab", label: "Live lab" },
+  { id: "benchmarks", label: "Benchmarks" },
+  { id: "stress", label: "Stress tests" },
+  { id: "method", label: "Method & limits" },
+];
 
 export function Logo() {
   // Four memory regions stacked into one block: index, records, undo, free.
@@ -14,6 +22,8 @@ export function Logo() {
 }
 
 interface Props {
+  page: Page;
+  onPage: (p: Page) => void;
   health: EngineHealth;
   onRetry: () => void;
   onRunDemo: () => void;
@@ -22,24 +32,32 @@ interface Props {
   busy: boolean;
 }
 
-export function Header({ health, onRetry, onRunDemo, onReset, demoActive, busy }: Props) {
+export function Header({ page, onPage, health, onRetry, onRunDemo, onReset, demoActive, busy }: Props) {
   const ready = health.state === "ready";
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <div className="brand">
+        <button className="brand" onClick={() => onPage("overview")} aria-label="STRATA overview">
           <Logo />
           <span className="wordmark">STRATA</span>
           <span className="brand-sep" aria-hidden="true" />
           <span className="brand-sub">Compiler Memory Lab</span>
-        </div>
+        </button>
+        <nav className="nav" aria-label="Sections">
+          {PAGES.map((p) => (
+            <a key={p.id} href={`#/${p.id}`} className={page === p.id ? "on" : ""} aria-current={page === p.id ? "page" : undefined}
+              onClick={(e) => { e.preventDefault(); onPage(p.id); }}>
+              {p.label}
+            </a>
+          ))}
+        </nav>
         <div className="topbar-actions">
           <div className={`engine-pill engine-${health.state}`} role="status" aria-live="polite">
             <span className="dot" aria-hidden="true" />
-            {health.state === "checking" && "Connecting to engine…"}
+            {health.state === "checking" && "Connecting…"}
             {health.state === "ready" && (
               <span>
-                C++ engine ready <span className="pill-meta">g++ {health.compiler}</span>
+                Engine ready <span className="pill-meta">g++ {health.compiler}</span>
               </span>
             )}
             {health.state === "down" && (
@@ -51,14 +69,16 @@ export function Header({ health, onRetry, onRunDemo, onReset, demoActive, busy }
               </span>
             )}
           </div>
-          <button className="btn btn-ghost" onClick={onReset} disabled={!ready || busy}>
-            Reset demo
-          </button>
+          {page === "lab" && (
+            <button className="btn btn-ghost" onClick={onReset} disabled={!ready || busy}>
+              Reset
+            </button>
+          )}
           <button className="btn btn-primary" onClick={onRunDemo} disabled={!ready || busy || demoActive}>
             <svg viewBox="0 0 16 16" aria-hidden="true" className="ico">
               <path d="M5 3.5v9l7-4.5-7-4.5z" fill="currentColor" />
             </svg>
-            Run guided demo
+            Guided demo
           </button>
         </div>
       </div>
