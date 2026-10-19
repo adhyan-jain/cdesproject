@@ -18,16 +18,13 @@ Audited on 11 October 2026 before any new code was written.
 Read in full: `include/metis_x.hpp`, the three baselines in `include/historical/`, the
 benchmark drivers in `src/`, `scripts/extract_corpus_events.py`, the tests in `tests/`, the
 result CSVs in `results/`, the research notes in `research/l3/` (phases 1-9, closure note),
-`paper/Metis.tex`, and the patent-disclosure package in `docs/patent/`.
+and `paper/Metis.tex`.
 
-Two things outside the code matter for this project:
+One thing outside the code matters for this project:
 
 * **Licence.** With no licence file, the METIS code cannot be copied into another repository.
   This project does not vendor it; `scripts/fetch_third_party.sh` fetches the audited commit
   at benchmark time.
-* **Patent advisory.** `docs/METIS_X_FINAL_VALIDATION_REPORT.md` section 9 warns against
-  publishing before a provisional patent filing. The METIS repository is nevertheless public.
-  See `ARCHITECTURE_DECISION.md` for how this affected the visibility of the new repository.
 
 ## 2. Defects and limitations, each checked against the current code
 

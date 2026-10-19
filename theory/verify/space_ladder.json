@@ -1,0 +1,58 @@
+{
+ "zlib": {
+  "arena_chain": 19328,
+  "chain_nohash": 17024,
+  "oa_decl": 17024,
+  "strata_raw": 17088,
+  "strata": 16128
+ },
+ "cjson": {
+  "arena_chain": 36736,
+  "chain_nohash": 32512,
+  "oa_decl": 32512,
+  "strata_raw": 32512,
+  "strata": 30720
+ },
+ "littlefs": {
+  "arena_chain": 24832,
+  "chain_nohash": 21952,
+  "oa_decl": 21952,
+  "strata_raw": 22016,
+  "strata": 20480
+ },
+ "freertos": {
+  "arena_chain": 54912,
+  "chain_nohash": 48896,
+  "oa_decl": 48896,
+  "strata_raw": 48896,
+  "strata": 45056
+ },
+ "lua": {
+  "arena_chain": 44480,
+  "chain_nohash": 39040,
+  "oa_decl": 39040,
+  "strata_raw": 39040,
+  "strata": 36800
+ },
+ "mbedtls": {
+  "arena_chain": 99200,
+  "chain_nohash": 90048,
+  "oa_decl": 90048,
+  "strata_raw": 90048,
+  "strata": 81920
+ },
+ "tinycc": {
+  "arena_chain": 194304,
+  "chain_nohash": 172288,
+  "oa_decl": 172288,
+  "strata_raw": 172352,
+  "strata": 160256
+ },
+ "sqlite": {
+  "arena_chain": 173504,
+  "chain_nohash": 156480,
+  "oa_decl": 156480,
+  "strata_raw": 156544,
+  "strata": 143744
+ }
+}

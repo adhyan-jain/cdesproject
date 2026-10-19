@@ -40,8 +40,6 @@ his findings; that listing needs his agreement.
 * Both authors read the code and re-run `scripts/test.sh` and `scripts/run_all.sh`.
 * The authors decide how the AI assistance is disclosed, following the venue's policy.
 * The guide's role and affiliation lines are confirmed.
-* The patent question noted in `ARCHITECTURE_DECISION.md` is settled before the repository
-  is made public.
 
 ## Status on 2026-10-13 (recorded by the research-completion branch; nothing here is a decision)
 
@@ -57,3 +55,10 @@ his findings; that listing needs his agreement.
   recorded anywhere in it. Their authorship has to be justified by the authors themselves.
 * The four items under "Before anything is submitted" above are all still open. They are
   tracked in `SUBMISSION_READINESS.md` and `submission/SIGNOFF_CHECKLIST.md`.
+
+## Session of 2026-10-17
+
+An adversarial review, a theory manuscript (`theory/`), its verification programs and the
+addendum `docs/ADDENDUM_2026-10-17.md` were produced by an AI assistant (Claude, model Sonnet 5.5)
+at Adhyan Jain's direction. Details and what was and was not checked: `docs/AI_USE_DISCLOSURE.md`.
+No author has yet recorded a reading of the proofs.

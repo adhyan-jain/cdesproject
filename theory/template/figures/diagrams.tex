@@ -1,0 +1,190 @@
+% Diagrams for the template manuscript. Each tikzpicture becomes one page (standalone, multi); make_figures.py turns the
+% pages into fig_d1.png ... fig_d7.png.
+\documentclass[multi=tikzpicture,border=5pt]{standalone}
+\usepackage{amsmath}
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,fit,backgrounds,decorations.pathreplacing}
+\definecolor{cIdx}{HTML}{A9B0E4}\definecolor{cRec}{HTML}{4A54C1}\definecolor{cUndo}{HTML}{E2B77A}
+\definecolor{cFree}{HTML}{ECEAE4}\definecolor{cOk}{HTML}{CFE6D8}\definecolor{cBad}{HTML}{F3C9C1}
+\definecolor{cAcc}{HTML}{E6E8F8}
+\begin{document}
+\tikzset{
+  box/.style={draw,rounded corners=2pt,thick,align=center,font=\small,inner sep=4pt,fill=white},
+  tb/.style={draw,thick,align=center,font=\footnotesize,inner sep=3pt,fill=white,rounded corners=1.5pt},
+  arr/.style={-{Stealth[length=2.6mm]},thick},
+  cell/.style={draw,minimum size=7.2mm,inner sep=0pt,font=\footnotesize,thick},
+  lab/.style={font=\scriptsize,inner sep=1pt}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D1: architecture
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[box,fill=cAcc,minimum width=3.6cm,minimum height=3.1cm,text width=3.3cm] (src) at (0,0)
+    {\textbf{Compiler front end}\\[2pt]\footnotesize scope events from the source text\\[3pt]\texttt{declare(name,type)}\\\texttt{lookup(name)}\\\texttt{enter\_scope()}\\\texttt{exit\_scope()}};
+  % buffer
+  \node[draw,thick,rounded corners=2pt,minimum width=8.6cm,minimum height=3.1cm,fill=white] (buf) at (7.0,0) {};
+  \node[font=\small\bfseries,anchor=south] at (7.0,1.62) {STRATA table in ONE fixed buffer (caller-provided)};
+  \fill[cIdx] (2.95,0.45) rectangle (5.05,1.25);\draw[thick] (2.95,0.45) rectangle (5.05,1.25);
+  \fill[cRec] (5.05,0.45) rectangle (7.5,1.25);\draw[thick] (5.05,0.45) rectangle (7.5,1.25);
+  \fill[cFree] (7.5,0.45) rectangle (9.0,1.25);\draw[thick] (7.5,0.45) rectangle (9.0,1.25);
+  \fill[cUndo] (9.0,0.45) rectangle (10.95,1.25);\draw[thick] (9.0,0.45) rectangle (10.95,1.25);
+  \node[font=\scriptsize,align=center] at (4.0,0.85) {index slots\\open addressing};
+  \node[font=\scriptsize,align=center,text=white] at (6.28,0.85) {identifier records\\(packed, one per name)};
+  \node[font=\scriptsize] at (8.25,0.85) {free};
+  \node[font=\scriptsize,align=center] at (9.98,0.85) {undo stack\\$\leftarrow$ grows};
+  \node[font=\scriptsize,align=left,text width=7.9cm] at (7.0,-0.55)
+    {Linear probing with probe limit $L$; a key never moves after it is placed.\\Space is reserved before anything is written: a request that does not fit changes nothing.};
+  \node[box,fill=cAcc,minimum width=3.2cm,minimum height=3.1cm,text width=2.9cm] (out) at (14.0,0) {\textbf{Results}\\[2pt]\footnotesize status codes\\\texttt{kOk}, \texttt{kNoMemory},\\\texttt{kProbeLimit}, ...\\state digest};
+  \draw[arr] (src.east) -- node[above,lab]{calls} (buf.west);
+  \draw[arr] (buf.east) -- node[above,lab]{answers} (out.west);
+  % analysis layer
+  \node[font=\small\bfseries,anchor=west] at (-1.8,-2.55) {Analysis layer (this work)};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a1) at (0.0,-4.0) {\textbf{Exact undo}\\Thm 2, Cor 3\\Safe orders: Thm 4\\Orphans: Prop 5};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a2) at (4.1,-4.0) {\textbf{Refusal laws}\\Thm 7 (one push)\\Thm 10 (whole fill)\\Prop 11 (unlimited run)};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a3) at (8.2,-4.0) {\textbf{Bounded churn}\\Prop 12: persistent\\names, schedule-free\\bound $D_s$};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a4) at (12.3,-4.0) {\textbf{Keys and space}\\Props 13--15: key\\lifetime and adversaries\\Prop 16: space ledger};
+  \node[box,fill=cOk,minimum width=15.6cm] (des) at (6.15,-6.15) {Design rules: probe limit $L$, buffer size, key policy};
+  \foreach \a in {a1,a2,a3,a4} \draw[arr] (\a.south) -- (\a.south |- des.north);
+  \draw[arr,dashed] (a2.north) -- (buf.south -| a2.north) node[midway,right,lab,align=left]{models the index};
+\end{tikzpicture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D2: exact undo
+\begin{tikzpicture}[x=1cm,y=1cm]
+  % three snapshots of 10 cells
+  \foreach \r/\ttl in {0/{(a) Table $T_0=\mathrm{Ins}(a_1,\dots,a_4)$, before the push},-2.1/{(b) After \textbf{push} of $x$ (home 2; cells 2, 3 occupied; stored in cell 4): only cell 4 is written},-4.2/{(c) After \textbf{pop} of $x$: cell 4 is cleared, and the table is $T_0$ again}} {
+    \node[font=\small\bfseries,anchor=west] at (-0.2,\r+0.95) {\ttl};
+    \foreach \c in {0,...,9} \node[cell,fill=cFree] at (\c*0.9,\r) {};
+    \foreach \c in {0,...,9} \node[lab,gray] at (\c*0.9,\r-0.55) {\c};
+  }
+  % occupied cells of T0
+  \foreach \c/\k in {1/a_1,2/a_3,3/a_2,6/a_4} {
+    \foreach \r in {0,-2.1,-4.2} \node[cell,fill=cIdx] at (\c*0.9,\r) {$\k$};
+  }
+  % x placed in cell 4 in row (b)
+  \node[cell,fill=cUndo,draw=red!70!black,line width=1.2pt] at (4*0.9,-2.1) {$x$};
+  \node[font=\small,anchor=west,text width=5.4cm,align=left] at (9.7,-2.1) {Insertion depends only on which cells are occupied and changes only one cell, so removing the \emph{newest} key restores the previous table bit for bit.};
+  \draw[decorate,decoration={brace,amplitude=4pt,mirror}] (-0.45,-4.65) -- (8.55,-4.65) node[midway,below=5pt,font=\small]{identical in every cell: $\mathrm{Occ}(T)=\mathrm{Occ}(\mathrm{Ins}(\text{live sequence}))$ at all times};
+\end{tikzpicture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D3: dependency and orphans
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \foreach \c in {0,...,9} \node[cell,fill=cFree] at (\c*1.05,0) {};
+  \foreach \c in {0,...,9} \node[lab,gray] at (\c*1.05,-0.6) {\c};
+  \foreach \c/\k in {2/u,3/v,4/w,5/y} \node[cell,fill=cIdx] at (\c*1.05,0) {$\k$};
+  % probe path of y: home 2 -> cell 5
+  \draw[arr,blue!60!black] (2*1.05,0.55) .. controls (2.9*1.05,1.35) and (4.1*1.05,1.35) .. (5*1.05-0.1,0.55);
+  \node[lab,blue!60!black,above] at (3.5*1.05,1.18) {probe path of $y$: home 2, passes cells 2, 3, 4, stored in 5};
+  \node[font=\small,anchor=north west,align=left,text width=10.2cm] at (-0.5,-1.0) {\textbf{Dependency:} $y\lhd x$ if the cell of $x$ lies strictly before the cell of $y$ on the probe path of $y$.\\Here $y\lhd u$, $y\lhd v$, $y\lhd w$. A deletion order is safe iff every key is cleared before the keys it depends on (linear extension of $\lhd$).};
+  % unsafe: clear w first
+  \begin{scope}[yshift=-5.3cm]
+    \foreach \c in {0,...,9} \node[cell,fill=cFree] at (\c*1.05,0) {};
+    \foreach \c/\k in {2/u,3/v,5/y} \node[cell,fill=cIdx] at (\c*1.05,0) {$\k$};
+    \node[cell,fill=cBad,dashed] at (4*1.05,0) {};
+    \node[lab,red!70!black,below] at (4*1.05,-0.45) {hole};
+    \draw[arr,red!70!black] (2*1.05,0.55) .. controls (2.9*1.05,1.1) and (3.7*1.05,1.1) .. (4*1.05,0.55);
+    \node[lab,red!70!black,above] at (3.4*1.05,1.0) {lookup of $y$ stops at the hole: $y$ is orphaned};
+    \node[font=\small\bfseries,anchor=west] at (-0.5,1.85) {Clearing $w$ before $y$ (not stack order):};
+  \end{scope}
+  \node[font=\small,anchor=north west,align=left,text width=10.2cm] at (-0.5,-6.4) {\textbf{Stack order is always safe:} the newest key has no dependents, because a key's path crosses only cells that were filled before it. It is also the only order safe for every hash assignment (Thm 4b). The number of keys orphaned by clearing one key is a queue length minus one (Prop 5).};
+\end{tikzpicture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D4: flow diagram
+\begin{tikzpicture}[x=1cm,y=1cm,node distance=0.8cm]
+  \tikzset{dec/.style={diamond,draw,thick,aspect=2.6,font=\scriptsize,align=center,inner sep=0pt,fill=white},
+           io/.style={draw,thick,rounded corners=6pt,font=\footnotesize,align=center,fill=cAcc,inner sep=4pt},
+           ok/.style={draw,thick,rounded corners=6pt,font=\footnotesize,align=center,fill=cOk,inner sep=4pt},
+           no/.style={draw,thick,rounded corners=6pt,font=\footnotesize,align=center,fill=cBad,inner sep=4pt}}
+  \node[io] (s) at (0,0) {\texttt{declare(name)} arrives};
+  \node[tb,below=0.55cm of s] (h) {compute home $h=F_K(\text{name})\bmod m$};
+  \node[dec,below=0.55cm of h,minimum width=4.4cm,minimum height=1.25cm] (d1) {empty cell within\\$L$ probes of $h$?};
+  \node[dec,below=0.75cm of d1,minimum width=4.4cm,minimum height=1.25cm] (d2) {record + undo entry\\fit in the buffer?};
+  \node[tb,below=0.7cm of d2] (w) {write record, set index cell,\\push undo entry if the name hides another};
+  \node[ok,below=0.55cm of w] (okn) {\texttt{kOk}};
+  \node[no,right=2.6cm of d1] (pl) {\texttt{kProbeLimit}\\table unchanged};
+  \node[no,right=2.6cm of d2] (nm) {\texttt{kNoMemory}\\table unchanged};
+  \draw[arr] (s)--(h); \draw[arr] (h)--(d1);
+  \draw[arr] (d1)-- node[right,lab]{yes} (d2); \draw[arr] (d2)-- node[right,lab]{yes} (w); \draw[arr] (w)--(okn);
+  \draw[arr] (d1)-- node[above,lab]{no} (pl); \draw[arr] (d2)-- node[above,lab]{no} (nm);
+  % exit scope
+  \node[io] (e) at (-6.2,0) {\texttt{exit\_scope()}};
+  \node[tb,below=0.55cm of e,text width=3.6cm] (e1) {pop undo entries of this scope (last in, first out)};
+  \node[tb,below=0.55cm of e1,text width=3.6cm] (e2) {new name: clear its cell;\\hidden name: restore its record};
+  \node[ok,below=0.55cm of e2,text width=3.6cm] (e3) {table equals the table before\\the scope was entered\\(Theorem 2)};
+  \draw[arr] (e)--(e1); \draw[arr] (e1)--(e2); \draw[arr] (e2)--(e3);
+  \node[font=\scriptsize,align=center,text width=3.6cm] at (-6.2,-7.9) {A refused request is all-or-nothing: no half-written state is ever visible.};
+\end{tikzpicture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D5: blocks and the refusal law
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \def\R{2.9}
+  \draw[thick] (0,0) circle (\R);
+  % k = 6 empty cells at angles; blocks between
+  \foreach \a/\g in {90/3,150/2,205/5,270/1,320/4,30/2} {
+    \fill[white,draw=red!70!black,thick] (\a:\R) circle (0.2);
+  }
+  \foreach \a in {90,150,205,270,320,30} \node[font=\scriptsize] at (\a:{\R+0.55}) {};
+  \draw[line width=3.4pt,cRec!85] (96:\R) arc (96:144:\R);   % block of 3? occupied run
+  \draw[line width=3.4pt,cRec!85] (156:\R) arc (156:199:\R);
+  \draw[line width=3.4pt,cRec!85] (211:\R) arc (211:264:\R);
+  \draw[line width=3.4pt,cRec!85] (276:\R) arc (276:314:\R);
+  \draw[line width=3.4pt,cRec!85] (326:\R) arc (326:384:\R);
+  \draw[line width=3.4pt,cRec!85] (36:\R) arc (36:84:\R);
+  \node[font=\small,align=center] at (0,0.25) {ring of $m$ cells};
+  \node[font=\scriptsize,red!70!black,align=center] at (0,-1.0) {circles: the $k$ empty cells};
+  \node[font=\footnotesize,align=center] at (0,-0.35) {cut at the $k=m-n$ empty cells};
+  \node[font=\scriptsize,cRec] at (120:{\R+0.7}) {$g_1$};\node[font=\scriptsize,cRec] at (178:{\R+0.7}) {$g_2$};
+  \node[font=\scriptsize,cRec] at (238:{\R+0.7}) {$g_3$};\node[font=\scriptsize,cRec] at (295:{\R+0.7}) {$g_4$};
+  \node[font=\scriptsize,cRec] at (352:{\R+0.7}) {$g_5$};\node[font=\scriptsize,cRec] at (60:{\R+0.7}) {$g_6$};
+  % legend/explanation
+  \node[font=\small,anchor=west,align=left,text width=8.2cm] at (4.6,1.9) {\textbf{Block} = an empty cell and the run of occupied cells after it, of size $g_i$.\\[3pt]Blocks are i.i.d.\ Borel distributed (cycle lemma), conditioned on $\sum_i g_i=m$: weight $B(g)=g^{g-1}/g!$.};
+  \node[font=\small,anchor=west,align=left,text width=8.2cm] at (4.6,-0.3) {A new key is refused iff its home starts a window of $L$ occupied cells. In a block of $g$ cells exactly $(g-L)^+$ homes do, so\\[2pt]\centerline{$R_m(n,L)=\frac{k}{m}\sum_{g>L}(g-L)\,\pi_g$.}};
+  \begin{scope}[shift={(4.6,-2.6)}]
+    \foreach \c in {0,...,9} \node[cell,minimum size=6mm,fill=cRec!85] at (\c*0.62,0) {};
+    \node[cell,minimum size=6mm,fill=cFree] at (-0.62,0) {};
+    \draw[thick,red!70!black] (-0.25,0.45) -- (-0.25,0.2); \node[lab,red!70!black,above] at (0.5,0.45) {bad homes: $g-L$ of them};
+    \draw[decorate,decoration={brace,amplitude=3pt,mirror}] (-0.9,-0.45) -- (5.9,-0.45) node[midway,below,font=\scriptsize]{block of $g=11$ cells with $L=4$ (7 bad homes)};
+  \end{scope}
+\end{tikzpicture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D6: persistent trunk with bounded churn
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \tikzset{nd/.style={circle,draw,thick,minimum size=5mm,inner sep=0pt,fill=cIdx},nu/.style={circle,draw,thick,minimum size=4.2mm,inner sep=0pt,fill=cUndo}}
+  \node[font=\small\bfseries,anchor=west] at (-0.4,4.7) {Scope tree: persistent trunk with bounded churn above it};
+  \node[nd] (t0) at (0,0) {};
+  \foreach \i/\n in {1/t1,2/t2,3/t3} \node[nd] (\n) at (\i*1.0,0) {};
+  \draw[very thick] (t0)--(t1)--(t2)--(t3);
+  \node[font=\scriptsize,below=3pt] at (1.5,-0.35) {trunk: $n$ names, never popped};
+  \foreach \y/\lbl in {1.2/a,2.1/b,3.0/c} {
+    \node[nu] (x\lbl1) at (4.0,\y) {}; \node[nu] (x\lbl2) at (5.0,\y+0.25) {};
+    \draw[thick] (t3)--(x\lbl1)--(x\lbl2);
+  }
+  \node[nu] (xd1) at (4.0,-0.2) {}; \draw[thick] (t3)--(xd1);
+  \node[font=\scriptsize,anchor=west,align=left] at (5.4,1.5) {fresh names pushed and popped\\at most $s$ live above the trunk\\(counting the one being pushed)};
+  \draw[decorate,decoration={brace,amplitude=4pt}] (3.7,3.55) -- (5.4,3.55) node[midway,above=3pt,font=\scriptsize]{height $\le s$};
+  % window panel
+  \begin{scope}[shift={(0,-3.6)}]
+    \node[font=\small\bfseries,anchor=west] at (-0.4,1.35) {Persistent part of the ring: a window of $L$ cells with at most $s-1$ empty cells};
+    \foreach \c in {0,...,13} \node[cell,minimum size=6.4mm,fill=cRec!80] at (\c*0.7,0) {};
+    \node[cell,minimum size=6.4mm,fill=cFree] at (4*0.7,0) {}; \node[cell,minimum size=6.4mm,fill=cFree] at (9*0.7,0) {};
+    \draw[very thick,red!70!black] (-0.42,-0.42) rectangle (13*0.7+0.42,0.42);
+    \node[font=\scriptsize,red!70!black,below] at (6.5*0.7,-0.5) {window of $L=14$ cells, $s-1=2$ empty cells};
+    \node[font=\scriptsize,anchor=west,align=left,text width=6.6cm] at (10.2,0) {A chain of $s$ pushes fills the empty cells, then pushes at the window start: refused. Hence any refusal implies this window exists (Prop 12a).};
+  \end{scope}
+\end{tikzpicture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D7: verification methodology
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \tikzset{st/.style={tb,minimum width=3.0cm,minimum height=1.4cm,text width=2.8cm}}
+  \node[st,fill=cAcc] (p) at (0,0) {\textbf{Statement and proof}\\pen and paper};
+  \node[st] (e) at (3.7,0) {\textbf{Exhaustive enumeration}\\every home sequence, exact rationals};
+  \node[st] (r) at (7.4,0) {\textbf{Real table}\\keyed hash, probe limit, z-test, lock-step};
+  \node[st] (i) at (11.1,0) {\textbf{Independent derivation}\\Abel binomial route; separate referee pass};
+  \node[st,fill=cOk] (o) at (5.55,-2.5) {\textbf{One script}\\\texttt{run\_all.sh}: stops on any mismatch};
+  \node[st,fill=cOk] (f) at (9.25,-2.5) {\textbf{Tables and figures}\\written by the programs, none typed by hand};
+  \draw[arr] (p)--(e); \draw[arr] (e)--(r); \draw[arr] (r)--(i);
+  \draw[arr] (e.south) |- (o.west); \draw[arr] (r.south) -- (r |- o.north); \draw[arr] (o)--(f);
+  \draw[arr] (i.south) |- (f.east);
+\end{tikzpicture}
+\end{document}

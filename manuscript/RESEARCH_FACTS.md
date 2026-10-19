@@ -110,9 +110,8 @@ Run directory for timing: `results/raw/20261013-143828-paper` (full pipeline on 
 
 Listed in `AUTHOR_DETAILS_REQUIRED.md`: affiliations, e-mail addresses, corresponding author,
 ORCID of the submitting author, biographies and photographs, funding statement, conflict of
-interest statement, the decision on how AI assistance is disclosed, whether the guide is an
-author, and whether the predecessor project's patent advisory still applies now that the
-repository is public.
+interest statement, the decision on how AI assistance is disclosed, and whether the guide is an
+author.
 
 ## 9. Inconsistencies found and how they were resolved
 

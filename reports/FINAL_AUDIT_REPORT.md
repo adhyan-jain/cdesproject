@@ -111,7 +111,6 @@ Research modification (kept separate from bug fixes): the bounded mode and keyed
 - `docs/RESULTS.md`, `paper/generated.tex` and the paper describe run `20261011-165103-v3` and do not mention the bounded mode.
 - The co-authors have not reviewed the repository, the paper or this audit.
 - Everything in `TEST_RESULTS.md` section 4 (blocked and not tested).
-- The repository is private because of an unresolved patent question in the predecessor project; that is unchanged.
 
 ## 10. Reproducibility
 

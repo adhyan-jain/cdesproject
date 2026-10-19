@@ -1,8 +1,9 @@
 export type EngineHealth = { state: "checking" } | { state: "ready"; compiler: string } | { state: "down" };
-export type Page = "overview" | "lab" | "benchmarks" | "stress" | "method";
+export type Page = "overview" | "lab" | "theory" | "benchmarks" | "stress" | "method";
 export const PAGES: { id: Page; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "lab", label: "Live lab" },
+  { id: "theory", label: "Theory" },
   { id: "benchmarks", label: "Benchmarks" },
   { id: "stress", label: "Stress tests" },
   { id: "method", label: "Method & limits" },

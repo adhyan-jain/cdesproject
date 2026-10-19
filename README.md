@@ -41,6 +41,18 @@ same raw files by `manuscript/tools/make_numbers.py`.
 Status of the paper, the novelty assessment and what still needs human approval:
 `NOVELTY_GATE.md`, `SUBMISSION_READINESS.md`, `submission/`.
 
+## Theory manuscript and review (added 2026-10-17)
+
+| Path | Contents |
+|---|---|
+| `theory/` | a theory paper on *stack-disciplined open addressing*: exact undo and its converse, an exact refusal law for probe-limited tables, key-lifetime rules, an exact space ledger. Sources in `theory/paper/`, verification programs in `theory/verify/`; `bash theory/verify/run_all.sh` regenerates every number and builds the PDF (`theory/README.md`) |
+| `review/ADVERSARIAL_REVIEW.md` | independent adversarial review of this repository's claims, with the status of each finding |
+| `docs/ADDENDUM_2026-10-17.md` | corrections to earlier statements: the probe-limit bound is looser than stated (exact limit 258, not 455, at load 3/4 for large indexes), the memory saving over the baseline is a hash word plus packing (interning contributes none), the keyed-hash guarantee needs a fresh key per table |
+| `docs/AI_USE_DISCLOSURE.md` | full account of AI use: what the assistant did, how it was checked, what it did not do |
+
+Nothing in `include/`, `tests/` or `benchmarks/` changed. The interactive demo in `frontend/`
+(`npm install && npm test && npm start` in `frontend/web`) was re-checked on 2026-10-17: 24 of 24 tests pass.
+
 The section below is **historical**: it describes the first reported run `20261011-165103-v3`,
 made before the rebuild change, and is kept as measured then.
 

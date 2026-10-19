@@ -5,7 +5,7 @@ One working session, 11 October 2026. Times are omitted; the order is exact.
 | # | Step | Outcome |
 |---|---|---|
 | 1 | `gh auth status`, repository listing, commit search | Account `shubhisingh1510`. The symbol-table work of both authors is in `adhyan-jain/Metis`; no separate repository of the second author exists. |
-| 2 | Fetched all branches and tags of METIS | `main` at `7b3dacf`; two research branches; no licence file; a patent advisory in the docs. |
+| 2 | Fetched all branches and tags of METIS | `main` at `7b3dacf`; two research branches; no licence file. |
 | 3 | Read `metis_x.hpp`, baselines, drivers, extractor, notes | 15 audit items (`INITIAL_AUDIT.md`). |
 | 4 | Profiled the old trace files | Names up to 137 bytes; C++ corpora contain `::`. Set the name limit to 255 bytes with a raw fallback. |
 | 5 | Decision: rebuild (`ARCHITECTURE_DECISION.md`) | Identifier-keyed table in one buffer. |
@@ -42,8 +42,8 @@ One working session, 11 October 2026. Times are omitted; the order is exact.
 
 ## Decisions taken without asking
 
-* Repository created **private** although the brief prefers public, because of the patent
-  advisory and missing licence in METIS (`ARCHITECTURE_DECISION.md`).
+* Repository created **private** although the brief prefers public, because of the missing
+  licence in METIS and because the co-author had not been asked (`ARCHITECTURE_DECISION.md`).
 * METIS code is fetched, never copied.
 * Licence of this repository: MIT, copyright in both authors' names; to be confirmed by them.
 * The 85% target was treated as a hypothesis and is reported as met or not met per metric.

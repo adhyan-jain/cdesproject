@@ -14,3 +14,13 @@ manuscript/overleaf/main.log
 manuscript/overleaf/main.aux
 manuscript/overleaf/main.out
 manuscript/overleaf/main.blg
+
+# theory manuscript: LaTeX build products (the PDF itself is kept)
+theory/paper/*.aux
+theory/paper/*.log
+theory/paper/*.out
+theory/paper/*.bbl
+theory/paper/*.blg
+theory/paper/*.fls
+theory/paper/*.fdb_latexmk
+theory/template/build/

@@ -9,7 +9,7 @@ rough.
 
 | # | Item | Why | Effort |
 |---|---|---|---|
-| 1 | Co-authors read the code, the paper and `reports/`; decide authorship, AI-assistance disclosure and the patent question noted in `docs/ARCHITECTURE_DECISION.md` | nobody but the assistant has reviewed any of it; the repository is private for the patent reason | days, human only |
+| 1 | Co-authors read the code, the paper and `reports/`; decide authorship and AI-assistance disclosure | nobody but the assistant has reviewed any of it | days, human only |
 | 2 | Decide whether the bounded mode goes into the paper. If yes: add a section (threat model, construction of the colliding identifiers with credit to Aumasson and Bernstein, the two defences, their cost), regenerate `docs/RESULTS.md` and `paper/generated.tex` from a full run of the final code | the paper currently describes neither the weakness nor the fix | 2-3 days |
 | 3 | Run the full pipeline (`scripts/run_all.sh`, `run_extra.sh`) on the final code and on a second machine, preferably native Linux | only the 8 TinyCC traces were re-measured; all timing is from one laptop under a hypervisor | 1 day |
 | 4 | Systematic literature review with full-text access (ACM DL, IEEE Xplore): scoped symbol tables since 1979, hash-table deletion order, bounded-probe tables, on-device compilers | the audit's search was about twenty web queries; several sources are confirmed only bibliographically | 3-5 days |

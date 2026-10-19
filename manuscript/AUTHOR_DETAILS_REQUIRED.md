@@ -43,7 +43,7 @@ to be accountable for it.
 
 1. **Disclosure of AI assistance.** IEEE Access requires AI-generated text to be disclosed in the acknowledgments, and each section that uses it to cite the system. The code, experiments, analysis and the text of this manuscript were produced with an AI coding assistant (Claude, Anthropic) at the first author's direction. The Acknowledgment says so in plain words. The authors must check that this matches what they are willing to sign, and that they can explain and defend every part of the paper.
 2. **Authorship of the guide** (section 1).
-3. **Patent question.** `docs/ARCHITECTURE_DECISION.md` records a patent advisory in the predecessor project. The repository was made public on 2026-10-13; confirm with all contributors that this was intended.
+3. **Public release.** The repository was made public on 2026-10-13; confirm with all contributors that this was intended.
 4. **Licence of the artifact** (currently MIT, copyright in two authors' names; confirm for four).
 5. **Whether the predecessor's authors and guide agree** to the comparison with METIS-X being published.
 6. **Article processing charge.** IEEE Access charges USD 2,160 per accepted article (as stated on its submission page on 2026-10-13).

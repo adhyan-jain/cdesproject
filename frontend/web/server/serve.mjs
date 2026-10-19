@@ -10,7 +10,7 @@ import { webRoot } from "./paths.mjs";
 const dist = join(webRoot, "dist");
 const port = Number(process.env.PORT) || 5199;
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml",
-  ".woff2": "font/woff2", ".woff": "font/woff", ".json": "application/json", ".ico": "image/x-icon" };
+  ".woff2": "font/woff2", ".woff": "font/woff", ".json": "application/json", ".ico": "image/x-icon", ".pdf": "application/pdf" };
 
 if (!existsSync(join(dist, "index.html"))) {
   console.error("dist/ not found: run `npm run build` (or `npm start`) first.");
