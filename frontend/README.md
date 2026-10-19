@@ -16,19 +16,29 @@ Nothing about the table is re-implemented in JavaScript. The page shows:
 * three checks after every request: `check_invariants()`, every decoded record equals what
   `resolve()` returns, and every answer equals `tests/reference_model.hpp`.
 
-The page has three parts:
+The interface has five pages (hash routes, so a page can be linked directly, e.g. `#/benchmarks`):
 
-* **Operations / Write code** (left): click operations one by one, or type a small C program
-  (int, float, char, bool, blocks, functions, if/while/for) and Run or Step through it. The code
-  is translated into the calls a compiler makes on its symbol table (declare, lookup, enter and
-  exit scope); nothing is evaluated. Each event shows the source line it came from.
-* **Symbol table and memory buffer** (right): the table's state after the last operation.
-* **Accuracy & performance** (below): headline figures and tables read from the recorded paper
-  run by `web/scripts/make-results.mjs` (`npm run results` regenerates `src/data/recorded.json`),
-  and a live check that replays any of the 8 stored compiler traces through STRATA and the
-  conventional single-buffer table (`benchmarks/baselines/arena_chain.hpp`) in the engine,
-  checking every answer against the reference model. Live times are from this machine and vary;
-  the reported timing is the paper's 31-round run.
+* **Overview**: what STRATA is, a diagram of the buffer layout, the headline figures, STRATA's
+  median memory saving against each conventional design, and a plain verdict on speed.
+* **Live lab**: click operations one by one, or type a small C program (int, float, char, bool,
+  blocks, functions, if/while/for) and Run or Step through it. The code is translated into the calls
+  a compiler makes on its symbol table (declare, lookup, enter and exit scope); nothing is evaluated.
+  The right side shows the table and the decoded memory buffer after every operation. The guided
+  demo runs here.
+* **Benchmarks**: pick one of the 8 compiler traces to see its workload and charts of peak memory,
+  allocator calls and replay time for all six tables; then the fair comparison with the conventional
+  single-buffer table (smallest fixed buffer, and replay time with 95% intervals); then a live check
+  that replays any stored trace through STRATA and the single-buffer table in the engine, checking
+  every answer against the reference model. Live times are from this machine and vary; the reported
+  timing is the 31-round recorded run.
+* **Stress tests**: the bare-metal Cortex-M3 runs under QEMU, hash flooding with and without the keyed
+  hash, the shadowing / name-length sweep, chibicc end to end, and the testing totals.
+* **Method & limits**: setup, the tables compared, background, limitations, how to reproduce.
+
+Every chart has a Table view with the same numbers. All figures are read from `results/` (and, for
+the test totals, from the reports, which the script checks) by `web/scripts/make-results.mjs`;
+`npm run results` regenerates `src/data/recorded.json`. Charts are plain SVG in
+`web/src/components/charts.tsx`; the series colours were checked for colour-vision deficiency.
 
 ### Theory view
 

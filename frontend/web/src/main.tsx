@@ -4,6 +4,7 @@ import "@fontsource-variable/inter";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "./styles.css";
+import "./pages.css";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(

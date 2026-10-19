@@ -1,21 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EngineError, health, runOps, type EngineState, type Op } from "./lib/engine";
-import { Header, type EngineHealth } from "./components/Header";
+import { Header, PAGES, type EngineHealth, type Page } from "./components/Header";
 import { Controls } from "./components/Controls";
 import { StatusLine, type StatusSource } from "./components/StatusLine";
 import { SymbolTable } from "./components/SymbolTable";
 import { MemoryInspector } from "./components/MemoryInspector";
 import { Timeline } from "./components/Timeline";
 import { GuidedDemo, DEMO_CAPACITY, DEMO_STEPS } from "./components/GuidedDemo";
-import { About } from "./components/About";
 import { describe } from "./lib/describe";
 import { CodeEditor } from "./components/CodeEditor";
-import { Accuracy } from "./components/Accuracy";
-import { Theory, tabKeys } from "./components/theory/Theory";
+import { Theory } from "./components/theory/Theory";
 import { CodeError, compile, EXAMPLES, type LineOp } from "./lib/minic";
+import { Overview } from "./pages/Overview";
+import { Benchmarks } from "./pages/Benchmarks";
+import { Stress } from "./pages/Stress";
+import { Method } from "./pages/Method";
+
+const pageFromHash = (): Page => {
+  const h = window.location.hash.replace(/^#\/?/, "");
+  return (PAGES.find((p) => p.id === h)?.id ?? "overview");
+};
 
 const DEFAULT_CAPACITY = 512;
-const PAGE_VIEWS = ["demo", "theory"] as const;
 const MAX_OPS = 400;
 const EXAMPLE: Op[] = [
   { op: "declare", name: "count", type: 0, value: 1 },
@@ -25,12 +31,22 @@ const EXAMPLE: Op[] = [
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function App() {
+  const [page, setPage] = useState<Page>(pageFromHash);
+  useEffect(() => {
+    const on = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  const go = useCallback((p: Page) => {
+    if (window.location.hash !== `#/${p}`) window.location.hash = `/${p}`;
+    setPage(p);
+    window.scrollTo({ top: 0 });
+  }, []);
   const [engine, setEngine] = useState<EngineHealth>({ state: "checking" });
   const [capacity, setCapacity] = useState(DEFAULT_CAPACITY);
   const [state, setState] = useState<EngineState | null>(null);
   const [status, setStatus] = useState<StatusSource>({ kind: "idle" });
   const [busy, setBusy] = useState(false);
-  const [view, setView] = useState<"demo" | "theory">("demo");
   const [tab, setTab] = useState<"ops" | "code">("ops");
   const [code, setCode] = useState(EXAMPLES[0].code);
   const [compiled, setCompiled] = useState<{ ops: LineOp[]; src: string } | null>(null);
@@ -210,7 +226,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, [demo, busy, nextDemoStep]);
 
-  const startDemo = () => { setView("demo"); setTab("ops"); setDemo({ active: true, step: 0, playing: true }); };
+  const startDemo = () => { go("lab"); setTab("ops"); setDemo({ active: true, step: 0, playing: true }); };
   const restartDemo = () => {
     demoStepRef.current = 0;
     setDemo({ active: true, step: 0, playing: true });
@@ -223,115 +239,115 @@ export default function App() {
   return (
     <div className="app">
       <Header
+        page={page}
+        onPage={go}
         health={engine}
         onRetry={() => void connect()}
         onRunDemo={startDemo}
-        onReset={() => { setView("demo"); closeDemo(); void guarded(() => reset(capRef.current)); }}
+        onReset={() => { go("lab"); closeDemo(); void guarded(() => reset(capRef.current)); }}
         demoActive={demo.active}
         busy={busy}
       />
       <main className="page">
-        <nav className="viewtabs" role="tablist" aria-label="Page">
-          <button role="tab" aria-selected={view === "demo"} tabIndex={view === "demo" ? 0 : -1} className={view === "demo" ? "on" : ""} onClick={() => setView("demo")} onKeyDown={(e) => tabKeys(e, PAGE_VIEWS, view, setView)}>Symbol table demo</button>
-          <button role="tab" aria-selected={view === "theory"} tabIndex={view === "theory" ? 0 : -1} className={view === "theory" ? "on" : ""} onClick={() => setView("theory")} onKeyDown={(e) => tabKeys(e, PAGE_VIEWS, view, setView)}>Theory</button>
-        </nav>
-
-        {view === "theory" ? <Theory /> : (
+        {page === "overview" && <Overview go={go} />}
+        {page === "benchmarks" && <Benchmarks ready={ready} />}
+        {page === "stress" && <Stress />}
+        {page === "method" && <Method />}
+        {page === "theory" && <Theory />}
+        {page === "lab" && (
           <>
-          <div className="intro">
-            <h1>Bounded-memory symbol tables for compilers.</h1>
-            <p>
-              Every operation on this page runs on the real <code>strata::Table</code> from <code>include/strata/strata.hpp</code>, compiled into a local
-              C++ engine, inside one fixed buffer of <b className="mono">{capacity >= 1024 ? `${capacity / 1024} KiB` : `${capacity} bytes`}</b>.
-            </p>
-          </div>
+            <header className="page-head">
+              <h1>Live lab</h1>
+              <p>
+                Every operation here runs on the real <code>strata::Table</code> from <code>include/strata/strata.hpp</code>, compiled into a local
+                C++ engine, inside one fixed buffer of <b className="mono">{capacity >= 1024 ? `${capacity / 1024} KiB` : `${capacity} bytes`}</b>.
+                Declare names, open and close scopes, or write a small C program and step through the calls a compiler would make.
+              </p>
+            </header>
 
-          {demo.active && (
-            <GuidedDemo
-              step={demo.step}
-              outcome={status.kind === "op" ? describe(status.result) : undefined}
-              playing={demo.playing}
-              busy={busy}
-              onNext={() => void nextDemoStep()}
-              onTogglePlay={() => setDemo((d) => ({ ...d, playing: !d.playing }))}
-              onRestart={restartDemo}
-              onClose={closeDemo}
-            />
-          )}
-
-          {engine.state === "down" && (
-            <div className="card offline" role="alert">
-              <b>The local STRATA engine is not reachable.</b> Start it from the repository with <code>cd frontend/web</code> then <code>npm start</code>, and
-              press Retry. Nothing on this page is simulated, so it stays empty without the engine.
-              <button className="btn small" onClick={() => void connect()}>Retry</button>
-            </div>
-          )}
-
-          <div className="workspace">
-            <div className="col-left">
-              <div className="tabs" role="tablist" aria-label="Input">
-                <button role="tab" aria-selected={tab === "ops"} className={tab === "ops" ? "on" : ""} onClick={() => setTab("ops")}>Operations</button>
-                <button role="tab" aria-selected={tab === "code"} className={tab === "code" ? "on" : ""} onClick={() => { setTab("code"); }} disabled={demo.active && demo.playing}>
-                  Write code
-                </button>
-              </div>
-              {tab === "code" ? (
-                <CodeEditor
-                  code={code}
-                  onCode={(c) => { setCode(c); setCodeErrorLine(null); }}
-                  capacity={capacity}
-                  onCapacity={(c) => void guarded(async () => { await reset(c); setCodeDone(0); })}
-                  disabled={controlsDisabled}
-                  total={compiled && compiled.src === code ? compiled.ops.length : null}
-                  done={codeDone}
-                  currentLine={compiled && compiled.src === code && codeDone > 0 ? (compiled.ops[codeDone - 1]?.line ?? null) : null}
-                  errorLine={codeErrorLine}
-                  stale={compiled !== null && compiled.src !== code}
-                  onRun={() => void codeRun()}
-                  onStep={() => void codeStep()}
-                  onRestart={() => void codeRestart()}
-                />
-              ) : (
-              <Controls
-                disabled={controlsDisabled}
-                capacity={capacity}
-                depth={state?.stats.depth ?? 0}
-                onOp={(op) => void guarded(() => apply(op))}
-                onInvalid={(message) => setStatus({ kind: "invalid", message, seq: ++seq.current })}
-                onCapacity={(c) => void guarded(() => reset(c))}
-                onResetExample={() => { closeDemo(); void guarded(() => reset(capRef.current, EXAMPLE)); }}
+            {demo.active && (
+              <GuidedDemo
+                step={demo.step}
+                outcome={status.kind === "op" ? describe(status.result) : undefined}
+                playing={demo.playing}
+                busy={busy}
+                onNext={() => void nextDemoStep()}
+                onTogglePlay={() => setDemo((d) => ({ ...d, playing: !d.playing }))}
+                onRestart={restartDemo}
+                onClose={closeDemo}
               />
-              )}
-              <StatusLine source={status} />
-              {state && <Timeline state={state} lines={lines} />}
+            )}
+
+            {engine.state === "down" && (
+              <div className="card offline" role="alert">
+                <b>The local STRATA engine is not reachable.</b> Start it from the repository with <code>cd frontend/web</code> then <code>npm start</code>, and
+                press Retry. Nothing on this page is simulated, so it stays empty without the engine.
+                <button className="btn small" onClick={() => void connect()}>Retry</button>
+              </div>
+            )}
+
+            <div className="workspace">
+              <div className="col-left">
+                <div className="tabs" role="tablist" aria-label="Input">
+                  <button role="tab" aria-selected={tab === "ops"} className={tab === "ops" ? "on" : ""} onClick={() => setTab("ops")}>Operations</button>
+                  <button role="tab" aria-selected={tab === "code"} className={tab === "code" ? "on" : ""} onClick={() => { setTab("code"); }} disabled={demo.active && demo.playing}>
+                    Write code
+                  </button>
+                </div>
+                {tab === "code" ? (
+                  <CodeEditor
+                    code={code}
+                    onCode={(c) => { setCode(c); setCodeErrorLine(null); }}
+                    capacity={capacity}
+                    onCapacity={(c) => void guarded(async () => { await reset(c); setCodeDone(0); })}
+                    disabled={controlsDisabled}
+                    total={compiled && compiled.src === code ? compiled.ops.length : null}
+                    done={codeDone}
+                    currentLine={compiled && compiled.src === code && codeDone > 0 ? (compiled.ops[codeDone - 1]?.line ?? null) : null}
+                    errorLine={codeErrorLine}
+                    stale={compiled !== null && compiled.src !== code}
+                    onRun={() => void codeRun()}
+                    onStep={() => void codeStep()}
+                    onRestart={() => void codeRestart()}
+                  />
+                ) : (
+                <Controls
+                  disabled={controlsDisabled}
+                  capacity={capacity}
+                  depth={state?.stats.depth ?? 0}
+                  onOp={(op) => void guarded(() => apply(op))}
+                  onInvalid={(message) => setStatus({ kind: "invalid", message, seq: ++seq.current })}
+                  onCapacity={(c) => void guarded(() => reset(c))}
+                  onResetExample={() => { closeDemo(); void guarded(() => reset(capRef.current, EXAMPLE)); }}
+                />
+                )}
+                <StatusLine source={status} />
+                {state && <Timeline state={state} lines={lines} />}
+              </div>
+              <div className="col-right">
+                {state ? (
+                  <>
+                    <SymbolTable state={state} />
+                    <MemoryInspector state={state} />
+                  </>
+                ) : (
+                  <div className="card placeholder">{engine.state === "checking" ? "Connecting to the C++ engine…" : "Waiting for the engine."}</div>
+                )}
+              </div>
             </div>
-            <div className="col-right">
-              {state ? (
-                <>
-                  <SymbolTable state={state} />
-                  <MemoryInspector state={state} />
-                </>
-              ) : (
-                <div className="card placeholder">{engine.state === "checking" ? "Connecting to the C++ engine…" : "Waiting for the engine."}</div>
-              )}
-            </div>
-          </div>
 
-          {state && (
-            <p className="verify mono">
-              engine {state.engine.source} · g++ {state.engine.compiler} · fixed mode · checks: invariants {state.checks.invariants ? "✓" : "✗"} · resolve()
-              agrees {state.checks.resolveAgrees ? "✓" : "✗"} · reference model agrees {state.checks.modelAgrees ? "✓" : "✗"} · digest {state.digest}
-            </p>
-          )}
-
-          <Accuracy ready={ready} />
-
-          <About />
+            {state && (
+              <p className="verify mono">
+                engine {state.engine.source} · g++ {state.engine.compiler} · fixed mode · checks: invariants {state.checks.invariants ? "✓" : "✗"} · resolve()
+                agrees {state.checks.resolveAgrees ? "✓" : "✗"} · reference model agrees {state.checks.modelAgrees ? "✓" : "✗"} · digest {state.digest}
+              </p>
+            )}
           </>
         )}
       </main>
       <footer className="foot">
-        STRATA research artifact · interactive demo in <code>frontend/</code>, added for the project review; the table itself is unchanged. The Theory pages accompany the theory manuscript in <code>theory/</code>.
+        <span>STRATA · compiler design project, SCOPE, VIT Vellore</span>
+        <span>Figures from recorded run <code>{"20261013-143828-paper"}</code> · interface in <code>frontend/</code>; the table itself is unchanged. The Theory pages accompany the theory manuscript in <code>theory/</code>.</span>
       </footer>
     </div>
   );
