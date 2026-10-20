@@ -85,7 +85,7 @@ export function CodeEditor(p: Props) {
             {CAPACITIES.map((c) => <option key={c} value={c}>{c >= 1024 ? `${c / 1024} KiB` : `${c} B`}</option>)}
           </select>
         </label>
-        <span className="card-hint">int float char bool · {"{ }"} · functions · if while for</span>
+        <span className="card-hint">C basic types, pointers, arrays · {"{ }"} · functions · if while for</span>
       </div>
     </section>
   );

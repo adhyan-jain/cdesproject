@@ -57,7 +57,7 @@ export function Stress() {
         <div className="kpis kpis-4">
           <div className="card kpi"><span className="label">Bare-metal runs passed</span><b className="kpi-num">{bounded.filter((b) => b.pass && b.checksumMatches).length} of {bounded.length}</b><span className="kpi-sub">checksum equal to the desktop run, 0 refused operations</span></div>
           <div className="card kpi"><span className="label">STRATA code size</span><b className="kpi-num">{nf.format(bounded[0].codeBytes)} <small>bytes</small></b><span className="kpi-sub">sum of the strata:: functions in the object file</span></div>
-          <div className="card kpi"><span className="label">Stack used</span><b className="kpi-num">{Math.max(...bounded.map((b) => b.stackBytes))} <small>bytes</small></b><span className="kpi-sub">no heap, no operating system</span></div>
+          <div className="card kpi"><span className="label">Stack used</span><b className="kpi-num">{Math.max(...bounded.map((b) => b.stackBytes))} <small>bytes</small></b><span className="kpi-sub">bounded-mode build; no heap, no operating system</span></div>
           <div className="card kpi"><span className="label">Workloads only STRATA fits</span><b className="kpi-num">{fitPairs.filter((p) => p.s.fits && !p.a.fits).length}</b><span className="kpi-sub">same buffer, conventional table refuses</span></div>
         </div>
         <div className="grid-2">
