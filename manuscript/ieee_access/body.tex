@@ -1,0 +1,567 @@
+% Body of the IEEE Access article. Builds on the empirical study (paper/body.tex) and the theory
+% manuscript (theory/paper/main.tex); it applies the corrections of docs/ADDENDUM_2026-10-17.md.
+\section{Introduction}
+\label{sec:introduction}
+\PARstart{A}{scoped} symbol table maps identifiers to declarations and forgets the declarations of a block when the block ends~\cite{aho2006}. It is one of the oldest data structures in compiler construction~\cite{graham1979}, and for a compiler on a workstation it is a solved problem: a hash table from the standard library and an undo stack are enough~\cite{appel1998}. The situation changes when the compiler itself is the constrained program. A compiler or interpreter front end that runs on a microcontroller, inside a boot loader, or in a tool that must never exceed a fixed allocation has three requirements that the standard solution does not meet.
+
+\emph{Bounded memory.} The table must live in storage whose size is fixed before the first declaration, without calls to an allocator whose fragmentation and failure behavior are outside the compiler's control.
+
+\emph{Defined behavior at the bound.} When a declaration does not fit, the table must say so and remain usable. A table that is left half-updated turns an ``out of memory'' diagnostic into an incorrect compilation.
+
+\emph{Bounded work on untrusted input.} If the source text is supplied by someone else, the cost of one table operation must not depend on that person's choice of identifiers. Hash tables are a known target of algorithmic complexity attacks~\cite{crosby2003}, and seeding a common non-cryptographic hash does not prevent them~\cite{aumasson2012}.
+
+The scoped tables we found in textbooks and in production compilers~\cite{appel1998,llvmsht,tcc} obtain memory from an allocator, do not define their state after a failed allocation, and use unkeyed hashes. On the analytical side, the theory of open addressing covers insertions and deletions in arbitrary order~\cite{knuth3,bender2021,fkk2024}; the deletion order of a scoped table, last in first out, has not been treated as a case of its own, and probe limits are chosen with tail bounds whose looseness is unknown.
+
+This article asks what it costs to meet all three requirements and how to configure a table that meets them, and answers by building, measuring and analyzing. The object of study is \st, a scoped symbol table in one buffer of 32-bit words. Its algorithm is the textbook one: one hash index, an undo stack, restoration on scope exit~\cite{appel1998}. Our contributions lie in what is built around that algorithm, in what can be proved about it, and in how it is evaluated.
+
+\begin{enumerate}
+\item \textbf{A single-buffer scoped symbol table with an all-or-nothing refusal.} Index, interned names with their innermost declaration, hidden declarations and scope marks share one caller-supplied buffer. An operation that does not fit returns a status code and leaves every word of the state unchanged (Section~\ref{sec:design}).
+\item \textbf{Exact undo and its converse.} For every open-addressing scheme that never moves a key, removing the newest key by clearing its cell restores exactly the previous table, so the table always equals the insertion-only table of its live names. For a given table the safe deletion orders are exactly the linear extensions of a dependency relation, and last-in-first-out order is the only one safe for every table (Section~\ref{sec:undo}).
+\item \textbf{An exact refusal law for the probe limit.} With a static index and a limit of $L$ probes per call, the probability that a legitimate name is refused is computed exactly at finite size, validated against the implementation, and turned into design values; the Chernoff-type bound used before is shown to be loose by a factor growing like $L^{3/2}$ (Section~\ref{sec:bounded}).
+\item \textbf{A measured decomposition on compiler-generated workloads.} We separate what is gained by keeping everything in one allocation-free buffer, which a conventional chained table also achieves, from what the compact design adds, and an exact space ledger attributes the latter to a stored hash word and name packing rather than to interning. We also report that an apparent time penalty of the compact design was an implementation artifact (Section~\ref{sec:results}).
+\item \textbf{An attack, its defenses, and a key-lifetime rule.} We construct C identifiers that collide in the default hash for every seed, measure the slowdown and the cost of a keyed hash and the probe limit, and show that the refusal law holds against chosen names only with a fresh key per table (Sections~\ref{sec:keyed} and~\ref{sec:flood}).
+\end{enumerate}
+
+We do not claim a new hashing scheme, a faster symbol table, or a result on hardware. The compact table is not faster than the conventional one; the refusal law is classical as a quantity and is credited as such; the collision construction applies a published technique~\cite{aumasson2012}; and the microcontroller is emulated. Section~\ref{sec:limits} lists what the evidence does not cover.
+
+Section~\ref{sec:related} reviews related work and Section~\ref{sec:problem} states the problem. Section~\ref{sec:design} describes the design, Section~\ref{sec:undo} the exact undo, and Section~\ref{sec:bounded} the bounded mode and its refusal law. Section~\ref{sec:verification} describes how the guarantees were checked, Sections~\ref{sec:setup} and~\ref{sec:results} give the experimental setup and results, and Section~\ref{sec:tool} the interactive tool. Sections~\ref{sec:discussion} to~\ref{sec:conclusion} discuss, list limitations and conclude.
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Scoped Symbol Tables}
+Graham \emph{et al.}~\cite{graham1979} described hashed symbol tables for languages with explicit scope control. The scheme used here is the one Appel presents for block-structured languages~\cite{appel1998}: a single hash table maps each name to its innermost binding, an auxiliary stack records the names bound in each scope, and leaving a scope pops the stack and restores what was hidden. Lookup cost is independent of the nesting depth, in contrast to a stack of per-scope maps~\cite{aho2006}. LLVM's \code{ScopedHashTable}~\cite{llvmsht} is a reusable implementation with nodes obtained from an allocator; lcc~\cite{fraserhanson1995} links one table per scope level, and the Tiny C Compiler~\cite{tcc} keeps symbol stacks that are popped at scope exit. All of these allocate per symbol or per node, none defines the state of the table after an allocation fails, and none bounds the work of a call. Region allocation~\cite{hanson1990} removes most of the allocator's cost for compilers; a chained table whose entries live in a stack-like arena is its natural single-buffer form and is our main baseline. Microcontroller runtimes such as MicroPython intern identifiers in pools~\cite{micropython}, which addresses the cost of names but not scopes or failure behavior.
+
+\subsection{Deletion in Open Addressing}
+Removing a key from a linear-probing table normally requires a tombstone or a backward shift~\cite{knuth3,jimenez2018}, and the way deletions are implemented strongly affects linear probing over time~\cite{bender2021}. Sanders~\cite{sanders2018} gives the test for when a single deleted element must become a tombstone. Robin Hood hashing~\cite{celis1985}, used by the predecessor of this work~\cite{metis}, and cuckoo and hopscotch hashing~\cite{pagh2004,herlihy2008} move keys. That the most recently inserted key of linear probing can be removed by emptying its slot follows from the insertion rule and is likely folklore in backtracking code; what we add is the statement for every non-reordering scheme, the characterization of all safe orders, and their use for exact analysis. The property is related to, but weaker than, history independence~\cite{naor2001,blelloch2007}: here the layout is a function of the live names and their order.
+
+\subsection{Analysis of Open Addressing}
+For an ideal hash, Knuth analyzes insertion-only linear probing exactly~\cite{knuth3}; the distribution of the unsuccessful-search cost, whose tail is the refusal probability studied here, is known through exact generating functions and Poisson limits~\cite{fpv1998,janson2001,janson2016}, and the displacement law of Robin Hood hashing~\cite{janson2005,viola2005} reappears in Section~\ref{sec:undo} as a law of orphaned keys. Recent work determines optimal probe complexity for open addressing without reordering~\cite{fkk2024} and the cost of dynamic workloads~\cite{tinypointers2025}. Alharbi, Banderier and Bouillaguet~\cite{abb2026} analyze bounded linear probing, in which a key that exceeds the probe cap is discarded and redrawn; our event, refusal with no change, under last-in-first-out deletions, is a different process. Pagh \emph{et al.}~\cite{pagh2007} and Thorup~\cite{thorup2015} analyze linear probing under limited independence.
+
+\subsection{Algorithmic Complexity Attacks}
+Crosby and Wallach~\cite{crosby2003} showed that an attacker who chooses the keys can degrade a hash table to a list. Aumasson and Bernstein~\cite{aumasson2012} showed that MurmurHash2 and MurmurHash3 admit multicollisions that hold for every seed and proposed SipHash; the accompanying presentation~\cite{aumassonslides} gives the construction for MurmurHash3. HalfSipHash with one compression and three finalization rounds is documented in the Linux kernel as suitable only for mitigating hash-table flooding~\cite{linuxsiphash}. Adaptive attacks through timing are an old observation~\cite{lipton1993,naor2015}. Compilers for trusted input commonly choose speed instead: the hash inside the Rust compiler is deliberately unkeyed~\cite{rustchash}. We take the opposite case and measure both the attack and the defenses on a scoped table.
+
+\subsection{Summary of Differences}
+Table~\ref{tab:comparison} summarizes the properties relevant here. Entries for other systems state what their public documentation or source code shows; ``no'' means that we found no such mechanism.
+
+\begin{table*}[t!]
+\strcap{Properties of Scoped Symbol Tables and Identifier Stores Relevant to This Work.}
+\label{tab:comparison}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|c|c|c|c|c|c|}
+\hline
+Design & \shortstack{Scopes with\\shadowing} & \shortstack{One caller-\\supplied buffer} & \shortstack{Defined refusal,\\state unchanged} & \shortstack{No rebuild\\inside a call} & \shortstack{Bound on probes,\\exact refusal law} & \shortstack{Keyed\\hash} \\
+\hline
+Undo-stack scheme~\cite{appel1998}, LLVM \code{ScopedHashTable}~\cite{llvmsht} & yes & no & no & no & no & no \\
+Tiny C Compiler symbol stacks~\cite{tcc} & yes & no & no & no & no & no \\
+MicroPython interned strings~\cite{micropython} & no & pools & not stated & n/a & no & no \\
+METIS-X~\cite{metis} (predecessor) & yes & no & no & no & no & no \\
+Conventional arena table (our baseline) & yes & yes & yes & no & no & no \\
+\st, default mode & yes & yes & yes & no & no & optional \\
+\st, bounded mode & yes & yes & yes & yes & yes & optional \\
+\hline
+\end{tabular}
+\end{table*}
+
+\section{Problem Formulation}
+\label{sec:problem}
+
+\subsection{Operations and Semantics}
+A scoped symbol table supports four operations on a stack of scopes that initially holds one outermost scope.
+\begin{itemize}
+\item \code{enter}: push a new innermost scope.
+\item \code{exit}: remove the innermost scope and all declarations made in it; refused at the outermost scope.
+\item \code{declare}$(x, v)$: bind name $x$ to value $v$ in the innermost scope. If $x$ is already bound in that scope the value is replaced; otherwise a new declaration is created, which hides any declaration of $x$ in an enclosing scope.
+\item \code{resolve}$(x)$: return the value of the innermost visible declaration of $x$, or report that there is none.
+\end{itemize}
+A name is a nonempty byte string of at most 255 bytes. A value is a 32-bit integer with an 8-bit type tag. We write $d$ for the number of live declarations, $n \le d$ for the number of distinct names among them, $s$ for the number of open scopes besides the outermost, and $w(x)$ for the number of 32-bit words that name $x$ occupies.
+
+\subsection{Requirements}
+\label{sec:requirements}
+\begin{itemize}
+\item[R1] \textbf{Fixed storage.} All state resides in one buffer of $C$ words supplied by the caller. No allocator is called.
+\item[R2] \textbf{All-or-nothing refusal.} Every operation either succeeds or returns a status code and leaves the complete state unchanged.
+\item[R3] \textbf{Correct scoping.} Every \code{resolve} returns what the definition above prescribes, given the operations that succeeded.
+\item[R4] \textbf{Bounded work per call.} A constant, independent of $d$ and of the names chosen, bounds the number of index slots examined by one \code{declare} or \code{resolve}.
+\item[R5] \textbf{Rare, quantified refusal of honest input.} Under R4, the probability that a declaration is refused although memory is available must be known and negligible for names that were not chosen to collide.
+\end{itemize}
+R1 to R3 are met by the default mode of \st\ and by the baseline. R4 and R5 are met by the bounded mode, R5 under the assumption stated next.
+
+\subsection{Threat Model}
+\label{sec:threat}
+The adversary supplies the source text and thereby every name and the order of all operations. The adversary knows the implementation, including the hash function, but not a 64-bit key that the device draws from a source the adversary cannot predict. The goal is to make table operations slow or, with a probe limit, to have legitimate declarations refused. We do not consider memory-safety attacks on the surrounding compiler or side channels through which the key might leak; Section~\ref{sec:keyed} states what an adversary who can observe probe lengths gains. Exhausting the buffer with many distinct names is always possible and is not an attack on the table: it is the budget doing its job, and R2 keeps the table usable afterwards.
+
+\section{Design of STRATA}
+\label{sec:design}
+
+\subsection{Architecture and Layout}
+\strfig{figures/fig_arch.pdf}{Architecture. The compiler front end issues four calls to a \st\ table that keeps its open-addressing index, packed identifier records and undo stack in one fixed buffer; the analysis of Sections~\ref{sec:undo} and~\ref{sec:bounded} turns the model of the index into design rules for the probe limit, the buffer size and the key policy.}{fig:arch}
+\strfig{figures/fig_layout.pdf}{Layout of the buffer and of the three kinds of undo entries. The index and the identifier records grow from the start of the buffer, the undo stack from its end; the free space between them is shared.}{fig:layout}
+
+Fig.~\ref{fig:arch} shows the system and Fig.~\ref{fig:layout} the layout. All state lives in one array of 32-bit words. The \emph{index} occupies the first $m$ words, $m$ a power of two. A slot is zero when empty; otherwise it holds an 8-bit fingerprint taken from the hash and a 24-bit reference to an identifier record. Collisions are resolved by linear probing, and the index is kept at most three quarters full.
+
+The \emph{identifier records} follow the index and grow upward, one per distinct visible name. A record holds the value of the name's \emph{innermost} declaration, a word of metadata (number of name words, an encoding flag, the type tag, and the depth of the scope that made the innermost declaration), and the name. A lookup therefore ends in the record it finds, and its cost does not depend on how often the name is shadowed. Names consisting only of letters, digits and the underscore are packed five characters to a word, six bits each; the query is packed once and compared word by word. Other names are stored as raw bytes.
+
+The \emph{undo stack} grows downward from the end of the buffer. A declaration of a name that was not visible pushes one word, the index slot of the new record. A declaration that hides an outer one pushes three words: the record reference and the value, type and depth that were overwritten. Entering a scope pushes a two-word mark holding the top of the record stack and the position of the previous mark. With $m$ index slots the buffer is used up to
+\begin{equation}
+M = m + 1 + \sum_{x} \bigl(2 + w(x)\bigr) + n + 3\,(d - n) + 2\,s
+\label{eq:memory}
+\end{equation}
+words, where the sum runs over the $n$ distinct visible names and the constant accounts for the reserved reference zero. The conventional table of Section~\ref{sec:baselines} stores, for every declaration, a chain link, the hash, the value, a length-and-depth word and the unpacked name.
+
+\subsection{Declaration and Lookup}
+Algorithm~\ref{alg:declare} gives the declaration. It has the form \emph{search, reserve, write}: nothing is written before the last point at which the operation can be refused. A failed search ends at the first empty slot on the name's probe path, which is exactly where linear probing would insert the name; the slot is remembered and reused, so a declaration walks the path once.
+
+\begin{algorithm}[t!]
+\caption{Declaration of name $x$ with value $v$}
+\label{alg:declare}
+\begin{algorithmic}[1]
+\REQUIRE name $x$, value and type $v$; current depth $\delta$; probe limit $L$ (bounded mode) or $L=\infty$
+\ENSURE a status; the state is unchanged unless the status is \code{ok} or \code{redeclared}
+\STATE $k \leftarrow \mathrm{PackAndHash}(x)$ \hfill\COMMENT{refuses empty and over-long names}
+\STATE $(r, e) \leftarrow \mathrm{Find}(k, L)$ \hfill\COMMENT{record, or first empty slot within $L$ probes}
+\IF{$r \neq \code{nil}$ \AND $\mathit{depth}(r) = \delta$}
+  \STATE overwrite value and type of $r$; \RETURN \code{redeclared}
+\ELSIF{$r \neq \code{nil}$}
+  \IF{fewer than 3 free words} \RETURN \code{no-memory} \ENDIF
+  \STATE push $(r, \mathit{value}(r), \mathit{type}(r), \mathit{depth}(r))$ on the undo stack
+  \STATE overwrite value, type of $r$; $\mathit{depth}(r) \leftarrow \delta$; \RETURN \code{ok}
+\ENDIF
+\IF{fewer than $3 + w(x)$ free words, or the index would exceed its load limit and cannot grow}
+  \RETURN \code{no-memory}
+\ENDIF
+\IF{$e = \code{nil}$} \RETURN \code{probe-limit} \ENDIF
+\STATE append a record for $x$ with $v$ and $\delta$; store its reference and fingerprint in slot $e$
+\STATE push $e$ on the undo stack; \RETURN \code{ok}
+\end{algorithmic}
+\end{algorithm}
+
+A lookup packs and hashes the name and probes from its home slot until it finds a slot whose fingerprint, metadata and name words match, or an empty slot. The fingerprint is a filter only; a match is always confirmed by comparing the name.
+
+\subsection{Scope Exit Without Tombstones}
+\label{sec:exit}
+\strfig{figures/fig_flow.pdf}{Flow of a declaration and of a scope exit. A declaration is refused, with the table unchanged, when no empty slot is found within $L$ probes or when the record and its undo entry do not fit; a scope exit pops the undo entries in reverse order.}{fig:flow}
+Leaving a scope pops the undo stack down to the scope's mark, newest entry first (Fig.~\ref{fig:flow}). A three-word entry restores the value, type and depth it saved. A one-word entry empties the index slot it names. Then the top of the record stack is reset to the value in the mark, which discards the records created in the scope. Emptying a slot is sufficient because of the order of removal: the key being removed is the newest key in the index, so it lies on no other key's probe path. Section~\ref{sec:undo} proves this for every non-reordering scheme and shows that no other order has the property. No tombstone is written and no key is shifted.
+
+\subsection{All-or-Nothing Refusal}
+Each operation validates its arguments, reserves everything it needs, and only then writes. In fixed mode the reservation is a comparison of counters; when the index must grow, the growth and the request are checked together before anything moves. After a successful reservation no step can fail. Consequently every refusal (no memory, nesting deeper than 16\,383, an empty or over-long name, and the probe limit) leaves the state exactly as it was.
+
+\subsection{Growing the Index}
+\label{sec:rebuild}
+In the default mode the index doubles when it would exceed its load limit. The identifier records are moved up as one block, which their relative references permit, and the index is rebuilt by reinserting the names oldest first, so that the property used in Section~\ref{sec:exit} holds again. One-word undo entries name index slots, and those change. So that each record finds its undo entry again without a search and without scratch memory, which a fixed buffer does not have, each one-word entry and its record exchange one word before the rebuild and swap back during reinsertion. Every name is hashed once. When only a growable buffer is extended, the index and the records do not move and nothing is rehashed. In the default mode a single call that triggers a rebuild takes time proportional to $n$; the bounded mode removes this case.
+
+\section{Exact Undo and Safe Deletion Orders}
+\label{sec:undo}
+\strfig{figures/fig_undo.pdf}{Exact undo. Pushing $x$ writes one empty cell; popping $x$ clears it, and the table is identical in every cell to the table before the push.}{fig:undo}
+
+Model the index as a ring of $m$ cells. A rule is \emph{non-reordering} if a key never moves after it is placed and the cell chosen for an insertion depends only on the set of occupied cells and on the key's own probe sequence; this covers linear, quadratic and double hashing and uniform probing, and excludes cuckoo, hopscotch and Robin Hood hashing. The operations are \emph{push}, which inserts a name that is not live, and \emph{pop}, which removes the most recently pushed live name by clearing its cell; a refused push changes nothing. In \st\ the pushes are the \emph{first} declarations of names, since a shadowing declaration needs no index slot. For a sequence $a=(a_1,\ldots,a_t)$ of distinct names, $\Ins(a)$ is the table obtained by inserting them in this order into the empty table.
+
+\begin{theorem}[Exact undo]
+\label{thm:undo}
+For every non-reordering rule, after any sequence of pushes and pops, with refused pushes leaving the state unchanged, the table equals $\Ins(a)$, where $a$ is the live sequence in push order.
+\end{theorem}
+
+\begin{IEEEproof}
+Induction on the number of operations. A refused push changes nothing. A successful push of $x$ onto $\Ins(a)$ writes $x$ into the cell that the rule chooses from the occupied set, which gives $\Ins(a\cdot x)$ by definition. For a pop, $a=u\cdot x$ and the table is $\Ins(u)$ with $x$ additionally in the cell its insertion chose, because an insertion changes exactly one cell and that cell was empty in $\Ins(u)$; clearing it gives $\Ins(u)$ (Fig.~\ref{fig:undo}).
+\end{IEEEproof}
+
+The proof uses neither the lookup rule nor randomness, so it holds for adversarial names. For \st\ it gives a stronger, word-level statement that the test suite checks directly: after any sequence of operations, every word of the state equals the corresponding word of a fresh table into which exactly the still-live scope entries and declarations were made. Two consequences matter below. The table does not age: no sequence of scope entries and exits lengthens probe paths. And in the random-function model, for a schedule that does not depend on the hash, the law of the index at every moment is that of an insertion-only table with the current number of live names, so classical insertion-only results~\cite{knuth3,janson2005} and the refusal law of Section~\ref{sec:bounded} hold at every moment.
+
+\strfig{figures/fig_dep.pdf}{Dependency and orphans. Key $y$ probed cells 2, 3 and 4 before it was stored in cell 5, so it depends on $u$, $v$ and $w$. Clearing $w$ first leaves a hole on its path and orphans $y$; clearing the newest key never does.}{fig:dep}
+
+Why is last-in-first-out order special? For a table built by $\Ins(x_1,\ldots,x_n)$ let $c(x)$ be the cell of $x$ and say that $y$ \emph{depends on} $x$, written $y \lhd x$, if $c(x)$ lies strictly before $c(y)$ on the probe path of $y$ (Fig.~\ref{fig:dep}). A deletion order is \emph{clear-safe} if, after every prefix of it has been cleared, every remaining key is still found.
+
+\begin{theorem}[Safe orders]
+\label{thm:exact}
+Fix the homes of $x_1,\ldots,x_n$ ($2\le n\le m$) under linear probing. (a) A deletion order is clear-safe for these homes if and only if it is a linear extension of $\lhd$, that is, $y$ is deleted before $x$ whenever $y \lhd x$. (b) It is clear-safe for every assignment of homes if and only if it is the reverse insertion order.
+\end{theorem}
+
+\begin{IEEEproof}
+(a) Clearing never moves a key. The lookup of a remaining key $y$ follows its probe path and stops at the first empty cell; the cells of that path before $c(y)$ were occupied, when $y$ was inserted, by the keys $x$ with $y\lhd x$. So $y$ is found if and only if none of them has been cleared. (b) A key that depends on $x$ is newer than $x$, so reverse insertion order is a linear extension of $\lhd$ for every assignment. Conversely, for $i<j$ give $x_1,\ldots,x_{j-1}$ distinct homes and give $x_j$ the home of $x_i$; then $x_j \lhd x_i$, so a universally safe order deletes $x_j$ before $x_i$ for every pair $i<j$.
+\end{IEEEproof}
+
+Part (a) holds verbatim for every greedy probing scheme. The number of keys that depend on a key quantifies the cost of leaving the discipline: it equals $Y_c-1$, where $Y_c$ follows the queue recursion $Y_c=(Y_{c-1}-1)^{+}+A_c$ with $A_c$ the number of keys homed at cell $c$, and for $n/m\to\alpha$ its law converges to that of a discrete M/D/1 queue, with mean and fraction of independent keys
+\begin{equation}
+\E[\mathrm{orph}]=\frac{\alpha}{2(1-\alpha)},\qquad \Prob(\mathrm{orph}=0)\to\frac{(1-\alpha)(e^{\alpha}-1)}{\alpha}.
+\label{eq:orphan}
+\end{equation}
+At load $3/4$ only 37 percent of keys could be removed out of order without harm, and clearing a random key orphans 1.5 keys on average (Table~\ref{tab:orphan}). The limit law is Janson's Robin Hood displacement law~\cite{janson2005}; the reading as orphans of a deletion and the finite-size form are new as stated. This is why every deletion method for arbitrary order needs tombstones or shifting~\cite{knuth3,bender2021}, and why \st\ could not adopt a relocating deletion: its undo entries store index slots.
+
+\begin{table}[t!]
+\strcap{Limit Law of the Number of Keys That Depend on a Uniformly Random Live Key, $\Prob(\mathrm{orph}=j)$, and Its Mean $\alpha/(2(1-\alpha))$.}
+\label{tab:orphan}
+\centering
+\input{tables/th_tab_orphan.tex}
+\end{table}
+
+\section{Bounded Mode and the Exact Refusal Law}
+\label{sec:bounded}
+
+\subsection{Static Index and Probe Limit}
+In the bounded mode the caller fixes the number of index slots $m$ when the table is created. The index is never rebuilt; a declaration that would exceed the load limit is refused like one that exceeds the buffer. The caller may also set a probe limit $L$. A new name is inserted only if an empty slot lies among the first $L$ slots of its probe path, and is refused with \code{probe-limit} otherwise (Algorithm~\ref{alg:declare}). Since a stored name never moves and scope exit only empties slots, every stored name lies within $L$ slots of its home, and a search may stop after $L$ slots. One call thus examines at most $L$ index words and, per fingerprint match, compares at most 64 name words (requirement R4). A name that hides a visible one needs no slot and is never refused for this reason. The bound does not cover scope exit, which is proportional to the declarations in the scope, nor name packing, which is linear in the name length.
+
+\subsection{How Often Does the Limit Refuse an Honest Name?}
+\label{sec:law}
+By Theorem~\ref{thm:undo}, the refusal probability at a moment with $n$ live names is that of an insertion-only linear-probing table with $n$ keys: the probability that a new key with an independent uniform home finds its first $L$ cells occupied. For $g\ge1$ let $B(g)=g^{g-1}/g!$ and, for $j\ge1$, $Q_j(s)=\tfrac{j}{s}\,s^{s-j}/(s-j)!$.
+
+\begin{theorem}[Exact refusal law]
+\label{thm:law}
+Let a ring of $m$ cells hold $n=m-k$ keys, $k\ge1$, with independent uniform homes under linear probing. The probability that a new key with an independent uniform home finds its first $L$ cells occupied is
+\begin{equation}
+R_m(n,L)=\frac{k}{m}\sum_{g=L+1}^{n+1}(g-L)\,\pi_g,\qquad \pi_g=\frac{B(g)\,Q_{k-1}(m-g)}{Q_k(m)}.
+\label{eq:law}
+\end{equation}
+\end{theorem}
+
+\begin{IEEEproof}[Proof sketch]
+Cut the ring at its $k$ empty cells. Each empty cell and the run of occupied cells after it form a block; by the cycle lemma~\cite{dwass1969} block sizes are Borel distributed, and, conditioned on filling the ring, the $k$ blocks are exchangeable, so the first has size $g$ with probability $\pi_g$ by the Borel--Tanner identity~\cite{tanner1961}. A new key is refused exactly when its home starts a window of $L$ occupied cells; a block of $g$ cells contains $(g-L)^{+}$ such homes, and the expected number of blocks is $k$. The full proof is in the accompanying theory manuscript~\cite{strata}.
+\end{IEEEproof}
+
+$R_m(n,L)$ is nondecreasing in $n$, so the value at the load limit covers every lower load. As $n/m\to\alpha$ it converges to $(1-\alpha)\sum_{g>L}(g-L)\,\mathrm{Borel}(g;\alpha)$, and with $\rho=\alpha e^{1-\alpha}$
+\begin{equation}
+R_\infty(\alpha,L)\sim\frac{(1-\alpha)\,\rho^{L+1}}{\alpha\sqrt{2\pi}\,(1-\rho)^{2}\,L^{3/2}}\qquad(L\to\infty).
+\label{eq:tail}
+\end{equation}
+The quantity is classical: it is the tail of the unsuccessful-search cost, whose generating function and Poisson limit are given by Janson and Viola~\cite{janson2016} and whose finite-size values follow from Knuth's run-length counting~\cite{knuth3}. What is new here is the short derivation of the explicit sum~\eqref{eq:law}, its validation against the implementation, and its use as a design rule. A Chernoff bound on the number of homes in an interval, which an earlier version of this study used, gives $\rho^{L}/(1-\rho)$; by \eqref{eq:tail} it is loose by a factor growing like $L^{3/2}$. At load $3/4$ and $65\,536$ slots the bound exceeds the exact value by a factor of 315 at $L=64$ and 4\,637 at $L=512$.
+
+\strfig{figures/fig_law.pdf}{Probability that an insertion needs more than $L$ probes ($m = 65\,536$, load $3/4$): exact law (Theorem~\ref{thm:law}), the Chernoff-type bound, and a stored simulation of 10 million samples from 500 tables.}{fig:law}
+
+\begin{table}[t!]
+\strcap{Smallest Probe Limit $L$ With Per-Insertion Refusal Probability at Most $\varepsilon$: Exact Law for Index Sizes $m$, Its Limit, and the Limit the Chernoff-Type Bound Would Require.}
+\label{tab:design}
+\centering
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{\input{tables/th_tab_design.tex}}
+\end{table}
+
+Table~\ref{tab:design} turns the law into design values by bisection on $L$. At load $3/4$ and $\varepsilon=10^{-6}$ the exact limit is 258 for $2^{16}$ slots and 260 in the limit, against 455 for the Chernoff-type rule, 43 percent fewer probes allowed per call; it is smaller for small indexes (121 at 256 slots). For a compilation that declares $N$ fresh names at most $N\,R_m(n_{\max},L)$ of them are refused in expectation. The theory manuscript also gives the exact probability that a whole fill is refusal-free, which lowers the whole-fill limit by about a quarter against the union bound, the probability that a persistent set of names can never refuse a fresh one, and a schedule-free bound for bounded churn above persistent names~\cite{strata}.
+
+\subsection{Keyed Hash and the Lifetime of a Key}
+\label{sec:keyed}
+The default hash is the 32-bit MurmurHash3 mixer~\cite{murmur3} applied to the name words. As an option, the table hashes with HalfSipHash with one compression and three finalization rounds~\cite{aumasson2012,linuxsiphash} under a 64-bit key supplied by the caller, checked against the reference code~\cite{siphashref}. We rely on the function's design goal, indistinguishability from a random function for an adversary without the key, and make no cryptographic claim.
+
+Theorem~\ref{thm:law} applies to chosen names only if the key is independent of everything the adversary has seen. If every table is created with a fresh key and the adversary fixes its names before the key is drawn, the homes of all names are independent and uniform, and the law holds verbatim for every name set and scope schedule. If one key is reused across tables and the adversary can observe probe lengths, it can learn names that collide with a target cell and plant a long run of occupied cells: in an experiment against the real table with an idealized probe-length oracle ($m=2\,048$, $L=512$, 700 honest names, five seeds), 1 to 5.5 percent of honest names were refused with a persistent key and none with a fresh key or with the same number of random names (Table~\ref{tab:adaptive}). The rule is therefore one key per translation unit, derived from a device secret and a never-repeating counter. The work bound of R4 does not depend on the key: a call examines at most $L$ slots whatever the names.
+
+\begin{table}[t!]
+\strcap{Honest Names Refused by the Probe Limit (Percent of 700) After the Adversary's Learned Colliders Are Declared: Persistent Key (Mean and Maximum Over Five Seeds), Fresh Key, and Random Names.}
+\label{tab:adaptive}
+\centering
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{\input{tables/th_tab_adaptive.tex}}
+\end{table}
+
+\subsection{Colliding Identifiers for the Default Hash}
+\label{sec:attack}
+The mixer processes a name word $k$ as $h \leftarrow \mathrm{rotl}_{13}\bigl(h \oplus f(k)\bigr)\cdot 5 + c$, where $f$ multiplies, rotates and multiplies and is a bijection on 32-bit words that does not involve the seed. Following Aumasson and Bernstein~\cite{aumasson2012,aumassonslides}, flipping bit 18 of $f(k_1)$ flips bit 31 of the rotated word; multiplying by 5 and adding $c$ leaves that difference in bit 31 for every $h$; and flipping bit 31 of $f(k_2)$ in the next word cancels it. Two consecutive words can thus be exchanged without changing the hash, whatever the seed. Here a word must be a packing of five identifier characters, and a random search finds word pairs that satisfy the constraints for both alternatives within a fraction of a second. Concatenating $t$ such pairs gives $2^{t}$ distinct identifiers of $10t$ characters with one common hash; with $t=15$ this yields \FloodN\ valid C identifiers of 150 characters, which collide under the built-in seed and eight further seeds.
+
+\section{Verification}
+\label{sec:verification}
+\emph{Unit and randomized differential tests.} A test program compares the table with an independent reference model after every operation, in configurations that cover packed and raw names, fixed and growable buffers, a dense and a sparse index, failing allocators, and a hook that forces every key into one probe cluster. It requires a 64-bit digest of the complete state to be unchanged after every refusal and checks the word-level form of Theorem~\ref{thm:undo} by rebuilding a fresh table from the live declarations and comparing memory. It makes \UnitChecks\ checks under AddressSanitizer and UndefinedBehaviorSanitizer with two compilers.
+
+\emph{Bounded exhaustive enumeration.} A second program enumerates every sequence of nine operations over $\{$enter, exit, declare $a$, $b$, $c$, $d\}$ in eight small configurations chosen so that every kind of refusal occurs: \ExhSeq\ sequences, \ExhOps\ operations, \ExhRefusals\ of them refused, no failure.
+
+\emph{Differential fuzzing and mutation.} A libFuzzer harness ran \FuzzBefore\ million executions on the code before the change of Section~\ref{sec:artifact} and \FuzzFinal\ million on the final code without a failure, and detected each of \Mutants\ injected single-line defects within a second.
+
+\emph{The analysis.} Theorem~\ref{thm:undo} was checked in 488\,919 state comparisons over five insertion rules, Theorem~\ref{thm:exact} on every assignment and every deletion order of small rings (397\,562 pairs), and the refusal law against brute-force enumeration of every home sequence in exact rational arithmetic (258 cases) and against an independent derivation by Knuth's Abel-binomial route (481 cases). The proofs are pen-and-paper; no proof assistant was used.
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Workloads}
+\strfig{figures/fig_pipeline.pdf}{Evaluation method. Symbol-table events are logged by instrumented compilers and replayed on every table; an independent reference model decides correctness.}{fig:pipeline}
+
+The workloads are sequences of symbol-table events produced by a real compiler (Fig.~\ref{fig:pipeline}). We added logging to the Tiny C Compiler~\cite{tcc} where it looks up an identifier, pushes a symbol, and opens or closes a scope, and compiled eight open-source C projects at pinned versions (Table~\ref{tab:workloads}). At the start of each translation unit every table is destroyed and created anew, as a compiler would do. A second set of seven traces from an instrumented chibicc~\cite{chibicc} is used for the bounded-mode experiment, and nine synthetic traces stress cases that C programs rarely produce.
+
+\begin{table}[t!]
+\strcap{The Eight Compiler Traces. ``Names'' Counts Distinct Identifiers; ``Peak'' Is the Largest Number of Simultaneously Live Declarations.}
+\label{tab:workloads}
+\centering
+\setlength{\tabcolsep}{2.7pt}
+\begin{tabular}{|l|r|r|r|r|r|r|r|}
+\hline
+Project & Units & Events & Declares & Lookups & Names & Peak & Depth \\
+\hline
+\tabinput{tables/tab_workloads}
+\end{tabular}
+\end{table}
+
+\subsection{Tables Compared}
+\label{sec:baselines}
+\NTables\ tables are driven through one interface.
+\begin{itemize}
+\item \st\ and four variants: raw instead of packed names, a sparse index (at most half full), no shrinking of the buffer, and the keyed hash.
+\item \emph{The conventional arena table}, our main baseline: bucket heads, a stack of entries (chain link, hash, value, length and depth, unpacked name) and scope marks in one buffer, with the same storage discipline as \st. It was written as the strongest conventional design we could build, so that a comparison isolates the compact layout from the mere absence of an allocator.
+\item One standard-library hash map per scope; an undo log over a standard-library map (the algorithm of LLVM's \code{ScopedHashTable}); the same over a Swiss-table map~\cite{phmap}; an interning Swiss-table map.
+\item METIS-X~\cite{metis}, the predecessor, a Robin Hood table with one slot per declaration, and two further tables from its repository, used unmodified.
+\end{itemize}
+
+\subsection{Metrics and Procedure}
+\emph{Correctness} is agreement with the reference model on every lookup and declaration result. \emph{Heap peak} counts every allocation with its usable size. The \emph{smallest fixed buffer} is found by bisection, at a resolution of 64 bytes, as the smallest buffer with which the whole trace replays without a refusal. \emph{Replay time} is the time to replay a whole trace on a fresh table. In each of \Rounds\ measured rounds, after two warm-up rounds, every table replays the trace once and the starting table rotates. For two tables we report the median over rounds of the ratio of their times with a 95 percent bootstrap interval from 2000 resamples, and call a difference \emph{established} when the interval excludes zero (``n.e.'' otherwise).
+
+\subsection{Environment}
+All host measurements were taken on one machine: \EnvCPU, Windows Subsystem for Linux 2 with Ubuntu 22.04 (\EnvKernel), \EnvCompiler\ with \code{-O2}, the benchmark pinned to one core, run \code{\RunName} of the public artifact~\cite{strata}. The embedded experiment uses \code{arm-none-eabi-g++} 10.3.1 with \code{-Os} and QEMU~\cite{bellard2005qemu} 6.2 emulating a Cortex-M3 board (\code{mps2-an385}) restricted to 64\,KiB of memory, without heap and without operating system. The refusal law was checked against the real bounded-mode table, with the keyed hash and a fresh random key per trial, in seven settings of 400\,000 trials.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Correctness}
+All \NTables\ tables agree with the reference model on the eight Tiny C Compiler traces and on the seven chibicc traces: \NPairsAll\ table and trace pairs, no wrong lookup, no wrong declaration result, no refused declaration. On the synthetic traces METIS-X refuses \MetisRefused\ of \MetisRefusedOf\ declarations when one name is shadowed in 400 nested scopes.
+
+\subsection{Memory}
+\strfig{figures/fig_minbuffer.pdf}{Smallest fixed buffer with which each compiler trace replays without a refusal. The label gives the saving of \st\ over the conventional arena table.}{fig:minbuffer}
+
+\st\ replays the traces in fixed buffers of \MinBufLo\ to \MinBufHi\,KiB, which is \BytesLo\ to \BytesHi\ bytes per live declaration at the peak (Fig.~\ref{fig:minbuffer}, Table~\ref{tab:memory}). The conventional arena table needs a buffer that is larger on every trace, so that \st\ saves \SaveLo\ to \SaveHi\ percent; Section~\ref{sec:ledger} explains where this saving comes from.
+
+Against tables that allocate, the difference is larger and has a different cause. The heap peak of \st\ in growable mode is \HeapMetisLo\ to \HeapMetisHi\ percent (median \HeapMetisMed\ percent) below that of METIS-X, and \st\ makes \AllocLo\ to \AllocHi\ percent fewer allocator calls. In growable mode the conventional arena table reaches the same heap peak as \st\ on \HeapSameArena\ of the 8 traces, because both grow one block in steps. Most of the gain over the predecessor is therefore due to keeping everything in one allocation-free buffer, not to the compact layout.
+
+\begin{table*}[t!]
+\strcap{Memory on the Eight Compiler Traces. Smallest Fixed Buffer of the Two Single-Buffer Tables, and Heap Peak in Growable Mode of Six Tables (KiB).}
+\label{tab:memory}
+\centering
+\setlength{\tabcolsep}{3.4pt}
+\begin{tabular}{|l|r|r|r|r|r|r|r|r|r|r|}
+\hline
+ & \multicolumn{4}{c|}{Smallest fixed buffer} & \multicolumn{6}{c|}{Heap peak, growable mode (KiB)} \\
+\hline
+Project & \st\ (KiB) & Arena (KiB) & Saving (\%) & Bytes per live decl. & \st & Arena & METIS-X & Map per scope & Undo log & Interning map \\
+\hline
+\tabinput{tables/tab_memory}
+\end{tabular}
+\end{table*}
+
+\subsection{Anatomy of the Saving: An Exact Space Ledger}
+\label{sec:ledger}
+\strfig{figures/fig_ledger.pdf}{Saving of \st's layout over the conventional single-buffer layout on the eight traces, split into the stored hash word and name packing, from the exact space ledger.}{fig:ledger}
+
+Every single-buffer layout considered here uses a number of words that is a sum of per-element costs, as in \eqref{eq:memory}. Let $C_0$ be the conventional layout, $C_1$ the same without the stored hash word, $S_{\mathrm{raw}}$ \st's layout with raw names and $S$ \st\ itself. Subtracting the formulas gives exact identities at every instant:
+\begin{equation}
+U_{C_0}-U_{C_1}=d,\qquad U_{S_{\mathrm{raw}}}-U_{S}=\sum_{x\ \text{packable}}\Bigl(\Bigl\lceil\tfrac{\ell_x}{4}\Bigr\rceil-\Bigl\lceil\tfrac{\ell_x}{5}\Bigr\rceil\Bigr),
+\label{eq:ledger}
+\end{equation}
+and interning with an undo log saves the names of hidden declarations but costs one extra word per open scope. The accounting reproduces all 24 measured minimum buffers to the 64-byte resolution of the measurement, so it can be trusted for the hypothetical layout $C_1$. On the eight traces, dropping the stored hash saves 9.2 to 12.2 percent and packing a further 5.3 to 9.0 percent, while interning changes the footprint by between $-0.38$ and $0.00$ percent (Fig.~\ref{fig:ledger}, Table~\ref{tab:ledger}). Against a conventional table that does not store the hash, \st\ would be only 5 to 9 percent smaller, all of it from packing; interning pays only in programs that shadow often, as the sweep of Section~\ref{sec:fit} confirms.
+
+\begin{table}[t!]
+\strcap{Smallest Fixed Buffer (KiB) of Five Layouts and the Savings (Percent) of Dropping the Stored Hash ($C_0\to C_1$), of Packing ($C_1\to S$) and in Total ($C_0\to S$).}
+\label{tab:ledger}
+\centering
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{\input{tables/th_tab_ladder.tex}}
+\end{table}
+
+\subsection{Replay Time}
+\label{sec:time}
+Table~\ref{tab:time} gives the paired comparisons. Against the conventional arena table, \st\ is faster on \ArenaFaster\ traces, slower on \ArenaSlower, and on \ArenaNE\ the difference is not established; the point estimates lie between \ArenaLo\ and \ArenaHi\ percent. The compact table is not faster than the conventional one, and where a difference is established it is at most \ArenaAbsMax\ percent. Against METIS-X, \st\ is faster on \MetisFaster\ of 8 traces, by \MetisLo\ to \MetisHi\ percent, and the conventional arena table is faster than METIS-X on \AMFaster\ of 8, by \AMLo\ to \AMHi\ percent. Per operation (Table~\ref{tab:latency}), the 95th-percentile latency of a declaration is \DeclLo\ to \DeclHi\ percent lower with \st\ than with METIS-X and that of a scope exit \ExitLo\ to \ExitHi\ percent lower; lookup latency differs by between \LookLo\ and \LookHi\ percent without a consistent direction.
+
+\begin{table*}[t!]
+\strcap{Replay Time on the Eight Compiler Traces: Median Ratio Over \Rounds\ Paired Rounds, in Percent, With 95 Percent Bootstrap Interval. Negative Means That the First Table Is Faster; ``n.e.'' Means Not Established.}
+\label{tab:time}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|l|c|l|c|l|c|l|}
+\hline
+Project & \multicolumn{2}{c|}{\st\ vs. arena table} & \multicolumn{2}{c|}{\st\ vs. METIS-X} & \multicolumn{2}{c|}{Arena table vs. METIS-X} & Keyed vs. default hash \\
+\hline
+\tabinput{tables/tab_time}
+\end{tabular}
+\end{table*}
+
+\begin{table}[t!]
+\strcap{95th-Percentile Latency per Operation in Nanoseconds for \st\ (S), the Conventional Arena Table (A) and METIS-X (M).}
+\label{tab:latency}
+\centering
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{|l|r|r|r|r|r|r|r|r|r|}
+\hline
+ & \multicolumn{3}{c|}{Lookup} & \multicolumn{3}{c|}{Declare} & \multicolumn{3}{c|}{Scope exit} \\
+\hline
+Project & S & A & M & S & A & M & S & A & M \\
+\hline
+\tabinput{tables/tab_latency}
+\end{tabular}
+\end{table}
+
+\subsection{A Time Penalty That Was an Artifact}
+\label{sec:artifact}
+\strfig{figures/fig_time.pdf}{Replay time of \st\ relative to the conventional arena table before and after the rebuild change of Section~\ref{sec:artifact}: median of paired ratios with 95 percent bootstrap interval.}{fig:time}
+
+An earlier version of \st\ was slower than the conventional arena table on every trace, by \BeforeLo\ to \BeforeHi\ percent (Fig.~\ref{fig:time}), and we initially reported this as the price of the compact design. Per-operation latencies contradicted that reading: lookups were level and the whole difference was in declarations. The cause was rebuild work of three kinds: the index was rebuilt on every growth of the buffer, although only the undo stack moves in that case; each rebuild converted the one-word undo entries from slots to record references and back, hashing every name twice; and a new name walked its probe path twice. After the changes described in Section~\ref{sec:rebuild} the penalty is gone on most traces and small on the rest. The changes alter no result other than time. We report the episode because the first measurement would have supported a plausible but wrong conclusion, and because a baseline strong enough to expose it prompted the diagnosis.
+
+\subsection{Ablation and Synthetic Traces}
+\label{sec:ablation}
+Table~\ref{tab:ablation} isolates three design choices. Storing names as raw bytes instead of packing them needs a \PackSaveLo\ to \PackSaveHi\ percent larger buffer and is slower on \RawSlower\ of 8 traces and faster on \RawFaster, because a packed name has fewer words to hash and compare. Keeping the index at most half full makes replay faster on \SparseFaster\ of 8 traces (changes between \SparseHi\ and \SparseLo\ percent) and needs a \SparseBufLo\ to \SparseBufHi\ percent larger buffer, which more than cancels the memory advantage: index load is the lever that trades the saving for speed. On the \SynCount\ synthetic traces (Table~\ref{tab:synthetic}) \st\ is faster than the conventional table on \SynFasterArena\ and slower on \SynSlowerArena: faster where names are hidden often, where scopes are entered and left at a high rate, and with short names, and slower on the trace dominated by lookups.
+
+\begin{table}[t!]
+\strcap{Ablation: Change Relative to Default \st\ in Smallest Fixed Buffer and in Replay Time (Percent; Verdict From the 95 Percent Interval).}
+\label{tab:ablation}
+\centering
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{|l|r|l|r|l|l|}
+\hline
+ & \multicolumn{2}{c|}{Raw names} & \multicolumn{2}{c|}{Sparse index} & No shrinking \\
+\hline
+Project & Buffer & Time & Buffer & Time & Time \\
+\hline
+\tabinput{tables/tab_ablation}
+\end{tabular}
+\end{table}
+
+\begin{table*}[t!]
+\strcap{Synthetic Stress Traces: Replay Time of \st\ Relative to the Conventional Arena Table and to METIS-X (Percent, With Verdict), and Whether METIS-X Agrees With the Reference Model.}
+\label{tab:synthetic}
+\centering
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{|l|r|r|l|l|l|}
+\hline
+Trace & Declarations & Maximum depth & \st\ vs. arena table & \st\ vs. METIS-X & METIS-X result \\
+\hline
+\tabinput{tables/tab_synthetic}
+\end{tabular}
+\end{table*}
+
+\subsection{Hash Flooding and Its Defenses}
+\label{sec:flood}
+\strfig{figures/fig_flood.pdf}{Time to declare $N$ distinct names of 150 characters. Colliding names are those of Section~\ref{sec:attack}; ordinary names are random identifiers of the same length. Both axes are logarithmic.}{fig:flood}
+
+We declare and then look up the \FloodN\ colliding identifiers and as many random identifiers of the same length (Fig.~\ref{fig:flood}, Table~\ref{tab:floodconfig}). In the default configuration the colliding names take \FloodCol\,ms to declare against \FloodOrd\,ms for ordinary names, a factor of \FloodRatio, and \FloodLookCol\,ms to look up; time grows with exponent \FloodExp\ in the number of names, since every new name scans the cluster formed by all earlier ones. With the keyed hash the factor is \FloodKeyedRatio: names built against the unkeyed mixer are ordinary names under a key their author does not know. With the unkeyed hash and a probe limit of 64, time grows linearly, at the price that \FloodBoundedRefused\ of the \FloodN\ colliding names are refused. The limit bounds the work of a call whatever the hash does, and a fresh key keeps an adversary from causing refusals (Section~\ref{sec:keyed}). On the compiler traces the keyed hash increases replay time by \KeyedLo\ to \KeyedHi\ percent (Table~\ref{tab:time}).
+
+\begin{table}[t!]
+\strcap{Declaring \FloodN\ Names of 150 Characters in Four Configurations: Time in Milliseconds, Their Ratio, Refused Names and Longest Probe Sequence for the Colliding Input.}
+\label{tab:floodconfig}
+\centering
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{|l|r|r|r|r|r|}
+\hline
+Configuration & Ordinary & Colliding & Ratio & Refused & Longest \\
+\hline
+\tabinput{tables/tab_flood_config}
+\end{tabular}
+\end{table}
+
+\subsection{The Refusal Law Against the Implementation and the Traces}
+\label{sec:probe}
+\strfig{figures/fig_lawz.pdf}{Agreement of the exact refusal law with the real bounded-mode table: standard scores in seven settings of 400\,000 trials each, all within plus or minus 1.96.}{fig:lawz}
+
+Table~\ref{tab:lawcheck} and Fig.~\ref{fig:lawz} compare the exact law with the observed frequency of a refused push in the real table, with the keyed hash and a fresh key per trial. All seven $z$-scores lie within $\pm1.96$ (largest $|z|=1.96$), and a table with the probe limit and one without, run in lock step, never disagreed in the clean trials. The law therefore describes the implementation, not only the model. A stored simulation of \ProbeTotal\ insertions also agrees with it (Fig.~\ref{fig:law}).
+
+\begin{table}[t!]
+\strcap{Exact Law Against the Real Probe-Limited Table: Observed Frequency of a Refused Push in 400\,000 Trials, the Exact Value, the $z$-Score, Clean Trials and Lock-Step Mismatches ($m$ Index Slots, $n$ Keys Stored, $L$ Probe Limit).}
+\label{tab:lawcheck}
+\centering
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{\input{tables/th_tab_lawcheck.tex}}
+\end{table}
+
+The compiler traces alone would have suggested a much smaller limit. Replaying the \BoundedTraces\ compiler traces (\BoundedDecls\ declarations) in bounded mode, with the index sized for each trace's peak, a limit of 64 refuses no declaration with either hash and the longest probe sequence is \BoundedLongest\ (Table~\ref{tab:bounded}). Yet at the load limit of $3/4$, \ProbeSixtyFour\ percent of fresh names need more than 64 probes: the traces' tables are small and spend most of their time well below the load limit. The exact law gives the setting directly: 258 for a refusal probability of $10^{-6}$ per declaration at $2^{16}$ slots, or 52 with an index kept at most half full. The limit of 512 recommended in the library documentation is safe but conservative: at $65\,536$ slots it corresponds to a refusal probability of $2.4\times10^{-11}$ per declaration.
+
+\begin{table}[t!]
+\strcap{Bounded Mode on \BoundedTraces\ Compiler Traces (\BoundedDecls\ Declarations): Declarations Refused by the Probe Limit and Number of Traces Affected, for the Default and the Keyed Hash.}
+\label{tab:bounded}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|c|r|c|r|c|}
+\hline
+ & \multicolumn{2}{c|}{Default hash} & \multicolumn{2}{c|}{Keyed hash} \\
+\hline
+Limit & Refused & Traces & Refused & Traces \\
+\hline
+\tabinput{tables/tab_bounded}
+\end{tabular}
+\end{table}
+
+\subsection{When Does the Smaller Buffer Matter?}
+\label{sec:fit}
+A saving of one sixth decides whether a workload fits only when the budget lies between the needs of the two tables. Of the \UnitsTotal\ translation units of the eight projects, the units that only \st\ can hold are few at every budget, at most \UnitOnlySixteen\ at 16\,KiB (Table~\ref{tab:unitfit}). On the emulated microcontroller (Section~\ref{sec:mcu}), three whole workloads fit a buffer in which the conventional table refuses operations. A sweep over the shadowing factor (live declarations per distinct name) and the name length confirms \eqref{eq:memory} and the ledger: the saving grows with shadowing, since a hidden declaration costs three words in \st\ and a full entry with the name in the conventional table, and reaches \SweepBestSave\ percent at the highest factor tested (Table~\ref{tab:sweep}). Replay time relative to the conventional table follows the name length rather than the shadowing factor.
+
+\begin{table}[t!]
+\strcap{Translation Units (of \UnitsTotal) That Fit a Fixed Budget: in Both Single-Buffer Tables, Only in \st, or in Neither.}
+\label{tab:unitfit}
+\centering
+\begin{tabular}{|c|r|r|r|}
+\hline
+Budget (KiB) & Both & Only \st & Neither \\
+\hline
+\tabinput{tables/tab_unitfit}
+\end{tabular}
+\end{table}
+
+\begin{table}[t!]
+\strcap{Sweep Over the Shadowing Factor $\sigma$ and the Name Length: Saving of \st\ in Smallest Fixed Buffer (Percent) and Replay Time Relative to the Conventional Arena Table (Percent).}
+\label{tab:sweep}
+\centering
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{|c|r|l|r|l|r|l|}
+\hline
+ & \multicolumn{2}{c|}{6 characters} & \multicolumn{2}{c|}{12 characters} & \multicolumn{2}{c|}{24 characters} \\
+\hline
+$\sigma$ & Save & Time & Save & Time & Save & Time \\
+\hline
+\tabinput{tables/tab_sweep}
+\end{tabular}
+\end{table}
+
+\subsection{Inside a Compiler}
+\label{sec:chibicc}
+To see what the differences amount to in a whole compiler, we replaced the per-scope hash maps that chibicc~\cite{chibicc} uses for variable scopes by \st\ and, separately, by the conventional arena table, and compiled seven of the projects with all three builds. The unmodified compiler accepts \ChibiUnitsOK\ of their \ChibiUnitsAll\ translation units; on those, the assembly produced with \st\ is byte-for-byte identical to the original on \ChibiIdentStrata\ units and with the arena table on \ChibiIdentArena. Over \ChibiRounds\ interleaved rounds (Table~\ref{tab:chibicc}), whole-project compile time with \st\ changes by between \ChibiStrataLo\ and \ChibiStrataHi\ percent, and with the arena table by between \ChibiArenaLo\ and \ChibiArenaHi\ percent; peak resident memory per unit changes by a median of \ChibiRssMedian\ percent. In a hosted compiler neither single-buffer table matters: symbol-table work is a small part of the compile. The experiment establishes that the tables are correct in a real resolution path; it does not show a benefit for compilers that are not memory-constrained.
+
+\begin{table*}[t!]
+\strcap{End to End in chibicc: Whole-Project Compile Time With Variable Scopes on \st\ or on the Conventional Arena Table, Relative to the Original Compiler (Percent, 95 Percent Interval; Negative Is Faster).}
+\label{tab:chibicc}
+\centering
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{|l|r|r|l|c|l|c|}
+\hline
+Project & Units compiled & Original compiler (s) & \multicolumn{2}{c|}{\st} & \multicolumn{2}{c|}{Arena table} \\
+\hline
+\tabinput{tables/tab_chibicc}
+\end{tabular}
+\end{table*}
+
+\subsection{An Emulated Microcontroller}
+\label{sec:mcu}
+We built a bare-metal image for a Cortex-M3 and ran it under QEMU with 64\,KiB of memory, with allocation functions stubbed to fail. Five of the eight traces fit that memory; all \EmbPass\ replay with a checksum over every result identical to the host's, using \EmbStack\ bytes of stack, and the table's code occupies \EmbCode\ bytes. The same \EmbBoundedPass\ traces pass in bounded mode with the keyed hash and a probe limit of 512, with no refusal. At equal buffers, \st\ fits FreeRTOS in 48\,KiB, Lua in 40\,KiB and cJSON in 32\,KiB, where the conventional table refuses 420, 2\,214 and 822 operations. The emulator provides no timing, and no physical device was used.
+
+\section{An Interactive Tool}
+\label{sec:tool}
+\Figure[t!](topskip=0pt, botskip=0pt, midskip=0pt)[width=0.98\columnwidth]{figures/screenshot_analyse.png}{\textbf{The ``Analyse your code'' page. A pasted C program is translated into the calls a compiler makes on its symbol table, which run on the real \st\ table in a local engine; the page lists every name with its type, scope, line and uses, the names it hides, unused and undeclared names, and the smallest buffer that holds the program.}\label{fig:tool}}
+
+To make the design inspectable, the artifact includes a web interface (React~\cite{react} and Vite~\cite{vite}) whose local server runs a C++ engine linked with the unmodified header. Every request replays the whole list of operations on a fresh table, so the C++ table is always the source of truth; after each request the engine checks the table's invariants, that every decoded record equals what \code{resolve} returns, and that every answer equals the reference model. The \emph{Analyse your code} page (Fig.~\ref{fig:tool}) accepts a C program, translates it into declare, lookup, enter and exit calls, and reports every name, its scope and uses, shadowing, and the smallest buffer from 256\,B to 64\,KiB that refuses nothing. A \emph{Live lab} shows the buffer decoded word by word after each call and the digest before and after a refused call, and the results and theory pages draw every figure from the stored measurements and recompute the refusal law in the browser. The interface changes neither the library nor any result; its 37 automated checks compare it with the engine and with the Python programs of the analysis.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\emph{What the compact design buys.} Against a conventional chained table that obeys the same storage discipline, \st\ offers a buffer about one sixth smaller at a speed that is indistinguishable on most traces and up to \ArenaAbsMax\ percent lower on the others. The ledger shows that this saving is a stored hash word and name packing; a conventional table could obtain most of it by dropping its stored hash. For a compiler on a workstation neither table matters. For a front end with tens of kilobytes, one sixth of the symbol table is memory that can go elsewhere, and on the emulated microcontroller it decided whether three workloads fit.
+
+\emph{What the storage discipline buys.} One buffer and write-after-reserve give a refusal that is simple to state and simple to test exhaustively at small scale. We consider this the more transferable result; it applies equally to the conventional table.
+
+\emph{Why last-in-first-out removal matters beyond speed.} The removal rule was adopted to avoid tombstones. Its more useful consequence is Theorem~\ref{thm:undo}: because the table is always an insertion-only table, the classical exact analysis of linear probing applies to it at every moment, and Theorem~\ref{thm:exact} shows that no other deletion order would allow this for every table.
+
+\emph{Why measurement alone was not enough.} Three times in this work a measurement supported a conclusion that analysis overturned: the time penalty of Section~\ref{sec:artifact}, the probe limit of 64 that the traces suggested, and the reading of the buffer saving as a benefit of interning. We regard these as arguments for pairing replay experiments with a baseline that shares the design's constraints and with an exact analysis of the quantity being tuned.
+
+\emph{Where the design is the wrong choice.} If memory is not constrained and the input is trusted, this study gives no reason to prefer a single-buffer table. If the input is untrusted, the keyed hash costs \KeyedLo\ to \KeyedHi\ percent of replay time, and its guarantee requires a fresh key per table.
+
+\section{Limitations and Threats to Validity}
+\label{sec:limits}
+
+\emph{Mostly replay, not compilation.} The traces record what a compiler's own tables were asked to do; replaying them measures a table, not a compiler built on it. The one experiment inside a compiler replaces variable scopes only, on a hosted machine, and shows no end-to-end benefit.
+
+\emph{One machine, no hardware.} All timing comes from one laptop under a hypervisor, and the microcontroller is emulated. The verdicts on individual traces are not stable across runs: in an earlier run of the same code \st\ was faster than the conventional table on two traces and slower on three. What the runs support is that the two tables are within about ten percent of each other, not a ranking trace by trace.
+
+\emph{Workloads.} The traces are C only, from two small compilers, and depend on the host's system headers. Names outside the identifier alphabet, as in mangled C++ names, take the unpacked path, which the traces exercise little.
+
+\emph{Baselines.} The conventional arena table and four further baselines were written by the authors of the table under study; they are not independent implementations. LLVM's and Clang's own containers were not measured.
+
+\emph{The analysis.} The proofs are pen-and-paper, checked by exhaustive enumeration and by comparison with the implementation, not by a proof assistant. The refusal law assumes an ideal hash; against an adversary it assumes that HalfSipHash with one and three rounds and a 64-bit key behaves as one and that keys are fresh. The key-lifetime experiment uses an idealized oracle; no timing channel was measured. A limit law for refusals on wide and deep scope trees is open.
+
+\emph{Design limits.} Names of at most 255 bytes, 16\,383 nested scopes, a buffer of at most 64\,MiB, one name space per table, single-threaded use.
+
+\emph{Literature.} The search for related work was limited, and several sources were consulted at the level of abstracts or documentation.
+
+\section{Conclusion}
+\label{sec:conclusion}
+A scoped symbol table can be confined to one fixed buffer, refuse cleanly when the buffer is full, and bound the work of each call on hostile input, at a cost that we have measured and with a refusal probability that we can compute. On events logged by a C compiler for eight projects, the compact design studied here needs a buffer about one sixth smaller than a conventional single-buffer table, a saving that an exact ledger attributes to a stored hash word and name packing, and is within about ten percent of it in time, with no established difference on most traces; both are well ahead of a multi-allocation predecessor, and that larger gain belongs to the storage discipline. Because declarations are removed in the reverse order of their creation, the table is always an insertion-only table, which is the only deletion order with this property for every table and which makes the refusal probability of a probe limit exactly computable: at load three quarters, a one-in-a-million refusal needs 258 probes, not the 455 a tail bound suggests, and the law agrees with the implementation. Identifiers that collide for every seed of the default hash slow declarations 300-fold, and a keyed hash with a fresh key per table removes the effect.
+
+The most useful next steps are a compiler that runs on the table on a physical microcontroller, workloads from languages other than C, a limit law for refusals on deep scope trees, and machine-checked proofs.
+
+\section*{Data and Code Availability}
+The implementation, the tests, the compiler patches, the traces, the raw measurements of every run cited here, the verification programs of the analysis, the interactive tool, and the scripts that regenerate every number, table and figure of this article are public~\cite{strata}.

@@ -1,0 +1,109 @@
+\documentclass{ieeeaccess}
+% IEEE Access template of 2026-05-13 (ACCESS_latex_template_20260513), unmodified class and fonts.
+% Compile with pdfLaTeX + BibTeX:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{url}
+\usepackage{booktabs}
+
+\usepackage{bm}
+\makeatletter
+\AtBeginDocument{\DeclareMathVersion{bold}
+\SetSymbolFont{operators}{bold}{T1}{times}{b}{n}
+\SetSymbolFont{NewLetters}{bold}{T1}{times}{b}{it}
+\SetMathAlphabet{\mathrm}{bold}{T1}{times}{b}{n}
+\SetMathAlphabet{\mathit}{bold}{T1}{times}{b}{it}
+\SetMathAlphabet{\mathbf}{bold}{T1}{times}{b}{n}
+\SetMathAlphabet{\mathtt}{bold}{OT1}{pcr}{b}{n}
+\SetSymbolFont{symbols}{bold}{OMS}{cmsy}{b}{n}
+\renewcommand\boldmath{\@nomath\boldmath\mathversion{bold}}}
+\makeatother
+
+% Measured numbers and table bodies are generated from the raw measurements by
+% ../tools/make_numbers.py (generated_numbers.tex, tables/tab_*.tex); the theory tables
+% (tables/th_*.tex) are written by theory/verify/run_all.sh. Nothing numeric is typed by hand
+% except where the text quotes those files.
+\input{generated_numbers}
+
+\makeatletter
+\newcommand{\tabinput}[1]{\@@input #1.tex }
+\makeatother
+\newcommand{\strfig}[3]{\Figure[t!](topskip=0pt, botskip=0pt, midskip=0pt)[width=0.98\columnwidth]{#1}{\textbf{#2}\label{#3}}}
+\newcommand{\strcap}[1]{\caption{\textbf{#1}}}
+\newcommand{\st}{STRATA}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\Ins}{\mathrm{Ins}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+
+\begin{document}
+\history{Date of publication xxxx 00, 0000, date of current version xxxx 00, 0000.}
+\doi{10.1109/ACCESS.2026.DOI}
+
+\title{One Buffer, Every Scope: A Fixed-Memory Scoped Symbol Table With Exact Undo and an Exact Refusal Law, Evaluated on Compiler-Generated Workloads}
+
+\author{\uppercase{Shubhi Singh}\authorrefmark{1},
+\uppercase{Adhyan Jain}\authorrefmark{1},
+\uppercase{Akshith Venkatataramana}\authorrefmark{1}, and
+\uppercase{Arjuman}\authorrefmark{1}}
+
+\address[1]{School of Computer Science and Engineering, Vellore Institute of Technology, Vellore, Tamil Nadu 632014, India}
+
+\tfootnote{This work received no external funding.}
+
+\markboth
+{Singh \headeretal: One Buffer, Every Scope: A Fixed-Memory Scoped Symbol Table}
+{Singh \headeretal: One Buffer, Every Scope: A Fixed-Memory Scoped Symbol Table}
+
+\corresp{Corresponding author: Shubhi Singh.}
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+\begin{keywords}
+Algorithmic complexity attacks, compilers, embedded software, hash tables, linear probing, memory management, probability, symbol tables.
+\end{keywords}
+
+\titlepgskip=-21pt
+
+\maketitle
+
+\input{body}
+
+\section*{Acknowledgment}
+The authors thank Prof.~Bhuvaneshwari~M., School of Computer Science and Engineering, Vellore Institute of Technology, for guiding the project from which this work grew.
+
+In accordance with the journal's policy on the disclosure of generated content: the implementation, the experiments, the verification programs, the derivations and the text of this article were produced with the assistance of artificial-intelligence coding assistants (Claude, Anthropic) working at the direction of the authors, as recorded in the public repository (\code{docs/AI\_USE\_DISCLOSURE.md}). Every number is produced by programs that can be re-run; the proofs are pen-and-paper and were checked by exhaustive enumeration and by statistical comparison with the implementation, not by a proof assistant. The authors take responsibility for the entire content.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\begin{IEEEbiographynophoto}{Shubhi Singh}
+is an undergraduate student with the School of Computer Science and Engineering, Vellore Institute of Technology, Vellore, India. Research interests include compilers, data structures for constrained systems, and systems software.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Adhyan Jain}
+is an undergraduate student with the School of Computer Science and Engineering, Vellore Institute of Technology, Vellore, India. Research interests include compilers, hashing and the analysis of algorithms.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Akshith Venkatataramana}
+is an undergraduate student with the School of Computer Science and Engineering, Vellore Institute of Technology, Vellore, India.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Arjuman}
+is an undergraduate student with the School of Computer Science and Engineering, Vellore Institute of Technology, Vellore, India.
+\end{IEEEbiographynophoto}
+
+\EOD
+
+\end{document}
