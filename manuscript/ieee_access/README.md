@@ -29,7 +29,7 @@ word plus packing; the refusal law holds against chosen names only with a fresh 
 
 * Authors and the guide follow the authors' earlier instruction (four authors; the guide in the
   Acknowledgment). The course-template version (`../final/`) lists two authors: decide which is right.
-* The corresponding author's e-mail address, ORCID iDs and photographs are not in the file: add them.
+* No e-mail addresses are included, by the authors' decision. ORCID iDs and photographs are not in the file.
   The biographies are minimal; each author should check and extend their own.
 * The AI-disclosure paragraph in the Acknowledgment follows the journal's policy; the authors must review it.
 * All co-authors must read the proofs (Sections V and VI) and the full theory manuscript (`theory/paper/main.pdf`).
