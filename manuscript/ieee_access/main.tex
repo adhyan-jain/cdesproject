@@ -33,6 +33,8 @@
 \newcommand{\tabinput}[1]{\@@input #1.tex }
 \makeatother
 \newcommand{\strfig}[3]{\Figure[t!](topskip=0pt, botskip=0pt, midskip=0pt)[width=0.98\columnwidth]{#1}{\textbf{#2}\label{#3}}}
+% Diagrams drawn wider than a column span both columns, so that their text stays legible.
+\newcommand{\strfigwide}[4][\textwidth]{\begin{figure*}[t!]\centering\includegraphics[width=#1]{#2}\caption{\textbf{#3}}\label{#4}\end{figure*}}
 \newcommand{\strcap}[1]{\caption{\textbf{#1}}}
 \newcommand{\st}{STRATA}
 \newcommand{\code}[1]{\texttt{#1}}

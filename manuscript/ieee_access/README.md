@@ -18,7 +18,7 @@ word plus packing; the refusal law holds against chosen names only with a fresh 
 |---|---|---|
 | `main.tex`, `abstract.tex`, `body.tex` | the manuscript | yes |
 | `generated_numbers.tex`, `tables/tab_*.tex` | `../tools/make_numbers.py` from run `20261013-143828-paper` | no: regenerate |
-| `tables/th_*.tex` | `theory/verify/run_all.sh` (copied from `theory/paper/tables/`) | no: regenerate |
+| `tables/th_*.tex` | `theory/verify/run_all.sh`, restyled to this article's ruled tables by `tools/theory_tables.py` (cells unchanged) | no: regenerate |
 | `figures/fig_{arch,undo,dep,flow,law,design,ledger,lawz}.pdf` | pages of `theory/template/build/{diagrams,plots}.pdf` (`theory/template/make_figures.py`) | regenerate |
 | other `figures/*.pdf` | `../figures/source/` | regenerate |
 | `figures/screenshot_analyse.png` | the frontend's Analyse page | — |

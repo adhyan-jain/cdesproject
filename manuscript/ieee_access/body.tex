@@ -48,7 +48,8 @@ Table~\ref{tab:comparison} summarizes the properties relevant here. Entries for 
 \strcap{Properties of Scoped Symbol Tables and Identifier Stores Relevant to This Work.}
 \label{tab:comparison}
 \centering
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{5pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|c|c|c|c|c|c|}
 \hline
 Design & \shortstack{Scopes with\\shadowing} & \shortstack{One caller-\\supplied buffer} & \shortstack{Defined refusal,\\state unchanged} & \shortstack{No rebuild\\inside a call} & \shortstack{Bound on probes,\\exact refusal law} & \shortstack{Keyed\\hash} \\
@@ -61,7 +62,7 @@ Conventional arena table (our baseline) & yes & yes & yes & no & no & no \\
 \st, default mode & yes & yes & yes & no & no & optional \\
 \st, bounded mode & yes & yes & yes & yes & yes & optional \\
 \hline
-\end{tabular}
+\end{tabular}}
 \end{table*}
 
 \section{Problem Formulation}
@@ -96,7 +97,7 @@ The adversary supplies the source text and thereby every name and the order of a
 \label{sec:design}
 
 \subsection{Architecture and Layout}
-\strfig{figures/fig_arch.pdf}{Architecture. The compiler front end issues four calls to a \st\ table that keeps its open-addressing index, packed identifier records and undo stack in one fixed buffer; the analysis of Sections~\ref{sec:undo} and~\ref{sec:bounded} turns the model of the index into design rules for the probe limit, the buffer size and the key policy.}{fig:arch}
+\strfigwide[0.92\textwidth]{figures/fig_arch.pdf}{Architecture. The compiler front end issues four calls to a \st\ table that keeps its open-addressing index, packed identifier records and undo stack in one fixed buffer; the analysis of Sections~\ref{sec:undo} and~\ref{sec:bounded} turns the model of the index into design rules for the probe limit, the buffer size and the key policy.}{fig:arch}
 \strfig{figures/fig_layout.pdf}{Layout of the buffer and of the three kinds of undo entries. The index and the identifier records grow from the start of the buffer, the undo stack from its end; the free space between them is shared.}{fig:layout}
 
 Fig.~\ref{fig:arch} shows the system and Fig.~\ref{fig:layout} the layout. All state lives in one array of 32-bit words. The \emph{index} occupies the first $m$ words, $m$ a power of two. A slot is zero when empty; otherwise it holds an 8-bit fingerprint taken from the hash and a 24-bit reference to an identifier record. Collisions are resolved by linear probing, and the index is kept at most three quarters full.
@@ -141,7 +142,7 @@ A lookup packs and hashes the name and probes from its home slot until it finds 
 
 \subsection{Scope Exit Without Tombstones}
 \label{sec:exit}
-\strfig{figures/fig_flow.pdf}{Flow of a declaration and of a scope exit. A declaration is refused, with the table unchanged, when no empty slot is found within $L$ probes or when the record and its undo entry do not fit; a scope exit pops the undo entries in reverse order.}{fig:flow}
+\strfigwide[0.8\textwidth]{figures/fig_flow.pdf}{Flow of a declaration and of a scope exit. A declaration is refused, with the table unchanged, when no empty slot is found within $L$ probes or when the record and its undo entry do not fit; a scope exit pops the undo entries in reverse order.}{fig:flow}
 Leaving a scope pops the undo stack down to the scope's mark, newest entry first (Fig.~\ref{fig:flow}). A three-word entry restores the value, type and depth it saved. A one-word entry empties the index slot it names. Then the top of the record stack is reset to the value in the mark, which discards the records created in the scope. Emptying a slot is sufficient because of the order of removal: the key being removed is the newest key in the index, so it lies on no other key's probe path. Section~\ref{sec:undo} proves this for every non-reordering scheme and shows that no other order has the property. No tombstone is written and no key is shifted.
 
 \subsection{All-or-Nothing Refusal}
@@ -153,7 +154,7 @@ In the default mode the index doubles when it would exceed its load limit. The i
 
 \section{Exact Undo and Safe Deletion Orders}
 \label{sec:undo}
-\strfig{figures/fig_undo.pdf}{Exact undo. Pushing $x$ writes one empty cell; popping $x$ clears it, and the table is identical in every cell to the table before the push.}{fig:undo}
+\strfigwide[0.82\textwidth]{figures/fig_undo.pdf}{Exact undo. Pushing $x$ writes one empty cell; popping $x$ clears it, and the table is identical in every cell to the table before the push.}{fig:undo}
 
 Model the index as a ring of $m$ cells. A rule is \emph{non-reordering} if a key never moves after it is placed and the cell chosen for an insertion depends only on the set of occupied cells and on the key's own probe sequence; this covers linear, quadratic and double hashing and uniform probing, and excludes cuckoo, hopscotch and Robin Hood hashing. The operations are \emph{push}, which inserts a name that is not live, and \emph{pop}, which removes the most recently pushed live name by clearing its cell; a refused push changes nothing. In \st\ the pushes are the \emph{first} declarations of names, since a shadowing declaration needs no index slot. For a sequence $a=(a_1,\ldots,a_t)$ of distinct names, $\Ins(a)$ is the table obtained by inserting them in this order into the empty table.
 
@@ -168,7 +169,7 @@ Induction on the number of operations. A refused push changes nothing. A success
 
 The proof uses neither the lookup rule nor randomness, so it holds for adversarial names. For \st\ it gives a stronger, word-level statement that the test suite checks directly: after any sequence of operations, every word of the state equals the corresponding word of a fresh table into which exactly the still-live scope entries and declarations were made. Two consequences matter below. The table does not age: no sequence of scope entries and exits lengthens probe paths. And in the random-function model, for a schedule that does not depend on the hash, the law of the index at every moment is that of an insertion-only table with the current number of live names, so classical insertion-only results~\cite{knuth3,janson2005} and the refusal law of Section~\ref{sec:bounded} hold at every moment.
 
-\strfig{figures/fig_dep.pdf}{Dependency and orphans. Key $y$ probed cells 2, 3 and 4 before it was stored in cell 5, so it depends on $u$, $v$ and $w$. Clearing $w$ first leaves a hole on its path and orphans $y$; clearing the newest key never does.}{fig:dep}
+\strfigwide[0.56\textwidth]{figures/fig_dep.pdf}{Dependency and orphans. Key $y$ probed cells 2, 3 and 4 before it was stored in cell 5, so it depends on $u$, $v$ and $w$. Clearing $w$ first leaves a hole on its path and orphans $y$; clearing the newest key never does.}{fig:dep}
 
 Why is last-in-first-out order special? For a table built by $\Ins(x_1,\ldots,x_n)$ let $c(x)$ be the cell of $x$ and say that $y$ \emph{depends on} $x$, written $y \lhd x$, if $c(x)$ lies strictly before $c(y)$ on the probe path of $y$ (Fig.~\ref{fig:dep}). A deletion order is \emph{clear-safe} if, after every prefix of it has been cleared, every remaining key is still found.
 
@@ -225,7 +226,7 @@ R_\infty(\alpha,L)\sim\frac{(1-\alpha)\,\rho^{L+1}}{\alpha\sqrt{2\pi}\,(1-\rho)^
 \end{equation}
 The quantity is classical: it is the tail of the unsuccessful-search cost, whose generating function and Poisson limit are given by Janson and Viola~\cite{janson2016} and whose finite-size values follow from Knuth's run-length counting~\cite{knuth3}. What is new here is the short derivation of the explicit sum~\eqref{eq:law}, its validation against the implementation, and its use as a design rule. A Chernoff bound on the number of homes in an interval, which an earlier version of this study used, gives $\rho^{L}/(1-\rho)$; by \eqref{eq:tail} it is loose by a factor growing like $L^{3/2}$. At load $3/4$ and $65\,536$ slots the bound exceeds the exact value by a factor of 315 at $L=64$ and 4\,637 at $L=512$.
 
-\strfig{figures/fig_law.pdf}{Probability that an insertion needs more than $L$ probes ($m = 65\,536$, load $3/4$): exact law (Theorem~\ref{thm:law}), the Chernoff-type bound, and a stored simulation of 10 million samples from 500 tables.}{fig:law}
+\strfigwide[0.72\textwidth]{figures/fig_law.pdf}{Probability that an insertion needs more than $L$ probes ($m = 65\,536$, load $3/4$): exact law (Theorem~\ref{thm:law}), the Chernoff-type bound, and a stored simulation of 10 million samples from 500 tables.}{fig:law}
 
 \begin{table}[t!]
 \strcap{Smallest Probe Limit $L$ With Per-Insertion Refusal Probability at Most $\varepsilon$: Exact Law for Index Sizes $m$, Its Limit, and the Limit the Chernoff-Type Bound Would Require.}
@@ -332,7 +333,7 @@ Project & \st\ (KiB) & Arena (KiB) & Saving (\%) & Bytes per live decl. & \st & 
 
 \subsection{Anatomy of the Saving: An Exact Space Ledger}
 \label{sec:ledger}
-\strfig{figures/fig_ledger.pdf}{Saving of \st's layout over the conventional single-buffer layout on the eight traces, split into the stored hash word and name packing, from the exact space ledger.}{fig:ledger}
+\strfigwide[0.85\textwidth]{figures/fig_ledger.pdf}{Saving of \st's layout over the conventional single-buffer layout on the eight traces, split into the stored hash word and name packing, from the exact space ledger.}{fig:ledger}
 
 Every single-buffer layout considered here uses a number of words that is a sum of per-element costs, as in \eqref{eq:memory}. Let $C_0$ be the conventional layout, $C_1$ the same without the stored hash word, $S_{\mathrm{raw}}$ \st's layout with raw names and $S$ \st\ itself. Subtracting the formulas gives exact identities at every instant:
 \begin{equation}
@@ -440,7 +441,7 @@ Configuration & Ordinary & Colliding & Ratio & Refused & Longest \\
 
 \subsection{The Refusal Law Against the Implementation and the Traces}
 \label{sec:probe}
-\strfig{figures/fig_lawz.pdf}{Agreement of the exact refusal law with the real bounded-mode table: standard scores in seven settings of 400\,000 trials each, all within plus or minus 1.96.}{fig:lawz}
+\strfigwide[0.6\textwidth]{figures/fig_lawz.pdf}{Agreement of the exact refusal law with the real bounded-mode table: standard scores in seven settings of 400\,000 trials each, all within plus or minus 1.96.}{fig:lawz}
 
 Table~\ref{tab:lawcheck} and Fig.~\ref{fig:lawz} compare the exact law with the observed frequency of a refused push in the real table, with the keyed hash and a fresh key per trial. All seven $z$-scores lie within $\pm1.96$ (largest $|z|=1.96$), and a table with the probe limit and one without, run in lock step, never disagreed in the clean trials. The law therefore describes the implementation, not only the model. A stored simulation of \ProbeTotal\ insertions also agrees with it (Fig.~\ref{fig:law}).
 
