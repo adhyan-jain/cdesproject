@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EngineError, health, runOps, type EngineState, type Op } from "./lib/engine";
-import { Header, PAGES, type EngineHealth, type Page } from "./components/Header";
+import { Header, PAGES, SubNav, type EngineHealth, type Page } from "./components/Header";
 import { Controls } from "./components/Controls";
 import { StatusLine, type StatusSource } from "./components/StatusLine";
 import { SymbolTable } from "./components/SymbolTable";
@@ -15,6 +15,9 @@ import { Overview } from "./pages/Overview";
 import { Benchmarks } from "./pages/Benchmarks";
 import { Stress } from "./pages/Stress";
 import { Method } from "./pages/Method";
+import { Analyse } from "./pages/Analyse";
+import { EngineStrip } from "./components/EngineStrip";
+import { useMagnetic, useRevealAll } from "./lib/motion";
 
 const pageFromHash = (): Page => {
   const h = window.location.hash.replace(/^#\/?/, "");
@@ -42,6 +45,8 @@ export default function App() {
     setPage(p);
     window.scrollTo({ top: 0 });
   }, []);
+  useRevealAll(page);
+  useMagnetic();
   const [engine, setEngine] = useState<EngineHealth>({ state: "checking" });
   const [capacity, setCapacity] = useState(DEFAULT_CAPACITY);
   const [state, setState] = useState<EngineState | null>(null);
@@ -116,7 +121,7 @@ export default function App() {
   };
   const compileCode = (): { ops: LineOp[]; src: string } | null => {
     try {
-      const c = { ops: compile(code).ops, src: code };
+      const c = { ops: compile(code, { relaxed: true }).ops, src: code };
       setCompiled(c);
       setCodeDone(0);
       setCodeErrorLine(null);
@@ -233,6 +238,17 @@ export default function App() {
   };
   const closeDemo = () => setDemo({ active: false, step: 0, playing: false });
 
+  const openInLab = (src: string) => {
+    closeDemo();
+    setCode(src);
+    setCompiled(null);
+    setCodeDone(0);
+    setCodeErrorLine(null);
+    setTab("code");
+    go("lab");
+    void guarded(() => reset(capRef.current));
+  };
+
   const ready = engine.state === "ready";
   const controlsDisabled = !ready || busy || !state || (demo.active && demo.playing);
 
@@ -248,8 +264,10 @@ export default function App() {
         demoActive={demo.active}
         busy={busy}
       />
-      <main className="page">
+      <main className={`page page-${page}`}>
+        <SubNav page={page} onPage={go} />
         {page === "overview" && <Overview go={go} />}
+        {page === "analyse" && <Analyse ready={ready} onOpenInLab={openInLab} />}
         {page === "benchmarks" && <Benchmarks ready={ready} />}
         {page === "stress" && <Stress />}
         {page === "method" && <Method />}
@@ -257,6 +275,7 @@ export default function App() {
         {page === "lab" && (
           <>
             <header className="page-head">
+              <p className="meta mono">LAB / LIVE ENGINE · BUFFER / FIXED · ALLOCATOR / NONE</p>
               <h1>Live lab</h1>
               <p>
                 Every operation here runs on the real <code>strata::Table</code> from <code>include/strata/strata.hpp</code>, compiled into a local
@@ -264,6 +283,8 @@ export default function App() {
                 Declare names, open and close scopes, or write a small C program and step through the calls a compiler would make.
               </p>
             </header>
+
+            <EngineStrip health={engine} state={state} lines={lines} />
 
             {demo.active && (
               <GuidedDemo

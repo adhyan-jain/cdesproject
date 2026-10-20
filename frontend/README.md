@@ -16,7 +16,18 @@ Nothing about the table is re-implemented in JavaScript. The page shows:
 * three checks after every request: `check_invariants()`, every decoded record equals what
   `resolve()` returns, and every answer equals `tests/reference_model.hpp`.
 
-The interface has five pages (hash routes, so a page can be linked directly, e.g. `#/benchmarks`):
+The top bar has five groups: **Home**, **Try it** (Analyse your code, Live lab), **Results** (Benchmarks, Stress tests),
+**Theory** and **About**. Pages use hash routes, so each can be linked directly, e.g. `#/benchmarks`.
+
+* **Analyse your code** (`#/analyse`): paste a C program (int, char, float, double, bool, long, short, unsigned, const,
+  static, pointers, arrays, functions, if/while/do/for/switch; not struct/union/enum/typedef). It is translated by
+  `src/lib/minic.ts` in relaxed mode into the calls a compiler makes on its symbol table, those run on the real table in the
+  engine, and `src/lib/analyse.ts` reports every name (type, kind, scope, line, uses, what it hides), names used but not
+  declared, declared twice or never used, and the smallest buffer (256 B, 512 B, … 64 KiB) that refuses nothing.
+* **Home** tells the memory story with a scroll-driven diagram (`src/components/MemoryModel.tsx`, a schematic; the Live lab
+  shows the real decoded buffer). Motion is skipped when the system asks for reduced motion (`src/lib/motion.ts`).
+
+The other pages:
 
 * **Overview**: what STRATA is, a diagram of the buffer layout, the headline figures, STRATA's
   median memory saving against each conventional design, and a plain verdict on speed.
@@ -83,7 +94,7 @@ Other commands, all in `frontend/web`:
 | Command | What it does |
 |---|---|
 | `npm run dev` | development server with hot reload on port 5199 |
-| `npm test` | 33 checks: the engine against the real table, the code window's C subset, the live trace check, the Theory page's formulas and model |
+| `npm test` | 37 checks: the engine against the real table, the code window's C subset (strict and relaxed), the live trace check, the Theory page's formulas and model |
 | `npm run build` | type check and production build into `dist/` |
 | `npm run serve` | serve an existing `dist/` without rebuilding |
 

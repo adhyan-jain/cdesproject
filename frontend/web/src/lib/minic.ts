@@ -12,7 +12,10 @@
 import type { Op } from "./engine";
 import { C_KEYWORDS, encodeValue, TYPES, type TypeName } from "./values";
 
-export type LineOp = Op & { line: number };
+export type LineOp = Op & { line: number; ctype?: string; kind?: "var" | "param" | "function" };
+// relaxed: accept the wider C that people paste (qualifiers, long/short/unsigned, double, pointers, arrays, do/switch).
+// Those types are stored under the nearest of the four tags; ctype keeps the type as written.
+export interface CompileOptions { relaxed?: boolean }
 export interface Compiled { ops: LineOp[] }
 export class CodeError extends Error {
   constructor(message: string, readonly line: number) { super(message); }
@@ -46,6 +49,13 @@ function lex(src: string): Tok[] {
       let j = i + 1;
       while (j < src.length && /[A-Za-z0-9_]/.test(src[j])) j++;
       out.push({ k: "id", t: src.slice(i, j), line });
+      i = j;
+      continue;
+    }
+    if (c === "0" && /[xX]/.test(at(1))) {                // hexadecimal
+      let j = i + 2;
+      while (j < src.length && /[0-9a-fA-FuUlL]/.test(src[j])) j++;
+      out.push({ k: "num", t: src.slice(i, j), line });
       i = j;
       continue;
     }
@@ -89,7 +99,11 @@ function lex(src: string): Tok[] {
 
 const TYPE_WORDS = new Set<string>([...TYPES, "void"]);
 
-export function compile(src: string): Compiled {
+const QUALIFIERS = new Set(["const", "static", "extern", "volatile", "register", "auto", "inline", "restrict"]);
+const INT_WORDS = new Set(["long", "short", "unsigned", "signed"]);
+
+export function compile(src: string, opts: CompileOptions = {}): Compiled {
+  const relaxed = !!opts.relaxed;
   const toks = lex(src);
   let p = 0;
   const ops: LineOp[] = [];
@@ -103,9 +117,9 @@ export function compile(src: string): Compiled {
     if (tok.k !== "p" || tok.t !== t) throw new CodeError(`Expected '${t}'${what ? " " + what : ""} but found ${tok.k === "eof" ? "the end of the code" : `'${tok.t}'`}.`, tok.line);
     return tok;
   };
-  const emit = (op: Op, line: number) => {
+  const emit = (op: Op, line: number, extra?: { ctype?: string; kind?: LineOp["kind"] }) => {
     if (ops.length >= MAX_OPS) throw new CodeError(`The program needs more than ${MAX_OPS} table operations; make it shorter.`, line);
-    ops.push({ ...op, line });
+    ops.push({ ...op, line, ...(relaxed ? extra : undefined) });
   };
   const identName = (tok: Tok) => {
     if (tok.k !== "id") throw new CodeError(`Expected a variable name but found ${tok.k === "eof" ? "the end of the code" : `'${tok.t}'`}.`, tok.line);
@@ -114,8 +128,30 @@ export function compile(src: string): Compiled {
     return tok.t;
   };
   const checkType = (tok: Tok) => {
+    if (relaxed && (QUALIFIERS.has(tok.t) || INT_WORDS.has(tok.t) || tok.t === "double")) return;
+    if (relaxed && ["struct", "union", "enum", "typedef"].includes(tok.t))
+      throw new CodeError(`"${tok.t}" is not analysed yet. The analyser understands variables of the basic C types (int, char, float, double, long, unsigned, ... and pointers or arrays of them).`, tok.line);
     if (UNSUPPORTED_TYPES.has(tok.t)) throw new CodeError(`"${tok.t}" is not supported in this demo; use int, float, char or bool.`, tok.line);
   };
+  const isTypeWord = (t: string) => TYPE_WORDS.has(t) || (relaxed && (QUALIFIERS.has(t) || INT_WORDS.has(t) || t === "double"));
+  // Is the token the start of a type? Strict: one of the four types or void. Relaxed: also qualifiers, long, double, ...
+  const startsType = (tok: Tok) => tok.k === "id" && isTypeWord(tok.t);
+  // Consumes a type and returns its tag and the text as written (relaxed: several words).
+  const typeSpec = (): { tag: TypeName | "void"; text: string } => {
+    const first = next();
+    if (!relaxed) return { tag: first.t as TypeName | "void", text: first.t };
+    const words = [first.t];
+    while (peek().k === "id" && isTypeWord(peek().t)) words.push(next().t);
+    const base = words.filter((w) => !QUALIFIERS.has(w));
+    if (base.length === 0) throw new CodeError(`"${words.join(" ")}" needs a type after it, e.g. "${words.join(" ")} int".`, first.line);
+    const tag: TypeName | "void" =
+      base.includes("void") ? "void" : base.includes("float") || base.includes("double") ? "float" :
+      base.includes("char") ? "char" : base.includes("bool") ? "bool" : "int";
+    return { tag, text: words.join(" ") };
+  };
+  // Relaxed only: the stars of a pointer declarator.
+  const stars = () => { let n = 0; while (relaxed && is("*")) { next(); n++; } return n; };
+  const typeText = (base: string, ptr: number, arr: number) => base + (ptr ? " " + "*".repeat(ptr) : "") + "[]".repeat(arr);
 
   // Tokens of an expression, up to the first of `stops` outside brackets (not consumed).
   const collect = (stops: string[]) => {
@@ -127,7 +163,7 @@ export function compile(src: string): Compiled {
       if (tok.k === "eof") throw new CodeError("The statement never ends; is a ';' or ')' missing?", tok.line);
       const prev = p > from ? toks[p - 1] : null;
       // Two operands side by side ("1 int", "x y") mean a missing ';' (a cast "(int) x" is fine).
-      if (prev && operand(prev) && operand(tok) && prev.t !== "sizeof" && prev.t !== "return")
+      if (prev && operand(prev) && operand(tok) && prev.t !== "sizeof" && prev.t !== "return" && !(relaxed && isTypeWord(prev.t) && isTypeWord(tok.t)))
         throw new CodeError(`Missing ';' after '${prev.t}'.`, prev.line);
       if (tok.k === "p") {
         if (nest === 0 && stops.includes(tok.t)) return toks.slice(from, p);
@@ -153,6 +189,26 @@ export function compile(src: string): Compiled {
     });
   };
   const expr = (stops: string[]) => lookups(collect(stops));
+  // Relaxed only: [size] suffixes of an array; names used in a size are looked up.
+  const arraySuffix = () => {
+    let n = 0;
+    while (relaxed && is("[")) { next(); if (!is("]")) expr(["]"]); expect("]"); n++; }
+    return n;
+  };
+  // Relaxed only: a brace initialiser { 1, x, { 2, y } }; every name in it is looked up.
+  const braceInit = () => {
+    const open = expect("{");
+    let nest = 1;
+    const inner: Tok[] = [];
+    while (nest > 0) {
+      const t = next();
+      if (t.k === "eof") throw new CodeError("This '{' is never closed with '}'.", open.line);
+      if (t.k === "p" && t.t === "{") nest++;
+      else if (t.k === "p" && t.t === "}") nest--;
+      else inner.push(t);
+    }
+    lookups(inner);
+  };
 
   // A literal initialiser converted to the declared type, or null when it is not a literal.
   const literal = (type: TypeName, ex: Tok[]): number | null => {
@@ -164,7 +220,8 @@ export function compile(src: string): Compiled {
     } else if (ex.length === 1 && (ex[0].t === "true" || ex[0].t === "false")) {
       n = ex[0].t === "true" ? 1 : 0;
     } else if ((ex.length === 1 && ex[0].k === "num") || (ex.length === 2 && ex[0].t === "-" && ex[1].k === "num")) {
-      n = Number(ex.map((t) => t.t).join("").replace(/[fFuUlL]+$/, ""));
+      const raw = ex.map((t) => t.t).join("");
+      n = Number(/0[xX]/.test(raw) ? raw.replace(/[uUlL]+$/, "") : raw.replace(/[fFuUlL]+$/, ""));
       if (!Number.isFinite(n)) return null;
     } else {
       return null;
@@ -178,32 +235,43 @@ export function compile(src: string): Compiled {
   };
 
   // int a = 1, b = c, d;
-  const declarators = (type: TypeName) => {
+  const declarators = (type: TypeName, text: string = type) => {
     while (true) {
+      const ptr = stars();
       const nameTok = next();
       const name = identName(nameTok);
-      if (is("[")) throw new CodeError("Arrays are not supported in this demo.", nameTok.line);
-      if (is("=")) {
+      if (is("[") && !relaxed) throw new CodeError("Arrays are not supported in this demo.", nameTok.line);
+      const arr = arraySuffix();
+      const extra = { ctype: typeText(text, ptr, arr), kind: "var" as const };
+      if (relaxed && is("=") && is("{", 1)) {
+        next();
+        braceInit();
+        emit({ op: "declare", name, type: TYPES.indexOf(type), value: 0 }, nameTok.line, extra);
+      } else if ((ptr || arr) && is("=")) {
+        next();
+        lookups(collect([",", ";"]));                      // a pointer is not stored as a literal: only its names are looked up
+        emit({ op: "declare", name, type: TYPES.indexOf(type), value: 0 }, nameTok.line, extra);
+      } else if (is("=")) {
         next();
         const init = collect([",", ";"]);
         if (init.length === 1 && init[0].k === "id" && !["true", "false"].includes(init[0].t)) {
           const before = ops.length;
           lookups(init);                                   // checks it is a usable name
           ops.length = before;                             // the engine looks it up as part of declareFrom
-          emit({ op: "declareFrom", name, type: TYPES.indexOf(type), src: init[0].t }, nameTok.line);
+          emit({ op: "declareFrom", name, type: TYPES.indexOf(type), src: init[0].t }, nameTok.line, extra);
         } else {
           const v = literal(type, init);
           if (v === null) {
             // A general expression is not evaluated: its names are looked up, the value stored is 0.
             lookups(init);
-            emit({ op: "declare", name, type: TYPES.indexOf(type), value: 0 }, nameTok.line);
+            emit({ op: "declare", name, type: TYPES.indexOf(type), value: 0 }, nameTok.line, extra);
           } else {
             if (type === "int" && (v > 2147483647 || v < -2147483648)) throw new CodeError("An int must fit in 32 bits.", nameTok.line);
-            emit({ op: "declare", name, type: TYPES.indexOf(type), value: v }, nameTok.line);
+            emit({ op: "declare", name, type: TYPES.indexOf(type), value: v }, nameTok.line, extra);
           }
         }
       } else {
-        emit({ op: "declare", name, type: TYPES.indexOf(type), value: 0 }, nameTok.line);
+        emit({ op: "declare", name, type: TYPES.indexOf(type), value: 0 }, nameTok.line, extra);
       }
       if (is(",")) { next(); continue; }
       expect(";", "after the declaration");
@@ -227,23 +295,32 @@ export function compile(src: string): Compiled {
     if (tok.k === "p" && tok.t === "}") throw new CodeError("This '}' has no matching '{'.", tok.line);
     if (tok.k === "p" && tok.t === ";") { next(); return; }
     if (tok.k === "id") checkType(tok);
-    if (tok.k === "id" && TYPE_WORDS.has(tok.t)) {
-      next();
-      const type = tok.t as TypeName | "void";
-      // function definition or prototype?
-      if (peek().k === "id" && is("(", 1)) {
+    if (startsType(tok)) {
+      const spec = typeSpec();
+      const type = spec.tag;
+      // function definition or prototype? (relaxed: it may return a pointer)
+      let fptr = 0;
+      while (relaxed && is("*", fptr)) fptr++;
+      if (peek(fptr).k === "id" && is("(", fptr + 1)) {
+        stars();
         const nameTok = next();
         const name = identName(nameTok);
         if (depth > 0) throw new CodeError("Functions can only be defined at the top level.", nameTok.line);
-        emit({ op: "declare", name, type: type === "void" ? 0 : TYPES.indexOf(type), value: 0 }, nameTok.line);
+        emit({ op: "declare", name, type: type === "void" ? 0 : TYPES.indexOf(type), value: 0 }, nameTok.line, { ctype: typeText(spec.text, fptr, 0), kind: "function" });
         expect("(");
-        const params: { name: string; type: TypeName; line: number }[] = [];
+        const params: { name: string; type: TypeName; line: number; ctype: string }[] = [];
         if (peek().t === "void" && is(")", 1)) next();
         while (!is(")")) {
-          const pt = next();
+          const pt = peek();
           checkType(pt);
-          if (pt.k !== "id" || !TYPES.includes(pt.t as TypeName)) throw new CodeError("Parameters must be int, float, char or bool.", pt.line);
-          params.push({ type: pt.t as TypeName, name: identName(next()), line: pt.line });
+          if (relaxed ? !startsType(pt) : pt.k !== "id" || !TYPES.includes(pt.t as TypeName))
+            throw new CodeError(relaxed ? `Expected a parameter type but found '${pt.t}'.` : "Parameters must be int, float, char or bool.", pt.line);
+          const ps = typeSpec();
+          const pp = stars();
+          if (ps.tag === "void" && !pp) throw new CodeError("A parameter cannot have type void.", pt.line);
+          const pname = identName(next());
+          const pa = arraySuffix();
+          params.push({ type: ps.tag === "void" ? "int" : ps.tag, name: pname, line: pt.line, ctype: typeText(ps.text, pp, pa) });
           if (is(",")) next(); else if (!is(")")) throw new CodeError("Expected ',' or ')' in the parameter list.", peek().line);
         }
         expect(")");
@@ -251,14 +328,33 @@ export function compile(src: string): Compiled {
         const open = expect("{", "to start the function body");
         emit({ op: "enter" }, open.line);
         depth++;
-        for (const prm of params) emit({ op: "declare", name: prm.name, type: TYPES.indexOf(prm.type), value: 0 }, prm.line);
+        for (const prm of params) emit({ op: "declare", name: prm.name, type: TYPES.indexOf(prm.type), value: 0 }, prm.line, { ctype: prm.ctype, kind: "param" });
         block(open.line, true);
         return;
       }
-      if (type === "void") throw new CodeError("A variable cannot have type void.", tok.line);
-      declarators(type);
+      if (type === "void" && !is("*")) throw new CodeError("A variable cannot have type void.", tok.line);
+      declarators(type === "void" ? "int" : type, spec.text);
       return;
     }
+    if (relaxed && tok.k === "id" && tok.t === "do") {
+      next();
+      statement();
+      if (peek().t !== "while") throw new CodeError("Expected 'while' after the body of do.", peek().line);
+      next(); expect("(", "after while"); expr([")"]); expect(")"); expect(";", "after do ... while (...)");
+      return;
+    }
+    if (relaxed && tok.k === "id" && tok.t === "switch") {
+      next(); expect("(", "after switch"); expr([")"]); expect(")"); statement();
+      return;
+    }
+    if (relaxed && tok.k === "id" && (tok.t === "case" || tok.t === "default")) {
+      next();
+      if (tok.t === "case") expr([":"]);
+      expect(":", `after ${tok.t}`);
+      return;
+    }
+    if (relaxed && tok.k === "id" && tok.t === "goto") { next(); identName(next()); expect(";"); return; }
+    if (relaxed && tok.k === "id" && is(":", 1) && !C_KEYWORDS.has(tok.t)) { next(); next(); return; }   // a label
     if (tok.k === "id" && (tok.t === "if" || tok.t === "while")) {
       next();
       expect("(", `after ${tok.t}`);
@@ -273,10 +369,12 @@ export function compile(src: string): Compiled {
       expect("(", "after for");
       emit({ op: "enter" }, tok.line);                     // the loop variable has its own scope
       depth++;
-      if (peek().k === "id" && TYPE_WORDS.has(peek().t)) {
-        const tt = next();
-        if (tt.t === "void") throw new CodeError("A variable cannot have type void.", tt.line);
-        declarators(tt.t as TypeName);
+      if (startsType(peek())) {
+        const tt = peek();
+        checkType(tt);
+        const fs = typeSpec();
+        if (fs.tag === "void") throw new CodeError("A variable cannot have type void.", tt.line);
+        declarators(fs.tag, fs.text);
       } else { expr([";"]); expect(";"); }
       expr([";"]); expect(";");
       expr([")"]); expect(")");

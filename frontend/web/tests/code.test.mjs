@@ -96,3 +96,31 @@ test("live trace check: zlib replays with no wrong answer and less memory than t
   assert.ok(r.strata.peakBytes < r.arena.peakBytes);
   assert.throws(() => traceScript("../../etc/passwd"), /unknown trace/);
 });
+
+// ---- relaxed mode (Analyse your code): the wider C people paste ----------------------------
+const relaxed = (src) => compile(src, { relaxed: true }).ops;
+
+test("relaxed: qualifiers, long/unsigned/double, pointers and arrays are understood", () => {
+  const ops = relaxed("static const unsigned long m = 0x1F;\ndouble f(const int *p, int n[]) { long s = 0; return s; }\nint a[3] = {1, m, 2};\nchar *s = \"x\";");
+  assert.deepEqual(short(ops), ["D m=31", "D f=0", "E", "D p=0", "D n=0", "D s=0", "L s", "X", "L m", "D a=0", "D s=0"]);
+  assert.deepEqual(ops.filter((o) => o.ctype).map((o) => o.ctype), ["static const unsigned long", "double", "const int *", "int[]", "long", "int[]", "char *"]);
+  assert.deepEqual(ops.filter((o) => o.kind).map((o) => o.kind), ["var", "function", "param", "param", "var", "var", "var"]);
+});
+
+test("relaxed: do, switch, case and casts", () => {
+  assert.deepEqual(short(relaxed("int x = 1;\ndo { x++; } while (x < 3);\nswitch (x) { case 1: x = (unsigned long) x; break; default: break; }")),
+    ["D x=1", "E", "L x", "X", "L x", "L x", "E", "L x", "L x", "X"]);
+});
+
+test("relaxed: still reports real mistakes, and struct is named as unsupported", () => {
+  assert.throws(() => relaxed("int x = 1\nint y;"), (e) => e instanceof CodeError && e.line === 1 && /Missing ';'/.test(e.message));
+  assert.throws(() => relaxed("struct p { int x; };"), (e) => e instanceof CodeError && /not analysed yet/.test(e.message));
+});
+
+test("relaxed: a pasted program runs on the real table and every check passes", async () => {
+  const ops = relaxed("long total = 0;\nint main(void) {\n  int total = 5;\n  double avg = total;\n  return (int) avg;\n}\n");
+  const r = await runEngine(toScript({ capacity: 512, ops: ops.map(({ line, ctype, kind, ...o }) => o) }));
+  assert.equal(r.ok, true);
+  assert.deepEqual([r.checks.invariants, r.checks.resolveAgrees, r.checks.modelAgrees], [true, true, true]);
+  assert.equal(r.ops.find((o) => o.name === "total" && o.op === "D" && o.depthAfter === 1).effect, "shadow");
+});

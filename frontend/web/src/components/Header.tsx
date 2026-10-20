@@ -1,13 +1,23 @@
 export type EngineHealth = { state: "checking" } | { state: "ready"; compiler: string } | { state: "down" };
-export type Page = "overview" | "lab" | "theory" | "benchmarks" | "stress" | "method";
+export type Page = "overview" | "analyse" | "lab" | "theory" | "benchmarks" | "stress" | "method";
 export const PAGES: { id: Page; label: string }[] = [
-  { id: "overview", label: "Overview" },
+  { id: "overview", label: "Home" },
+  { id: "analyse", label: "Analyse your code" },
   { id: "lab", label: "Live lab" },
-  { id: "theory", label: "Theory" },
   { id: "benchmarks", label: "Benchmarks" },
   { id: "stress", label: "Stress tests" },
-  { id: "method", label: "Method & limits" },
+  { id: "theory", label: "Theory" },
+  { id: "method", label: "About" },
 ];
+// The top bar shows five groups; a group with several pages gets a row of sub-tabs (SubNav).
+export const GROUPS: { label: string; pages: Page[]; hint: string }[] = [
+  { label: "Home", pages: ["overview"], hint: "What STRATA is, in one page" },
+  { label: "Try it", pages: ["analyse", "lab"], hint: "Paste your code, or drive the table by hand" },
+  { label: "Results", pages: ["benchmarks", "stress"], hint: "What was measured" },
+  { label: "Theory", pages: ["theory"], hint: "What was proved" },
+  { label: "About", pages: ["method"], hint: "Method, limits, team" },
+];
+export const groupOf = (p: Page) => GROUPS.find((g) => g.pages.includes(p))!;
 
 export function Logo() {
   // Four memory regions stacked into one block: index, records, undo, free.
@@ -33,6 +43,22 @@ interface Props {
   busy: boolean;
 }
 
+export function SubNav({ page, onPage }: { page: Page; onPage: (p: Page) => void }) {
+  const g = groupOf(page);
+  if (g.pages.length < 2) return null;
+  return (
+    <nav className="subnav" aria-label={g.label}>
+      {g.pages.map((id) => (
+        <a key={id} href={`#/${id}`} className={page === id ? "on" : ""} aria-current={page === id ? "page" : undefined}
+          onClick={(e) => { e.preventDefault(); onPage(id); }}>
+          {PAGES.find((p) => p.id === id)!.label}
+        </a>
+      ))}
+      <span className="subnav-hint">{g.hint}</span>
+    </nav>
+  );
+}
+
 export function Header({ page, onPage, health, onRetry, onRunDemo, onReset, demoActive, busy }: Props) {
   const ready = health.state === "ready";
   return (
@@ -45,12 +71,15 @@ export function Header({ page, onPage, health, onRetry, onRunDemo, onReset, demo
           <span className="brand-sub">Compiler Memory Lab</span>
         </button>
         <nav className="nav" aria-label="Sections">
-          {PAGES.map((p) => (
-            <a key={p.id} href={`#/${p.id}`} className={page === p.id ? "on" : ""} aria-current={page === p.id ? "page" : undefined}
-              onClick={(e) => { e.preventDefault(); onPage(p.id); }}>
-              {p.label}
-            </a>
-          ))}
+          {GROUPS.map((g) => {
+            const on = g.pages.includes(page);
+            return (
+              <a key={g.label} href={`#/${g.pages[0]}`} className={on ? "on" : ""} aria-current={on ? "page" : undefined} title={g.hint}
+                onClick={(e) => { e.preventDefault(); onPage(g.pages[0]); }}>
+                {g.label}
+              </a>
+            );
+          })}
         </nav>
         <div className="topbar-actions">
           <div className={`engine-pill engine-${health.state}`} role="status" aria-live="polite">

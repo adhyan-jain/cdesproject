@@ -58,7 +58,7 @@ export function ChartCard({ title, sub, children, table, footer, actions }: {
 }) {
   const [view, setView] = useState<"chart" | "table">("chart");
   return (
-    <article className="card viz-card">
+    <article className="card viz-card reveal">
       <div className="viz-head">
         <div>
           <h3>{title}</h3>
