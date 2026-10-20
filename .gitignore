@@ -24,3 +24,9 @@ theory/paper/*.blg
 theory/paper/*.fls
 theory/paper/*.fdb_latexmk
 theory/template/build/
+
+# IEEE Access final manuscript: LaTeX build products (main.pdf and main.bbl are kept)
+manuscript/ieee_access/main.log
+manuscript/ieee_access/main.aux
+manuscript/ieee_access/main.out
+manuscript/ieee_access/main.blg
