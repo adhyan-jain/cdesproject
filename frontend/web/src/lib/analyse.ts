@@ -5,7 +5,7 @@
 import { runOps, type EngineState, type Op, type OpResult } from "./engine";
 import { compile, type LineOp } from "./minic";
 
-export const BUFFER_STEPS = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536];
+const BUFFER_STEPS = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536];
 
 export interface NameInfo {
   id: number;

@@ -1,5 +1,0 @@
-chibicc: https://github.com/rui314/chibicc commit 90d1f7f (MIT), patched by tools/chibicc/apply_patch.py
-builds: cc -std=c11 -O2; back ends g++ -std=c++14 -O2 -fno-exceptions -fno-rtti
-rounds: 21 (+1 warm-up); in each round every build compiles all units of a project, order rotated
-kernel: Linux 6.18.33.2-microsoft-standard-WSL2
-host cc: cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0

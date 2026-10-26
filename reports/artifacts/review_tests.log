@@ -1,0 +1,79 @@
+T1 whole-buffer state equality after every scope exit
+  fixed 4096 B, packed               exits 6457   refused ops 0      | (a1) 6457/6457  (a2) 4439/6457 | (b) idx-equal 4439/4439, ident-only 6457/6457 | (c) 0/6457 | (d) digest 6457/6457 region 6457/6457 literal 0/6457
+                                     natural replay has another index size at 2018 exits, another buffer size at 0; peak/rebuilds/longest_probe differ at 6457/2018/4275; gap residue 359695 of 5283040 words (6457 exits); reserved word intact 6457/6457; bytes beyond cap intact 6457/6457; diffs outside gap in (d): 0
+  fixed 4099 B, raw, 3 tail bytes    exits 6487   refused ops 0      | (a1) 6487/6487  (a2) 4420/6487 | (b) idx-equal 4420/4420, ident-only 6487/6487 | (c) 0/6487 | (d) digest 6487/6487 region 6487/6487 literal 0/6487
+                                     natural replay has another index size at 2067 exits, another buffer size at 0; peak/rebuilds/longest_probe differ at 6487/2067/4481; gap residue 382124 of 5309637 words (6487 exits); reserved word intact 6487/6487; bytes beyond cap intact 6487/6487; diffs outside gap in (d): 0
+  fixed 6000 B, sparse index         exits 6405   refused ops 0      | (a1) 6405/6405  (a2) 4219/6405 | (b) idx-equal 4219/4219, ident-only 6405/6405 | (c) 0/6405 | (d) digest 6405/6405 region 6405/6405 literal 0/6405
+                                     natural replay has another index size at 2186 exits, another buffer size at 0; peak/rebuilds/longest_probe differ at 6405/2186/2949; gap residue 354273 of 8110673 words (6405 exits); reserved word intact 6405/6405; bytes beyond cap intact 6405/6405; diffs outside gap in (d): 0
+  bounded 64 slots, 2048 B           exits 6436   refused ops 0      | (a1) 6436/6436  (a2) 6436/6436 | (b) idx-equal 6436/6436, ident-only 6436/6436 | (c) 0/6436 | (d) digest 6436/6436 region 6436/6436 literal 0/6436
+                                     natural replay has another index size at 0 exits, another buffer size at 0; peak/rebuilds/longest_probe differ at 6436/0/3501; gap residue 359554 of 1926678 words (6436 exits); reserved word intact 6436/6436; bytes beyond cap intact 6436/6436; diffs outside gap in (d): 0
+  fixed 640 B (refusals occur)       exits 6454   refused ops 11835  | (a1) 6454/6454  (a2) 5412/6454 | (b) idx-equal 5412/5412, ident-only 6454/6454 | (c) 0/6454 | (d) digest 6454/6454 region 6454/6454 literal 0/6454
+                                     natural replay has another index size at 1042 exits, another buffer size at 0; peak/rebuilds/longest_probe differ at 6454/1042/3765; gap residue 142804 of 215203 words (6454 exits); reserved word intact 6454/6454; bytes beyond cap intact 6454/6454; diffs outside gap in (d): 0
+  bounded 16 slots, probe 3, 512 B   exits 8497   refused ops 14682  | (a1) 8497/8497  (a2) 8497/8497 | (b) idx-equal 8497/8497, ident-only 8497/8497 | (c) 0/8497 | (d) digest 8497/8497 region 8497/8497 literal 0/8497
+                                     natural replay has another index size at 0 exits, another buffer size at 0; peak/rebuilds/longest_probe differ at 8497/0/2144; gap residue 197785 of 306548 words (8497 exits); reserved word intact 8497/8497; bytes beyond cap intact 8497/8497; diffs outside gap in (d): 0
+  bounded 32 slots, probe 6, keyed   exits 6485   refused ops 3553   | (a1) 6485/6485  (a2) 6485/6485 | (b) idx-equal 6485/6485, ident-only 6485/6485 | (c) 0/6485 | (d) digest 6485/6485 region 6485/6485 literal 0/6485
+                                     natural replay has another index size at 0 exits, another buffer size at 0; peak/rebuilds/longest_probe differ at 6485/0/3769; gap residue 287177 of 2296200 words (6485 exits); reserved word intact 6485/6485; bytes beyond cap intact 6485/6485; diffs outside gap in (d): 0
+  growable 128 B, shrink on          exits 6457   refused ops 0      | (a1) 6457/6457  (a2) 2481/6457 | (b) idx-equal 4085/4085, ident-only 6457/6457 | (c) 0/2614 | (d) digest 6457/6457 region 6457/6457 literal 0/6457
+                                     natural replay has another index size at 2372 exits, another buffer size at 3843; peak/rebuilds/longest_probe differ at 6457/4732/4437; gap residue 605725 of 722052 words (6457 exits); reserved word intact 6457/6457; bytes beyond cap intact 6457/6457; diffs outside gap in (d): 0
+  growable 64 B, no shrink, sparse, raw exits 6430   refused ops 0      | (a1) 6430/6430  (a2) 2527/6430 | (b) idx-equal 4048/4048, ident-only 6430/6430 | (c) 0/2591 | (d) digest 6430/6430 region 6430/6430 literal 0/6430
+                                     natural replay has another index size at 2382 exits, another buffer size at 3839; peak/rebuilds/longest_probe differ at 6430/4308/4293; gap residue 622448 of 813387 words (6430 exits); reserved word intact 6430/6430; bytes beyond cap intact 6430/6430; diffs outside gap in (d): 0
+  growable <= 8 KiB, keyed           exits 6474   refused ops 0      | (a1) 6474/6474  (a2) 2664/6474 | (b) idx-equal 4596/4596, ident-only 6474/6474 | (c) 0/2768 | (d) digest 6474/6474 region 6474/6474 literal 0/6474
+                                     natural replay has another index size at 1878 exits, another buffer size at 3706; peak/rebuilds/longest_probe differ at 6474/4751/4274; gap residue 614417 of 737731 words (6474 exits); reserved word intact 6474/6474; bytes beyond cap intact 6474/6474; diffs outside gap in (d): 0
+  dead-byte demonstration (bounded, 16 slots, 64 words):
+    after exit_scope(): freed index slot -> 0 (cleared); dead identifier record words [00000003 00040c01 00003081] kept;
+    dead undo words (slot entry, shadow entry x3, mark x2, earlier slot entry) kept: 00000009 01000001 00000001 00000000 00000004 00000000 0000000e -> freed bytes are NOT cleared
+  TOTAL exits 66582
+  (a) logical state (size, depth, distinct names, every name resolves as in the model and in the fresh table; invariants): holds 66582/66582  -> ALWAYS
+      digest equal to the natural fresh replay: 47580/66582  (differs exactly when index or buffer size differs: index differs at 13945, buffer differs at 11388)
+  (b) allocated region (index + identifier stack + undo stack, reserved word excluded): equal in 52637/52637 exits where the index has the same size -> ALWAYS then;
+      the identifier stack alone is equal in 66582/66582 exits regardless of index or buffer size; index words and slot undo entries are not comparable across index sizes
+  (c) literally every supplied word vs the natural fresh table (same buffer size only): equal in 0/55194 -> NOT always (dead data in the free gap)
+  (d) vs fresh bounded table with the same index size and buffer size: digest 66582/66582, allocated region 66582/66582 -> ALWAYS; literal every word 0/66582;
+      words that differ outside the free gap between the stacks: 0 exits
+  free gap after exits: 3926002 of 25721149 words still hold non-fill (dead) data (15.3%), in 66582 of 66582 exits; reserved identifier word 0 never written: 66582/66582; bytes beyond the used words untouched: 66582/66582
+T2 refusal atomicity at every reservation boundary
+  fixed packed                                 caps 32..220 words: 317520 ops, 103648 refusals (no memory 70714, other 32934), all atomic
+  fixed raw                                    caps 32..220 words: 317520 ops, 113317 refusals (no memory 79612, other 33705), all atomic
+  fixed sparse index                           caps 32..220 words: 317520 ops, 108736 refusals (no memory 75333, other 33403), all atomic
+  bounded 16 slots                             caps 32..220 words: 317520 ops, 104229 refusals (no memory 71205, other 33024), all atomic
+  bounded 16 slots, probe 2, all names collide caps 32..220 words: 317520 ops, 177716 refusals (no memory 17518, other 160198), all atomic
+  bounded 32 slots, probe 3, keyed             caps 48..240 words: 324240 ops, 103365 refusals (no memory 66866, other 36499), all atomic
+  exact thresholds (bounded 16 slots): 65688 probes at caps 32..150 words, 16391 accepted, 49297 refused (all atomic); probes with free == need: 529 (all accepted), free == need-1: 1592 (all refused)
+  growable (budget sweep 128..1500 B step 4, 3 variants, + allocator failure at call 1..12): 95280 ops, 23631 refusals (152 from injected failures), all atomic
+  status precedence when several limits apply at once (each row: observed status; refusals verified atomic by memcmp):
+    situation                                                      status
+    empty name, memory available                                   kEmptyName
+    empty name AND no memory                                       kEmptyName
+    name of 256 bytes, memory available                            kNameTooLong
+    name of 256 bytes AND no memory                                kNameTooLong
+    new valid name AND no memory                                   kNoMemory
+    redeclare in current scope AND no memory (needs nothing)       kRedeclared
+    enter_scope AND no memory (needs 2 words, 1 free)              kNoMemory
+    shadow declaration, 2 words free (needs 3)                     kNoMemory
+    invalid table (31 words) AND empty name                        kNoMemory
+    invalid table AND exit_scope                                   kNoMemory
+    exit_scope at the outermost scope                              kNoScope
+    probe limit hit, memory available                              kProbeLimit
+    probe limit hit AND no memory (needs 4 words, 1 free)          kNoMemory
+    shadow declaration of a visible name under a probe limit       kOk
+    index load limit (12 of 16 slots), memory available            kNoMemory
+    depth sweep, buffer 32782 words (one word short of 16383 marks): entered 16382 scopes, then kNoMemory (repeat: kNoMemory)
+    depth sweep, buffer 32783 words (exactly 16383 marks, 0 free): entered 16383 scopes, then kTooDeep (repeat: kTooDeep)
+    depth sweep, buffer 32883 words (100 spare words): entered 16383 scopes, then kTooDeep (repeat: kTooDeep)
+    (the 16383rd enter needs 2 words: with exactly 16383 marks of room, the 16384th enter is both too deep and out of memory -> kTooDeep)
+  refusals checked in T2 by direct memcmp of the whole buffer + Options/accessors: 783955 (no memory 433364, name too long 58011, empty 58210, no scope 100636, too deep 2, probe limit 133732)
+T3 encoding tests
+  host is little-endian (raw names are copied with memcpy; HalfSipHash agreement is claimed for little-endian hosts only)
+  round trip of lengths 1..255, packed and raw: encoding, padding bits, declare/resolve, type and value
+  1030 distinct names (padding families, every string over {NUL,'a'} up to 8 bytes, all single bytes 1..255, high-bit bytes in the middle/front) are all distinct, packed mode
+  same 1030 names, raw mode: all distinct
+  maximum depth 16383: 16383 nested scopes with a shadowing declaration at each, kTooDeep at 16384, unwinds exactly; depth field 0x3FFF stored in bits 18-31
+  stored-word layout verified in a bounded table (16 slots, buffer words 0..63):
+    index word  = fingerprint(hash>>24, 0 mapped to 1) << 24 | identifier reference (1 = first record), at slot hash & 15: 0xdc000001 at slot 9
+    record      = [value][meta][name words]; meta = n | raw<<7 | (len&3)<<8 | type<<10 | depth<<18: 0x00029401; packed 'abc' = 0x00003081
+    undo, new name (1 word): index slot 9
+    shadow undo entry (3 words, lowest address first): [ref | 1<<24 = 0x01000001][hidden value = -2][hidden type<<10|depth<<18 = 0x00029400]
+    scope marks: first [itop 4][prev 0]; second [itop 4][prev = undo position of first mark = 3]
+  reference range: static index of 2^19 slots, 255-byte raw names (66 words each): 242580 names, identifier stack ends at word 16010281 of the 0xFFFFFF reference range (refusal is kNoMemory from the buffer, not from the 24-bit field)
+  64 MiB limit: 128 MiB offered, capacity used = 67108860 bytes = 0xFFFFFF words (2^24 - 1, i.e. 64 MiB - 4 B); filled with 2516582 distinct names until kNoMemory; identifier stack 10066329 words (max reference reached 10066329 of 0xFFFFFF); 16777217 words beyond the limit untouched
+1673523 checks, 0 failed

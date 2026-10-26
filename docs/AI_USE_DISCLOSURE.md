@@ -19,10 +19,12 @@ output except by running the programs listed below, and it can be wrong.
 
 ## 2. What the AI did in the 2026-10-17 session
 
+A later session (October 2026, Claude Code, model Sonnet 5.5, with subagents) revised the IEEE Access manuscript in response to an instructor's reviewer report: it extended the refusal-law experiment, wrote `tests/test_review.cpp`, the stronger baseline `benchmarks/baselines/arena_chain_nohash.hpp`, the timing-session scripts, `docs/EVIDENCE.md` and `docs/REVIEW_MANIFEST.md`, rewrote parts of the article, and cleaned the repository. Each result was produced by a program that can be re-run; the authors must read and verify the text before submission.
+
 | Output | What the AI did | How it was checked, by running programs (not by reading) |
 |---|---|---|
-| `review/ADVERSARIAL_REVIEW.md` | read the paper, library, correctness and probe documents; re-ran the test suite; wrote the findings | `bash scripts/test.sh`: 2 732 358 checks, 0 failed; the scripts in `review/` |
-| `theory/NOVELTY.md`, `theory/PROOF_AUDIT.md` | assessed novelty and audited the proofs (by the same assistant that wrote them, so not independent of its blind spots) | the programs in `theory/verify/`, including an independent re-derivation of Theorem 7 |
+| adversarial review report (removed in the repository cleanup; git tag `pre-cleanup`) | read the paper, library, correctness and probe documents; re-ran the test suite; wrote the findings | `bash scripts/test.sh`: 2 732 358 checks, 0 failed; the scripts in `review/` |
+| novelty and proof-audit notes (removed in the repository cleanup; git tag `pre-cleanup`) | assessed novelty and audited the proofs (by the same assistant that wrote them, so not independent of its blind spots) | the programs in `theory/verify/`, including an independent re-derivation of Theorem 7 |
 | `theory/verify/*` (Python, C++) | wrote every verification program | each program fails (non-zero exit) on a mismatch; all pass; `bash theory/verify/run_all.sh` |
 | Theorems and proofs in `theory/paper/main.tex` | proposed the statements, derived the proofs, wrote the text | exhaustive enumeration in exact rational arithmetic (258 triples), 488 919 state comparisons for five insertion rules, exhaustive check of the exactness theorem, a z-test of the law against the real table, an independent reproduction of 24 measured buffer sizes |
 | Literature checks | ran web searches; read primary text where stated in `theory/paper/refs.bib`; verified every DOI-backed entry against Crossref | the `note` fields in `refs.bib` say what was and was not read |
@@ -71,5 +73,4 @@ heading above; the facts in sections 1-3 are what the form needs.
 
 ## 6. Items only a human can complete
 
-Listed in `submission/SIGNOFF_CHECKLIST.md` (items for the earlier empirical paper). For the theory
-manuscript the one that matters most: each author reads and can explain the proofs.
+The sign-off checklist of the earlier empirical paper was removed in the repository cleanup (git tag `pre-cleanup`). For the IEEE Access manuscript the one that matters most: each author reads and can explain the proofs.

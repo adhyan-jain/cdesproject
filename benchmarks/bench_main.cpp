@@ -178,11 +178,12 @@ static bool want(const std::string& list, const char* id) {
 
 int main(int argc, char** argv) {
     std::string path, name, impls, summary, raw;
-    int reps = 15, warmup = 2;
+    int reps = 15, warmup = 2, rot = 0;
     for (int i = 1; i + 1 < argc; i += 2) {
         std::string a = argv[i], v = argv[i + 1];
         if (a == "--trace") path = v; else if (a == "--name") name = v; else if (a == "--impls") impls = v;
         else if (a == "--reps") reps = std::atoi(v.c_str()); else if (a == "--warmup") warmup = std::atoi(v.c_str());
+        else if (a == "--rot") rot = std::atoi(v.c_str());   // review sessions: shift the rotation of the start order (default 0)
         else if (a == "--summary") summary = v; else if (a == "--raw") raw = v;
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return 2; }
     }
@@ -203,6 +204,7 @@ int main(int argc, char** argv) {
     RUN(StrataSparse)
     RUN(StrataKeyed)
     RUN(ArenaChain)
+    RUN(ArenaChainNoHash)
     RUN(ScopeMapStack)
     RUN(StdUndoLog)
 #ifdef CDES_HAVE_PHMAP
@@ -217,7 +219,7 @@ int main(int argc, char** argv) {
 
     // Interleaved rounds: every table once per round, starting one position later each round.
     for (int round = -warmup; round < reps; ++round) {
-        size_t n = timers.size(), first = static_cast<size_t>(round + warmup) % (n ? n : 1);
+        size_t n = timers.size(), first = static_cast<size_t>(round + warmup + rot) % (n ? n : 1);
         for (size_t k = 0; k < n; ++k) {
             size_t i = (first + k) % n;
             double ns = timers[i](tr);

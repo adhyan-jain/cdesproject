@@ -47,7 +47,7 @@
   opt-in defences exist: a keyed hash (`Options::keyed`) and, in fixed mode, a static index
   with a probe limit (`Options::index_slots`, `Options::max_probe`) that refuses instead of
   slowing down. They are off by default, the key must be supplied by the caller, and the
-  keyed hash costs replay time (see `reports/PERFORMANCE_REPORT.md`). The baseline
+  keyed hash costs replay time (see `docs/RESULTS.md`). The baseline
   `arena_chain` uses the same unkeyed mixer and has no such option.
 
 ## Design limits
@@ -95,7 +95,7 @@
 
 ## Unverified
 
-* Reference details marked "[book]" in `RELATED_WORK.md` were not re-read.
+* Reference details marked "[book]" in the related-work notes (removed in the repository cleanup, tag `pre-cleanup`) were not re-read.
 * The exception-safety defect of METIS-X (audit item D3) was established by reading the code,
   not by triggering it.
 * The correctness argument in `CORRECTNESS.md` is informal; nothing was machine-checked.

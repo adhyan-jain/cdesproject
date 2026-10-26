@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical checks of manuscript/overleaf/main.tex against the IEEE Access rules.
+"""Mechanical checks of paper/main.tex (or a directory given as argument) against the IEEE Access rules.
 
     python manuscript/tools/check_manuscript.py
 

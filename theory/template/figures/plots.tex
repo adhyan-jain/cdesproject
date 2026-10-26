@@ -15,7 +15,7 @@
 \begin{tikzpicture}
 \begin{axis}[ymode=log,xlabel={probe limit $L$},ylabel={refusal probability},legend pos=south west,ymin=1e-12,ymax=2,xmin=0,xmax=600]
 \addplot[thick,blue] table[col sep=comma,x=L,y=exact]{data/fig_law.csv};
-\addlegendentry{exact law (Theorem 7)}
+\addlegendentry{exact law}
 \addplot[thick,red,dashed] table[col sep=comma,x=L,y=chernoff]{data/fig_law.csv};
 \addlegendentry{Chernoff-type bound}
 \addplot[only marks,mark=*,black,mark size=1.9pt] table[col sep=comma,x=L,y=simulated]{data/fig_sim.csv};
@@ -40,7 +40,7 @@
 \begin{axis}[ybar,bar width=11pt,xlabel={target failure probability of the whole fill ($m=4096$)},ylabel={smallest $L$},symbolic x coords={a,b,c},xtick=data,xticklabels={$10^{-2}$,$10^{-4}$,$10^{-6}$},
   legend pos=north west,ymin=0,ymax=480,enlarge x limits=0.28,nodes near coords,every node near coord/.append style={font=\scriptsize}]
 \addplot[fill=blue!55] table[col sep=comma,x=eps,y=exact]{data/fill.csv};
-\addlegendentry{exact (Theorem 10)}
+\addlegendentry{exact whole-fill law}
 \addplot[fill=teal!55] table[col sep=comma,x=eps,y=sum]{data/fill.csv};
 \addlegendentry{sum of per-push bounds}
 \addplot[fill=red!55] table[col sep=comma,x=eps,y=union]{data/fill.csv};

@@ -1931,26 +1931,20 @@
       "label": "Unit and differential test checks",
       "value": 2732358,
       "note": "0 failed",
-      "source": "NOVELTY_GATE.md"
+      "source": "reports/artifacts/final_verification.log"
     },
     {
       "label": "Exhaustively enumerated operation sequences",
-      "value": 80600000,
+      "value": 80621568,
       "note": "no failure",
-      "source": "reports/FINAL_AUDIT_REPORT.md"
-    },
-    {
-      "label": "Fuzzing runs over the audit",
-      "value": 14500000,
-      "note": "no failure",
-      "source": "reports/ROUND_2_ADDENDUM.md"
+      "source": "reports/artifacts/exhaustive_small.log"
     },
     {
       "label": "Injected defects caught by the fuzzer",
-      "value": 6,
-      "of": 6,
+      "value": 9,
+      "of": 9,
       "note": "each within 0.2 s",
-      "source": "reports/TEST_RESULTS.md"
+      "source": "reports/artifacts/mutation_check.log"
     }
   ]
 }

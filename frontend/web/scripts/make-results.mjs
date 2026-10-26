@@ -162,13 +162,12 @@ const flood = csv(join(results, "hardening", "flood.csv")).map((r) => ({
 
 // ---- test counts that live in the reports (with their sources) ------------------------------
 const TESTS = [
-  { label: "Unit and differential test checks", value: 2732358, note: "0 failed", source: "NOVELTY_GATE.md" },
-  { label: "Exhaustively enumerated operation sequences", value: 80.6e6, note: "no failure", source: "reports/FINAL_AUDIT_REPORT.md" },
-  { label: "Fuzzing runs over the audit", value: 14.5e6, note: "no failure", source: "reports/ROUND_2_ADDENDUM.md" },
-  { label: "Injected defects caught by the fuzzer", value: 6, of: 6, note: "each within 0.2 s", source: "reports/TEST_RESULTS.md" },
+  { label: "Unit and differential test checks", value: 2732358, note: "0 failed", source: "reports/artifacts/final_verification.log" },
+  { label: "Exhaustively enumerated operation sequences", value: 80621568, note: "no failure", source: "reports/artifacts/exhaustive_small.log" },
+  { label: "Injected defects caught by the fuzzer", value: 9, of: 9, note: "each within 0.2 s", source: "reports/artifacts/mutation_check.log" },
 ];
 // Fail loudly if a cited figure is no longer in its source file.
-const needles = { "NOVELTY_GATE.md": "2 732 358", "reports/FINAL_AUDIT_REPORT.md": "80.6 million", "reports/ROUND_2_ADDENDUM.md": "14.5 million", "reports/TEST_RESULTS.md": "6 of 6" };
+const needles = { "reports/artifacts/final_verification.log": "2732358 checks, 0 failed", "reports/artifacts/exhaustive_small.log": "80621568 sequences", "reports/artifacts/mutation_check.log": "detected 9 of 9" };
 for (const [file, needle] of Object.entries(needles)) {
   if (!readFileSync(join(repoRoot, file), "utf8").includes(needle)) throw new Error(`${file} no longer contains "${needle}"`);
 }

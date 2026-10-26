@@ -52,7 +52,7 @@ export function formatValue(tag: number, value: number): string {
 
 export const scopeName = (depth: number) => (depth === 0 ? "Global" : `Scope ${depth}`);
 
-export const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 export const C_KEYWORDS = new Set([
   "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for",
   "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short", "signed", "sizeof", "static", "struct",

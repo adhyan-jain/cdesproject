@@ -22,7 +22,7 @@
 //       random identifiers by linear probing (homes taken from the table's own hash), then
 //       measures, for fresh names, how many slots an insertion would examine. Reports the
 //       measured probability of exceeding a probe limit L next to the bound
-//       rho^L / (1 - rho), rho = a * e^(1 - a), derived in docs/PROBE_LIMIT_ANALYSIS.md.
+//       rho^L / (1 - rho), rho = a * e^(1 - a), derived in the paper (Section VI).
 //
 //   hardening --mode names --count N --words W
 //       Prints N colliding identifiers of 5*W characters (W even), one per line.

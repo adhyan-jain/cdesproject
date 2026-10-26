@@ -1,0 +1,13 @@
+uname -a: Linux adhyan-omarchy 7.2.4-arch1-2 #1 SMP PREEMPT_DYNAMIC Tue, 08 Sep 2026 10:22:31 +0000 x86_64 GNU/Linux
+g++: g++ (GCC) 16.2.1 20260810
+cpu:  13th Gen Intel(R) Core(TM) i7-13620H
+ldd: ldd (GNU libc) 2.44
+python: Python 3.14.7 numpy 2.5.2
+git: c5d8eb8ae9f313001181b73ef76c54f2376714c8 branch reviewer-report-revision
+metis: 7b3dacfa5405ec3e6a03b718f485b473d779123d (git archive from /home/adhyan/Desktop/Compiler)
+date: 2026-10-26T19:30:29Z
+CPU max MHz:                             4900.0000
+CPU min MHz:                             400.0000
+L1d cache:                               416 KiB (10 instances)
+L2 cache:                                9.5 MiB (7 instances)
+L3 cache:                                24 MiB (1 instance)

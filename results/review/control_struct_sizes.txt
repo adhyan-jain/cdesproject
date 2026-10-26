@@ -1,0 +1,5 @@
+sizeof(strata::Table)            = 144 bytes (control struct, outside the buffer)
+sizeof(strata::Key)              = 268 bytes (stack, one per operation)
+sizeof(arena_chain::Table)       = 48 bytes (control struct, outside the buffer)
+sizeof(arena_chain_nohash::Table)= 48 bytes (control struct, outside the buffer)
+arena tables: uint32_t key[64] on the stack per declare/resolve = 256 bytes

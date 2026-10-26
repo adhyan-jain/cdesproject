@@ -8,7 +8,7 @@
 set -e
 cd "$(dirname "$0")/../.."
 mkdir -p build/embedded results/embedded
-# The limit is the one docs/PROBE_LIMIT_ANALYSIS.md recommends for the default index load.
+# The limit is the one the paper recommends for the default index load.
 # A limit of 64 (PROBE_LIMIT=64) refuses nothing on these traces either, but is not a
 # setting the analysis supports in general.
 LIMIT=${PROBE_LIMIT:-512}

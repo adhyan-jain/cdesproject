@@ -63,14 +63,9 @@ python3 theory/template/build_docx.py "/path/to/Paper Template-2.docx"   # docx,
 `template/refs/*.json` hold the verified records of the recent references (each checked against Crossref, arXiv or a publisher page; the
 `read_level` field says what was read). `template/content.py` takes every table value from `paper/tables/`.
 
-## Presenting it
+## Audit notes
 
-`PRESENTATION_GUIDE.md`: a slide-by-slide plan for a 20-minute talk with three live demos (the **Theory** tab of the frontend in `../frontend/web`), cut lists for 10 and 30 minutes, the questions to expect with honest answers, and what not to claim.
-
-## Audit documents
-
-* `NOVELTY.md`: every claim classified (new / classical / small), with the closest prior work and how it was checked.
-* `PROOF_AUDIT.md`: each result, its proof's dependencies, the programs that check it, and where an attack is most likely to succeed.
+The slide plan, the novelty classification and the proof audit were removed in the repository cleanup; they are in git under the tag `pre-cleanup` (`theory/NOVELTY.md`, `theory/PROOF_AUDIT.md`, `theory/PRESENTATION_GUIDE.md`).
 
 ## What is and is not established
 

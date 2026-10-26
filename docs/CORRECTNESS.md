@@ -194,4 +194,4 @@ hash-table flooding only.
 `tests/exhaustive_small.cpp` (every operation sequence up to a fixed length over six
 operations, eight configurations, five of them bounded or keyed); `tests/fuzz_strata.cpp`
 (differential fuzzing of all modes under ASan + UBSan); `scripts/audit/mutation_check.py`
-(injected defects that the fuzzer must detect). Results: `reports/TEST_RESULTS.md`.
+(injected defects that the fuzzer must detect). Results: `reports/artifacts/*.log` and `docs/EVIDENCE.md`.

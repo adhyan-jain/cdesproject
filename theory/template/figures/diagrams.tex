@@ -41,10 +41,10 @@
   \draw[arr] (buf.east) -- node[above,lab]{answers} (out.west);
   % analysis layer
   \node[font=\small\bfseries,anchor=west] at (-1.8,-2.55) {Analysis layer (this work)};
-  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a1) at (0.0,-4.0) {\textbf{Exact undo}\\Thm 2, Cor 3\\Safe orders: Thm 4\\Orphans: Prop 5};
-  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a2) at (4.1,-4.0) {\textbf{Refusal laws}\\Thm 7 (one push)\\Thm 10 (whole fill)\\Prop 11 (unlimited run)};
-  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a3) at (8.2,-4.0) {\textbf{Bounded churn}\\Prop 12: persistent\\names, schedule-free\\bound $D_s$};
-  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a4) at (12.3,-4.0) {\textbf{Keys and space}\\Props 13--15: key\\lifetime and adversaries\\Prop 16: space ledger};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a1) at (0.0,-4.0) {\textbf{Exact undo}\\Index restored exactly\\Safe deletion orders\\Orphan law};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a2) at (4.1,-4.0) {\textbf{Refusal laws}\\Exact law (one push)\\Whole-fill law\\Unlimited run};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a3) at (8.2,-4.0) {\textbf{Bounded churn}\\Persistent names,\\schedule-free\\bound $D_s$};
+  \node[tb,minimum width=3.6cm,minimum height=1.25cm,text width=3.4cm] (a4) at (12.3,-4.0) {\textbf{Keys and space}\\Key lifetime and\\adversaries;\\space ledger};
   \node[box,fill=cOk,minimum width=15.6cm] (des) at (6.15,-6.15) {Design rules: probe limit $L$, buffer size, key policy};
   \foreach \a in {a1,a2,a3,a4} \draw[arr] (\a.south) -- (\a.south |- des.north);
   \draw[arr,dashed] (a2.north) -- (buf.south -| a2.north) node[midway,right,lab,align=left]{models the index};
@@ -87,7 +87,7 @@
     \node[lab,red!70!black,above] at (3.4*1.05,1.0) {lookup of $y$ stops at the hole: $y$ is orphaned};
     \node[font=\small\bfseries,anchor=west] at (-0.5,1.85) {Clearing $w$ before $y$ (not stack order):};
   \end{scope}
-  \node[font=\small,anchor=north west,align=left,text width=10.2cm] at (-0.5,-6.4) {\textbf{Stack order is always safe:} the newest key has no dependents, because a key's path crosses only cells that were filled before it. It is also the only order safe for every hash assignment (Thm 4b). The number of keys orphaned by clearing one key is a queue length minus one (Prop 5).};
+  \node[font=\small,anchor=north west,align=left,text width=10.2cm] at (-0.5,-6.4) {\textbf{Stack order is always safe:} the newest key has no dependents, because a key's path crosses only cells that were filled before it. It is also the only order safe for every hash assignment (safe-orders theorem, part b). The number of keys orphaned by clearing one key is a queue length minus one (orphan law).};
 \end{tikzpicture}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% D4: flow diagram
@@ -111,7 +111,7 @@
   \node[io] (e) at (-6.2,0) {\texttt{exit\_scope()}};
   \node[tb,below=0.55cm of e,text width=3.6cm] (e1) {pop undo entries of this scope (last in, first out)};
   \node[tb,below=0.55cm of e1,text width=3.6cm] (e2) {new name: clear its cell;\\hidden name: restore its record};
-  \node[ok,below=0.55cm of e2,text width=3.6cm] (e3) {table equals the table before\\the scope was entered\\(Theorem 2)};
+  \node[ok,below=0.55cm of e2,text width=3.6cm] (e3) {table equals the table before\\the scope was entered\\(exact undo)};
   \draw[arr] (e)--(e1); \draw[arr] (e1)--(e2); \draw[arr] (e2)--(e3);
   \node[font=\scriptsize,align=center,text width=3.6cm] at (-6.2,-7.9) {A refused request is all-or-nothing: no half-written state is ever visible.};
 \end{tikzpicture}
@@ -170,7 +170,7 @@
     \node[cell,minimum size=6.4mm,fill=cFree] at (4*0.7,0) {}; \node[cell,minimum size=6.4mm,fill=cFree] at (9*0.7,0) {};
     \draw[very thick,red!70!black] (-0.42,-0.42) rectangle (13*0.7+0.42,0.42);
     \node[font=\scriptsize,red!70!black,below] at (6.5*0.7,-0.5) {window of $L=14$ cells, $s-1=2$ empty cells};
-    \node[font=\scriptsize,anchor=west,align=left,text width=6.6cm] at (10.2,0) {A chain of $s$ pushes fills the empty cells, then pushes at the window start: refused. Hence any refusal implies this window exists (Prop 12a).};
+    \node[font=\scriptsize,anchor=west,align=left,text width=6.6cm] at (10.2,0) {A chain of $s$ pushes fills the empty cells, then pushes at the window start: refused. Hence any refusal implies this window exists (churn bound).};
   \end{scope}
 \end{tikzpicture}
 

@@ -199,6 +199,11 @@ M.~Naor and E.~Yogev, ``Bloom filters in adversarial environments,'' in
   algorithm used by rustc,'' [Online]. Available:
   \url{https://github.com/rust-lang/rustc-hash}. Accessed: Oct. 13, 2026.
 
+\bibitem{strata}
+S.~Singh, A.~Jain, A.~Venkatataramana, and Arjuman, ``{STRATA}: Source code,
+  traces, and measurements,'' 2026, [Online]. Available:
+  \url{https://github.com/shubhisingh1510/cdesproject}.
+
 \bibitem{dwass1969}
 M.~Dwass, ``The total progeny in a branching process and a related random
   walk,'' \emph{Journal of Applied Probability}, vol.~6, no.~3, pp. 682--686,
@@ -207,11 +212,6 @@ M.~Dwass, ``The total progeny in a branching process and a related random
 \bibitem{tanner1961}
 J.~C. Tanner, ``A derivation of the {Borel} distribution,'' \emph{Biometrika},
   vol.~48, no. 1--2, pp. 222--224, 1961.
-
-\bibitem{strata}
-S.~Singh, A.~Jain, A.~Venkatataramana, and Arjuman, ``{STRATA}: Source code,
-  traces, and measurements,'' 2026, [Online]. Available:
-  \url{https://github.com/shubhisingh1510/cdesproject}.
 
 \bibitem{murmur3}
 A.~Appleby, ``{MurmurHash3}, in {SMHasher},'' [Online]. Available:
@@ -241,5 +241,10 @@ F.~Bellard, ``{QEMU}, a fast and portable dynamic translator,'' in \emph{Proc.
 \bibitem{vite}
 {Vite contributors}, ``Vite: Next generation frontend tooling,'' [Online].
   Available: \url{https://vite.dev/guide/}. Accessed: Oct. 20, 2026.
+
+\bibitem{konheim1966}
+A.~G. Konheim and B.~Weiss, ``An occupancy discipline and applications,''
+  \emph{SIAM Journal on Applied Mathematics}, vol.~14, no.~6, pp. 1266--1274,
+  1966.
 
 \end{thebibliography}

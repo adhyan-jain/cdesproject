@@ -7,7 +7,7 @@ import { WindowLab } from "./WindowLab";
 type Tab = "undo" | "law" | "window" | "map";
 
 /** Arrow-key / Home / End navigation for a row of tabs (roving tabindex). */
-export function tabKeys<T extends string>(e: KeyboardEvent<HTMLElement>, ids: readonly T[], current: T, select: (id: T) => void) {
+function tabKeys<T extends string>(e: KeyboardEvent<HTMLElement>, ids: readonly T[], current: T, select: (id: T) => void) {
   const i = ids.indexOf(current);
   let n = -1;
   if (e.key === "ArrowRight") n = (i + 1) % ids.length;

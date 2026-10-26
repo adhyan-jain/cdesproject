@@ -7,8 +7,10 @@ T = os.path.join(HERE, "../paper/tables")
 SPECS = {
  "tab_design": ("@{}llrrrrrrr@{}",
    r"load & $\varepsilon$ & $m{=}2^{8}$ & $2^{10}$ & $2^{12}$ & $2^{14}$ & $2^{16}$ & $m\to\infty$ & Chernoff \\"),
- "tab_lawcheck": ("@{}rrrrrrrr@{}",
-   r"$m$ & $n$ & $L$ & observed & exact & $z$ & clean trials & mismatches \\"),
+ "tab_lawcheck": ("@{}rrrrrrrrr@{}",
+   r"$m$ & $n$ & $L$ & trials & observed & exact & $z$ & clean trials & mismatches \\"),
+ "tab_lawproc": ("@{}rrrrrrrrr@{}",
+   r"$m$ & $n$ & $L$ & clean & with refusal & refused in fill & (iii) $\hat P$ & (iv) $\hat P$ & violations \\"),
  "tab_adaptive": ("@{}rrrrr@{}",
    r"colliders & persistent key (mean) & (max) & fresh key & random names \\"),
  "tab_ladder": ("@{}lrrrrrrrr@{}",

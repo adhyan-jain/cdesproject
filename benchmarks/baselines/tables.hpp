@@ -16,6 +16,7 @@
 #include "../../include/strata/strata.hpp"
 #include "../common.hpp"
 #include "arena_chain.hpp"
+#include "arena_chain_nohash.hpp"
 
 #ifdef CDES_HAVE_PHMAP
 #include <parallel_hashmap/phmap.h>
@@ -86,6 +87,18 @@ struct ArenaChain {
     arena_chain::Table t;
     ArenaChain() : t(arena_realloc) {}
     static const char* id() { return "arena_chain"; }
+    size_t used_peak() const { return t.peak_used_bytes(); }
+    bool enter() { return t.enter_scope(); }
+    bool exit() { return t.exit_scope(); }
+    int declare(const std::string& s, int32_t v) { return t.declare(s.data(), s.size(), v); }
+    bool resolve(const std::string& s, int32_t* v) const { return t.resolve(s.data(), s.size(), v); }
+};
+
+// ---- layout C1: the same table without the stored hash word (reviewer experiment R13) ------
+struct ArenaChainNoHash {
+    arena_chain_nohash::Table t;
+    ArenaChainNoHash() : t(arena_realloc) {}
+    static const char* id() { return "arena_nohash"; }
     size_t used_peak() const { return t.peak_used_bytes(); }
     bool enter() { return t.enter_scope(); }
     bool exit() { return t.exit_scope(); }

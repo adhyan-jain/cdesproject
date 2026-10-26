@@ -1,0 +1,4 @@
+clock_getres(CLOCK_MONOTONIC) = 1 ns
+empty interval, std::chrono::steady_clock (the replay timer): median 20.0 ns, min 17.0, p99 22.0
+empty interval, raw clock_gettime(CLOCK_MONOTONIC):           median 18.0 ns, min 16.0, p99 20.0
+empty interval, rdtscp (the per-operation latency timer):     median 13.0 ns, min 11.0, p99 17.1 (0.3427 ns/tick)

@@ -22,19 +22,30 @@ int main(int argc, char** argv) {
     const long trials = atol(argv[4]);
     std::mt19937_64 rng(strtoull(argv[5], 0, 10));
     std::vector<uint32_t> ba(1 << 15), bb(1 << 15);
-    long exceed = 0, clean = 0, mismatch = 0;
+    // Trial accounting for the process distinctions of the manuscript (Section VI-B):
+    //   (i)/(ii) table A: unconstrained fill of n names, then the first capped query     -> exceed / trials
+    //   (iii)    fill conditioned on no refusal in table B                                -> exceed_clean / clean
+    //   (iv)     table B keeps inserting after refusals; final query on every trial       -> b_final_refused / trials
+    // coupling_violations counts trials in which B refused the final name although A's probe count did not
+    // exceed L; the domination argument (B's occupied set is contained in A's) says it is zero.
+    long exceed = 0, clean = 0, mismatch = 0, exceed_clean = 0, trials_with_refusal = 0, b_fill_refusals = 0,
+         b_final_refused = 0, b_final_refused_dirty = 0, coupling_violations = 0, b_stored = 0, b_stored_clean = 0;
     char nm[32];
     for (long t = 0; t < trials; ++t) {
         Options oa; oa.index_slots = m; oa.keyed = true; oa.key[0] = (uint32_t)rng(); oa.key[1] = (uint32_t)rng();
         Options ob = oa; ob.max_probe = L;
         Table A(ba.data(), ba.size() * 4, oa), B(bb.data(), bb.size() * 4, ob);
         bool diverged = false;
+        long refused_here = 0;
         for (uint32_t i = 0; i < n; ++i) {
             int len = snprintf(nm, sizeof nm, "n%llx", (unsigned long long)rng());
             A.declare(nm, len, 1);
             Status sb = B.declare(nm, len, 1);
-            if (sb == kProbeLimit) diverged = true;
+            if (sb == kProbeLimit) { diverged = true; ++refused_here; }
         }
+        b_fill_refusals += refused_here;
+        if (diverged) ++trials_with_refusal;
+        b_stored += (long)n - refused_here;
         int len = snprintf(nm, sizeof nm, "f%llx", (unsigned long long)rng());
         const uint64_t dA = A.state_digest(), dB = B.state_digest();
         Key k; A.make_key(nm, len, k);
@@ -45,13 +56,17 @@ int main(int argc, char** argv) {
                  && A.ident(A.w_[slot] & 0x00FFFFFFu)[2] == k.w[0])) { slot = (slot + 1) & (m - 1); ++steps; }
         const bool over = steps > L;
         if (over) ++exceed;
+        const bool refused = B.declare(nm, len, 1) == kProbeLimit;   // process (iv): asked on every trial
+        if (refused) { ++b_final_refused; if (diverged) ++b_final_refused_dirty; }
+        if (refused && !over) ++coupling_violations;
         if (!diverged) {
-            ++clean;
+            ++clean; b_stored_clean += n;
+            if (over) ++exceed_clean;
             if (dA != dB) ++mismatch;                           // B must equal A while no refusal has occurred
-            Status sb = B.declare(nm, len, 1);
-            if ((sb == kProbeLimit) != over) ++mismatch;
+            if (refused != over) ++mismatch;
         }
     }
-    std::printf("%ld %ld %ld\n", exceed, clean, mismatch);
+    std::printf("%ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld\n", exceed, clean, mismatch, exceed_clean, trials_with_refusal,
+                b_fill_refusals, b_final_refused, b_final_refused_dirty, coupling_violations, b_stored, b_stored_clean);
     return 0;
 }

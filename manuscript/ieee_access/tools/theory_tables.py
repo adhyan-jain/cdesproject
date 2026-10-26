@@ -9,7 +9,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")
 SRC = os.path.join(ROOT, "theory", "paper", "tables")
 DST = os.path.join(ROOT, "manuscript", "ieee_access", "tables")
 
-for name in ("tab_design", "tab_lawcheck", "tab_ladder", "tab_orphan", "tab_adaptive"):
+for name in ("tab_design", "tab_lawcheck", "tab_lawproc", "tab_ladder", "tab_orphan", "tab_adaptive"):
     t = open(os.path.join(SRC, name + ".tex"), encoding="utf8").read()
     t = re.sub(r"\\begin\{tabular\}\{@\{\}([a-z]+)@\{\}\}", lambda m: "\\begin{tabular}{|" + "|".join(m.group(1)) + "|}", t)
     t = t.replace("\\toprule", "\\hline").replace("\\midrule", "\\hline").replace("\\bottomrule", "\\hline")

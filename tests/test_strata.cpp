@@ -1,5 +1,5 @@
 // Correctness tests for strata::Table. Each numbered block maps to one of the mandatory
-// properties in docs/METHODOLOGY.md. Exit code is non-zero if any check fails.
+// properties described in docs/CORRECTNESS.md. Exit code is non-zero if any check fails.
 #define STRATA_TEST_HOOKS
 #include <cstdio>
 #include <cstring>

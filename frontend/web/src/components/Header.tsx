@@ -10,16 +10,16 @@ export const PAGES: { id: Page; label: string }[] = [
   { id: "method", label: "About" },
 ];
 // The top bar shows five groups; a group with several pages gets a row of sub-tabs (SubNav).
-export const GROUPS: { label: string; pages: Page[]; hint: string }[] = [
+const GROUPS: { label: string; pages: Page[]; hint: string }[] = [
   { label: "Home", pages: ["overview"], hint: "What STRATA is, in one page" },
   { label: "Try it", pages: ["analyse", "lab"], hint: "Paste your code, or drive the table by hand" },
   { label: "Results", pages: ["benchmarks", "stress"], hint: "What was measured" },
   { label: "Theory", pages: ["theory"], hint: "What was proved" },
   { label: "About", pages: ["method"], hint: "Method, limits, team" },
 ];
-export const groupOf = (p: Page) => GROUPS.find((g) => g.pages.includes(p))!;
+const groupOf = (p: Page) => GROUPS.find((g) => g.pages.includes(p))!;
 
-export function Logo() {
+function Logo() {
   // Four memory regions stacked into one block: index, records, undo, free.
   return (
     <svg className="logo" viewBox="0 0 32 32" aria-hidden="true">

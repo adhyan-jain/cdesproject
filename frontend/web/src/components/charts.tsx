@@ -1,10 +1,10 @@
 // Small SVG charts for the results pages. No chart library: each chart measures its container,
 // draws thin marks with a recessive grid, carries a hover/focus tooltip, and its card can switch
 // to a plain table so no value depends on hovering or on colour.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 // ---- shared pieces ---------------------------------------------------------------------------
-export const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"] as const;
+const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"] as const;
 
 function useWidth<T extends HTMLElement>(): [React.RefObject<T>, number] {
   const ref = useRef<T>(null);
@@ -39,7 +39,7 @@ function Tooltip({ tip, width }: { tip: Tip | null; width: number }) {
   );
 }
 
-export function Legend({ items, shape = "rect" }: { items: { label: string; color: string; hollow?: boolean }[]; shape?: "rect" | "line" }) {
+function Legend({ items, shape = "rect" }: { items: { label: string; color: string; hollow?: boolean }[]; shape?: "rect" | "line" }) {
   return (
     <ul className="viz-legend" aria-label="Legend">
       {items.map((it) => (
@@ -90,7 +90,7 @@ function ticks(max: number, n = 4) {
 }
 
 // ---- horizontal bars: one value per row, the highlighted row in the accent ------------------
-export interface BarRow { key: string; label: string; value: number; highlight?: boolean; detail?: string }
+interface BarRow { key: string; label: string; value: number; highlight?: boolean; detail?: string }
 
 export function BarList({ rows, format, log = false, axisLabel }: {
   rows: BarRow[]; format: (v: number) => string; log?: boolean; axisLabel: string;
@@ -215,7 +215,7 @@ export function PairedColumns({ categories, series, format, axisLabel }: {
 }
 
 // ---- forest plot: a difference with its 95% interval per row, zero in the middle -------------
-export interface ForestRow { key: string; label: string; value: number; low: number; high: number; detail?: string }
+interface ForestRow { key: string; label: string; value: number; low: number; high: number; detail?: string }
 
 export function ForestPlot({ rows, negLabel, posLabel, unit = "%" }: { rows: ForestRow[]; negLabel: string; posLabel: string; unit?: string }) {
   const [ref, width] = useWidth<HTMLDivElement>();
@@ -336,11 +336,4 @@ export function LineChart({ xs, xLabel, xFormat, series, yFormat, yLabel, logY =
       <Tooltip tip={tip} width={width} />
     </div>
   );
-}
-
-/** Re-render on mount only after fonts are ready, so measured label widths are stable. */
-export function useFontsReady() {
-  const [ready, setReady] = useState(false);
-  useEffect(() => { void document.fonts?.ready.then(() => setReady(true)); }, []);
-  return ready;
 }

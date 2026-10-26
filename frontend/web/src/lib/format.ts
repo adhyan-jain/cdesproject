@@ -6,7 +6,7 @@ const trim = (x: number) => (Math.round(x * 10) / 10).toString();
 export const kib = (x: number) => `${x.toFixed(1)} KiB`;
 export const pct = (x: number, digits = 1) => `${x.toFixed(digits)}%`;
 
-export const TRACE_LABEL: Record<string, string> = {
+const TRACE_LABEL: Record<string, string> = {
   cjson: "cJSON", littlefs: "littlefs", zlib: "zlib", freertos: "FreeRTOS",
   lua: "Lua", tinycc: "TinyCC", sqlite: "SQLite", mbedtls: "Mbed TLS",
 };

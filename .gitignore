@@ -10,10 +10,8 @@ paper/*.blg
 
 # manuscript: downloaded template archive and LaTeX build products
 manuscript/template_download/
-manuscript/overleaf/main.log
-manuscript/overleaf/main.aux
-manuscript/overleaf/main.out
-manuscript/overleaf/main.blg
+# generated archives (rebuild with zip when uploading to Overleaf)
+*.zip
 
 # theory manuscript: LaTeX build products (the PDF itself is kept)
 theory/paper/*.aux
@@ -30,3 +28,4 @@ manuscript/ieee_access/main.log
 manuscript/ieee_access/main.aux
 manuscript/ieee_access/main.out
 manuscript/ieee_access/main.blg
+results/summary/*/tables.md

@@ -23,7 +23,7 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 RUN = sys.argv[1] if len(sys.argv) > 1 else sorted(glob.glob(os.path.join(ROOT, "results/raw/*-paper")))[-1]
 BEFORE = os.path.join(ROOT, "results/raw/20261013-120345-audit")    # before the rebuild change
-OUT = os.path.join(ROOT, "paper")    # canonical; manuscript/tools/sync_body.py copies to the Overleaf project
+OUT = os.path.join(ROOT, "paper")    # canonical; manuscript/ieee_access keeps its own copy of the generated files
 os.makedirs(os.path.join(OUT, "tables"), exist_ok=True)
 DATA = os.path.join(ROOT, "manuscript/figures/source")
 TRACES = ["cjson", "littlefs", "zlib", "lua", "freertos", "mbedtls", "tinycc", "sqlite"]

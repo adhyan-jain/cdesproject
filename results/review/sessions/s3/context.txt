@@ -1,0 +1,13 @@
+session: 3 of 5
+start_utc: 2026-10-26T19:40:47Z
+core: 4 (sibling hardware thread: 5)
+rotation_offset (--rot): 2
+loadavg_start: 1.09 1.04 1.45 1/3136 508921
+governor: powersave  epp: performance  no_turbo: 0
+cur_freq_khz_start: 3430728
+busy_processes_start (>=20% cpu, excluding this script):
+end_utc: 2026-10-26T19:41:00Z
+loadavg_end: 1.30 1.09 1.46 8/3127 510299
+cur_freq_khz_end: 3123973
+pinned_cpu4_busy_fraction_over_session: 0.998
+sibling_cpu5_busy_fraction_over_session: 0.058
