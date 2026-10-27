@@ -208,8 +208,7 @@ J.~C. Tanner, ``A derivation of the {Borel} distribution,'' \emph{Biometrika},
 
 \bibitem{strata}
 A.~Jain and S.~Singh, ``{STRATA}: Source code, traces, and measurements,''
-  2026, [Online]. Available:
-  \url{https://github.com/shubhisingh1510/cdesproject}.
+  2026, [Online]. Available: \url{https://github.com/adhyan-jain/cdesproject}.
 
 \bibitem{murmur3}
 A.~Appleby, ``{MurmurHash3}, in {SMHasher},'' [Online]. Available:
