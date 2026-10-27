@@ -120,7 +120,7 @@ macros["TotalEvents"] = num(tot_ops)
 macros["TotalDecls"] = num(tot_decl)
 
 # ---- memory -----------------------------------------------------------------------------
-lines, save, bpd, heap_m, allocs, pack_save = [], [], [], [], [], []
+lines, save, bpd, heap_m, allocs, pack_save, pack_larger = [], [], [], [], [], [], []
 mem_data = []
 for t in TRACES:
     st = int(B[(t, "packed", "1.00")]["min_buffer_bytes"])
@@ -134,6 +134,7 @@ for t in TRACES:
     heap_m.append((1 - hp["strata"] / hp["metis_x"]) * 100)
     allocs.append((1 - int(S[(t, "strata")]["allocs"]) / int(S[(t, "metis_x")]["allocs"])) * 100)
     pack_save.append((1 - st / raw) * 100)
+    pack_larger.append((raw / st - 1) * 100)      # how much larger the raw-name buffer is (ablation table)
     lines.append(f"{LABEL[t]} & {st / 1024:.1f} & {ar / 1024:.1f} & {save[-1]:.1f} & {bpd[-1]:.1f} & "
                  f"{hp['strata'] / 1024:.1f} & {hp['arena_chain'] / 1024:.1f} & {hp['metis_x'] / 1024:.1f} & "
                  f"{hp['scope_map_stack'] / 1024:.1f} & {hp['std_undo_log'] / 1024:.1f} & {hp['swiss_interned'] / 1024:.1f} \\\\")
@@ -149,7 +150,8 @@ mins = [int(B[(t, "packed", "1.00")]["min_buffer_bytes"]) / 1024 for t in TRACES
 macros.update(MinBufLo=f"{min(mins):.1f}", MinBufHi=f"{max(mins):.1f}", SaveLo=f"{min(save):.1f}", SaveHi=f"{max(save):.1f}",
               BytesLo=f"{min(bpd):.0f}", BytesHi=f"{max(bpd):.0f}", HeapMetisLo=f"{min(heap_m):.0f}", HeapMetisHi=f"{max(heap_m):.0f}",
               HeapMetisMed=f"{statistics.median(heap_m):.0f}", AllocLo=f"{min(allocs):.1f}", AllocHi=f"{max(allocs):.1f}",
-              PackSaveLo=f"{min(pack_save):.1f}", PackSaveHi=f"{max(pack_save):.1f}")
+              PackSaveLo=f"{min(pack_save):.1f}", PackSaveHi=f"{max(pack_save):.1f}",
+              PackLargerLo=f"{min(pack_larger):.1f}", PackLargerHi=f"{max(pack_larger):.1f}")
 
 # ---- replay time ------------------------------------------------------------------------
 lines, time_data = [], []
