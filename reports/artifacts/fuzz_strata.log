@@ -1,24 +1,31 @@
-compiler: Ubuntu clang version 21.1.8 (++20251221032842+2078da43e25a-1~exp1~20251221153008.77)
-seconds per job: 600, jobs: 3, exit status: 0
-corpus files: 9605
+compiler: clang version 22.1.8
+seconds per job: 240, jobs: 4, exit status: 0
+corpus files: 4003
 --- fuzz-0.log
-#748733	DONE   cov: 596 ft: 3626 corp: 909/154Kb lim: 4096 exec/s: 1245 rss: 495Mb
-stat::number_of_executed_units: 748733
-stat::average_exec_per_sec:     1245
-stat::new_units_added:          399
+#608064	DONE   cov: 586 ft: 3554 corp: 942/105Kb lim: 2127 exec/s: 2523 rss: 465Mb
+stat::number_of_executed_units: 608064
+stat::average_exec_per_sec:     2523
+stat::new_units_added:          1717
 stat::slowest_unit_time_sec:    0
-stat::peak_rss_mb:              495
+stat::peak_rss_mb:              465
 --- fuzz-1.log
-#996143	DONE   cov: 596 ft: 3626 corp: 913/156Kb lim: 4096 exec/s: 1657 rss: 489Mb
-stat::number_of_executed_units: 996143
-stat::average_exec_per_sec:     1657
-stat::new_units_added:          443
+#596166	DONE   cov: 586 ft: 3555 corp: 921/106Kb lim: 2105 exec/s: 2473 rss: 463Mb
+stat::number_of_executed_units: 596166
+stat::average_exec_per_sec:     2473
+stat::new_units_added:          1647
 stat::slowest_unit_time_sec:    0
-stat::peak_rss_mb:              489
+stat::peak_rss_mb:              463
 --- fuzz-2.log
-#731260	DONE   cov: 596 ft: 3626 corp: 918/156Kb lim: 4096 exec/s: 1216 rss: 492Mb
-stat::number_of_executed_units: 731260
-stat::average_exec_per_sec:     1216
-stat::new_units_added:          376
+#552828	DONE   cov: 586 ft: 3555 corp: 825/103Kb lim: 2000 exec/s: 2293 rss: 465Mb
+stat::number_of_executed_units: 552828
+stat::average_exec_per_sec:     2293
+stat::new_units_added:          1444
 stat::slowest_unit_time_sec:    0
-stat::peak_rss_mb:              492
+stat::peak_rss_mb:              465
+--- fuzz-3.log
+#547982	DONE   cov: 586 ft: 3554 corp: 842/105Kb lim: 1930 exec/s: 2273 rss: 462Mb
+stat::number_of_executed_units: 547982
+stat::average_exec_per_sec:     2273
+stat::new_units_added:          1496
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              462

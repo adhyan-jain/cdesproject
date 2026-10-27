@@ -65,9 +65,15 @@ Common prefix: `R = results/raw/20261013-143828-paper`. `NUM` = `python3 manuscr
 | `tab:unitfit` | units that fit a budget | NUM | `$R/units.csv` (from `scripts/run_extra.sh`) |
 | `tab:sweep` | shadowing / name length sweep | NUM | `$R/sweep_minbuf.csv`, `sweep_summary.csv`, `sweep_replays.csv` (traces from `scripts/gen_sweep.py`) |
 | `tab:chibicc` | chibicc end to end | NUM | `results/chibicc/{units,times,rss}.csv` (from `python3 tools/chibicc/evaluate.py`) |
+| `tab:lawproc` (`th_tab_lawproc`) | processes P3 and P4, coupling violations | TH: same run as `tab:lawcheck` (`run_law_check.py`, `wrap_tables.py`) | real `strata::Table`, 7 settings x 400 000 trials |
+| `tab:c1` | smallest buffer of S, C0, C1, S raw; savings | `python3 manuscript/tools/make_sessions_tables.py` | `results/review/r13_minbuf.csv`, `r13_savings.csv` (`budget r13`) |
+| `tab:sessions` | five timing sessions, t intervals, TOST | `bash scripts/review_sessions.sh`, `python3 scripts/review_analyze.py`, then `make_sessions_tables.py` | `results/review/sessions/s1..s5/`, `analysis_pooled.csv` |
+| `tab:instr` | user-space instructions per replay | `g++ -std=c++14 -O2 -o build/instr_count benchmarks/instr_count.cpp`; per trace `taskset -c 2 ./build/instr_count --trace T --name N --reps 5 >> results/review/instr_counts.csv`; then `python3 manuscript/tools/make_instr_table.py` (seconds per trace) | decompressed traces in `build/review_bench/traces/` |
+
+Prepared-name numbers in the text (instruction-count paragraph): `g++ -std=c++14 -O2 -o build/prepared_count benchmarks/prepared_count.cpp`; per trace `./build/prepared_count T N` -> `results/review/prepared_counts.txt`.
 
 Files in `tables/` not used by `body.tex`: `tab_beforeafter`, `tab_flood_scale`, `tab_limits`, `tab_probe`,
-`tab_short`; `th_tab_lawproc.tex` (new, untracked) exists in the working tree.
+`tab_short`.
 
 ## 2. Figures
 

@@ -8,6 +8,6 @@ static 16, limit 2, one cluster    10077696 sequences, 17597088 refused operatio
 static 16, limit 2, keyed, 152 B   10077696 sequences, 5685910 refused operations
 depth 9: 80621568 sequences, 725594112 operations, 130361632 refusals (no memory 75575944, too deep 0, probe limit 54785688), 0 failures
 
-real	2m2.464s
-user	2m2.269s
-sys	0m0.008s
+real	2m39.141s
+user	2m38.582s
+sys	0m0.007s

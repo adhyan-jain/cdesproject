@@ -1,13 +1,13 @@
-seconds per mutant: 60; compiler: clang++-21
+seconds per mutant: 60; compiler: clang++
 
-M1 | DETECTED after 0.1 s | scope exit does not empty the index slot of a removed name | FUZZ FAILURE: state after unwinding (operation 2)
-M2 | DETECTED after 0.2 s | record pointer not refreshed after the buffer may have moved | ==527==ERROR: AddressSanitizer: heap-use-after-free on address 0x764a02be5a84 at pc 0x59292e2bb2fd bp 0x7fff51961b70 sp 0x7fff51961b68
-M3 | DETECTED after 0.2 s | scope exit restores the hidden value but not its type and depth | FUZZ FAILURE: final sweep disagrees with the model (operation 8)
-M4 | DETECTED after 0.1 s | probe limit not enforced when a new name is inserted | FUZZ FAILURE: invariant violated at the end (operation 2)
-M5 | DETECTED after 0.1 s | length of raw names not kept (names differing in trailing NUL bytes merge) | FUZZ FAILURE: declare: new/redeclared disagrees with the model (operation 2)
-M7 | DETECTED after 0.2 s | index rebuild does not restore the value words it borrowed | FUZZ FAILURE: final sweep disagrees with the model (operation 9)
-M8 | DETECTED after 0.2 s | undo entries not updated when the index is rebuilt | FUZZ FAILURE: invariant violated at the end (operation 9)
-M9 | DETECTED after 0.2 s | new name placed at the remembered slot although the index was rebuilt | FUZZ FAILURE: invariant violated at the end (operation 9)
-M6 | DETECTED after 0.1 s | a refused shadowing declaration still overwrites the visible value | FUZZ FAILURE: refused declare changed the table (operation 7)
+M1 | DETECTED after 1.5 s | scope exit does not empty the index slot of a removed name | FUZZ FAILURE: state after unwinding (operation 2)
+M2 | DETECTED after 1.8 s | record pointer not refreshed after the buffer may have moved | ==2438610==ERROR: AddressSanitizer: heap-use-after-free on address 0x7bffb14192dc at pc 0x556beafabef1 bp 0x7ffe825160b0 sp 0x7ffe825160a8
+M3 | DETECTED after 1.4 s | scope exit restores the hidden value but not its type and depth | FUZZ FAILURE: final sweep disagrees with the model (operation 7)
+M4 | DETECTED after 1.5 s | probe limit not enforced when a new name is inserted | FUZZ FAILURE: invariant violated at the end (operation 2)
+M5 | DETECTED after 2.4 s | length of raw names not kept (names differing in trailing NUL bytes merge) | FUZZ FAILURE: counters disagree with the model (operation 11)
+M7 | DETECTED after 1.8 s | index rebuild does not restore the value words it borrowed | FUZZ FAILURE: final sweep disagrees with the model (operation 9)
+M8 | DETECTED after 1.5 s | undo entries not updated when the index is rebuilt | FUZZ FAILURE: invariant violated at the end (operation 9)
+M9 | DETECTED after 1.6 s | new name placed at the remembered slot although the index was rebuilt | FUZZ FAILURE: invariant violated at the end (operation 9)
+M6 | DETECTED after 1.9 s | a refused shadowing declaration still overwrites the visible value | FUZZ FAILURE: refused declare changed the table (operation 4)
 
 detected 9 of 9 mutants

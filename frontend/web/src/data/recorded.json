@@ -1943,7 +1943,7 @@
       "label": "Injected defects caught by the fuzzer",
       "value": 9,
       "of": 9,
-      "note": "each within 0.2 s",
+      "note": "each within 2.4 s",
       "source": "reports/artifacts/mutation_check.log"
     }
   ]

@@ -1,20 +1,20 @@
-\begin{table}[t]
-\centering
-\caption{User-space instructions for one replay of each trace (millions, median of five replays) and the ratio of \st\ to the two conventional tables. The count of a table varied by at most 0.03 percent between replays.}
+\begin{table}[t!]
+\strcap{User-Space Instructions for One Replay of Each Trace (Millions, Median of Five Replays; x86-64, \code{g++} \code{-O2}) and the Ratio of \st\ to the Two Conventional Tables. The Count of a Table Varied by at Most 0.03 Percent Between Replays.}
 \label{tab:instr}
-\small
-\begin{tabular}{lrrrrr}
-\toprule
-Trace & \st\ & $C_0$ & $C_1$ & \st/$C_0$ & \st/$C_1$ \\
-\midrule
-cjson & 4.74 & 3.46 & 3.88 & 1.37 & 1.22 \\
-freertos & 10.08 & 7.37 & 8.17 & 1.37 & 1.23 \\
-littlefs & 4.83 & 3.42 & 3.74 & 1.41 & 1.29 \\
-lua & 47.38 & 33.63 & 37.55 & 1.41 & 1.26 \\
-mbedtls & 280.60 & 204.98 & 226.47 & 1.37 & 1.24 \\
-sqlite & 53.75 & 41.03 & 44.33 & 1.31 & 1.21 \\
-tinycc & 19.71 & 13.98 & 15.26 & 1.41 & 1.29 \\
+\centering
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|l|r|r|r|r|r|}
+\hline
+Project & \st & $C_0$ & $C_1$ & \st/$C_0$ & \st/$C_1$ \\
+\hline
 zlib & 13.78 & 9.99 & 11.30 & 1.38 & 1.22 \\
-\bottomrule
+cJSON & 4.74 & 3.46 & 3.88 & 1.37 & 1.22 \\
+littlefs & 4.83 & 3.42 & 3.74 & 1.41 & 1.29 \\
+FreeRTOS & 10.08 & 7.37 & 8.17 & 1.37 & 1.23 \\
+Lua & 47.38 & 33.63 & 37.55 & 1.41 & 1.26 \\
+Mbed TLS & 280.60 & 204.98 & 226.47 & 1.37 & 1.24 \\
+TinyCC & 19.71 & 13.98 & 15.26 & 1.41 & 1.29 \\
+SQLite & 53.75 & 41.03 & 44.33 & 1.31 & 1.21 \\
+\hline
 \end{tabular}
 \end{table}
