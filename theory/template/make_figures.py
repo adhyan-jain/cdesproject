@@ -60,8 +60,8 @@ write("orphan.csv", ["j", "a25", "a50", "a75", "a90"], [(j, *[orph[a][1 + j] for
 lad = rows("tab_ladder.tex")                      # trace, C0, C1, C2, Sraw, S, hash, pack, total
 write("ladder.csv", ["trace", "hash", "pack", "total"], [(r[0], r[6], r[7], r[8]) for r in lad])
 
-lc = rows("tab_lawcheck.tex")                     # m, n, L, observed, exact, z, clean, mismatches
-write("lawcheck.csv", ["setting", "z"], [("s%d" % (i + 1), r[5].replace("+", "")) for i, r in enumerate(lc)])
+lc = rows("tab_lawcheck.tex")                     # m, n, L, trials, observed, exact, z, clean, mismatches
+write("lawcheck.csv", ["setting", "z"], [("s%d" % (i + 1), r[6].replace("+", "")) for i, r in enumerate(lc)])
 
 ad = rows("tab_adaptive.tex")                     # colliders, persistent mean, max, fresh, random
 write("adaptive.csv", ["colliders", "persistent", "fresh", "random"], [(r[0], r[1], r[3], r[4]) for r in ad])

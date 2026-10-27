@@ -91,14 +91,14 @@
 
 % P7: z-scores of the law against the real table
 \begin{tikzpicture}
-\begin{axis}[xlabel={setting (index slots $m$, keys $n$, probe limit $L$)},ylabel={$z$-score},ymin=-3,ymax=3,symbolic x coords={s1,s2,s3,s4,s5,s6,s7},xtick=data,xticklabels={256/128/8,256/160/16,256/190/24,256/190/40,1024/760/48,1024/760/96,1024/512/24},
+\begin{axis}[xlabel={setting (index slots $m$, keys $n$, probe limit $L$)},ylabel={$z$-score},ymin=-3,ymax=3,symbolic x coords={s1,s2,s3,s4,s5,s6,s7,s8,s9,s10},xtick=data,xticklabels={256/128/8,256/160/16,256/190/24,256/190/40,1024/760/48,1024/760/96,1024/512/24,4096/3071/80,4096/3071/100,16384/12287/80},
   x tick label style={rotate=20,anchor=east,font=\scriptsize},enlarge x limits=0.08,legend pos=north east]
-\fill[green!15] (axis cs:s1,-1.96) rectangle (axis cs:s7,1.96);
+\fill[green!15] (axis cs:s1,-1.96) rectangle (axis cs:s10,1.96);
 \addplot[only marks,mark=*,mark size=2.6pt,blue] table[col sep=comma,x=setting,y=z]{data/lawcheck.csv};
 \addlegendentry{observed}
-\addplot[dashed,black,domain=0:1] coordinates {(s1,1.96) (s7,1.96)};
+\addplot[dashed,black,domain=0:1] coordinates {(s1,1.96) (s10,1.96)};
 \addlegendentry{$\pm1.96$}
-\addplot[dashed,black,forget plot] coordinates {(s1,-1.96) (s7,-1.96)};
+\addplot[dashed,black,forget plot] coordinates {(s1,-1.96) (s10,-1.96)};
 \end{axis}
 \end{tikzpicture}
 

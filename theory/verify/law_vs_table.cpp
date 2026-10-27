@@ -5,6 +5,7 @@
 // P(steps > L).  Table B (same key, max_probe = L) receives the same names: while no earlier probe has
 // exceeded L, B must be in exactly A's state (state_digest) and B's status for the last name must be
 // kProbeLimit iff steps > L.  Usage: law_vs_table m n L trials seed
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstddef>
@@ -21,7 +22,8 @@ int main(int argc, char** argv) {
     const uint32_t m = atoi(argv[1]), n = atoi(argv[2]), L = atoi(argv[3]);
     const long trials = atol(argv[4]);
     std::mt19937_64 rng(strtoull(argv[5], 0, 10));
-    std::vector<uint32_t> ba(1 << 15), bb(1 << 15);
+    const size_t words = std::max<size_t>(1 << 15, static_cast<size_t>(m) * 10);   // room for n names of 6 words each
+    std::vector<uint32_t> ba(words), bb(words);
     // Trial accounting for the process distinctions of the manuscript (Section VI-B):
     //   (i)/(ii) table A: unconstrained fill of n names, then the first capped query     -> exceed / trials
     //   (iii)    fill conditioned on no refusal in table B                                -> exceed_clean / clean

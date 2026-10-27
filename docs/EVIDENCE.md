@@ -640,6 +640,16 @@ noisy timing channel would need, or any defence beyond "fresh key per table".
 4. Single machine, five repetitions, no intervals for the flooding times.
 
 
+### The refusal law at larger index sizes and on real identifiers (added 2026-10-28)
+
+`theory/verify/run_law_check.py` now has ten settings: the seven earlier ones plus (4096, 3071, 80), (4096, 3071, 100)
+(400 000 trials each) and (16384, 12287, 80) (100 000 trials); `n` is one below the 3/4 load limit so that the last name
+still fits. Largest |z| = 1.96, 0 mismatches, 0 coupling violations (3.7 million trials in all). The z-score figure
+(`fig_lawz`) had plotted the exact probabilities instead of the z-scores after the table gained a `trials` column; fixed in
+`theory/template/make_figures.py`. Real identifiers with the default hash: `theory/verify/law_real_names.cpp`,
+`run_real_names.py` -> `results/hardening/law_real_names.csv` (only rows with `pool_at_least_4n` = True are meaningful):
+observed frequency within 19 percent of the law at L = 48 and 0.72-1.44 times the law at L = 96 (21-42 events).
+
 ### Colliding and honest names in one table (added 2026-10-28)
 
 `build/hardening --mode mixed --reps 20 --out results/hardening/mixed.csv`: 1 000 colliding and 1 000 honest names of 100
