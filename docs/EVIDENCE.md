@@ -640,6 +640,13 @@ noisy timing channel would need, or any defence beyond "fresh key per table".
 4. Single machine, five repetitions, no intervals for the flooding times.
 
 
+### Colliding and honest names in one table (added 2026-10-28)
+
+`build/hardening --mode mixed --reps 20 --out results/hardening/mixed.csv`: 1 000 colliding and 1 000 honest names of 100
+characters in one bounded table (4 096 slots, 1 MiB buffer), random order and flood first, unkeyed and keyed, `L` = 64 and
+512. Unkeyed: honest names refused 2.1-2.5 on average at `L` = 64 (max 6) and 5.8-16.3 at `L` = 512 (max 26); keyed: 0 in
+all 80 runs. Every status was `kOk` or `kProbeLimit` and the invariants held.
+
 ## 4. Encodings and limits
 
 Every fact below is read from `include/strata/strata.hpp` (line numbers refer to that file) and is

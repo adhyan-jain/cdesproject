@@ -378,6 +378,47 @@ static int mode_probes(const std::string& out, int trials) {
     return 0;
 }
 
+// Colliding and honest names in one bounded table (the flood experiment above never mixed them):
+// how many honest names does the probe limit refuse? The names are interleaved at random;
+// the colliding names are those built against the unkeyed mixer.
+static int mode_mixed(const std::string& out, int reps) {
+    const int blocks = 10;                                   // 2^10 colliding names of 100 characters
+    const size_t F = 1000, H = 1000;
+    std::vector<std::string> evil = colliding_names(F, blocks);
+    FILE* fo = out.empty() ? stdout : std::fopen(out.c_str(), "w");
+    if (!fo) return 1;
+    std::fprintf(fo, "order,keyed,max_probe,rep,colliding_offered,colliding_refused,honest_offered,honest_refused,correct\n");
+    std::vector<uint32_t> buf(1u << 18);                     // 1 MiB, ample for 2000 names of 22 words
+    for (int flood_first = 0; flood_first < 2; ++flood_first)
+    for (int keyed = 0; keyed < 2; ++keyed)
+        for (int L = 64; L <= 512; L *= 8)
+            for (int rep = 0; rep < reps; ++rep) {
+                std::vector<std::string> honest = ordinary_names(H, 100);
+                std::vector<std::pair<const std::string*, int> > seq;
+                for (size_t i = 0; i < F; ++i) seq.push_back(std::make_pair(&evil[i], 1));
+                for (size_t i = 0; i < H; ++i) seq.push_back(std::make_pair(&honest[i], 0));
+                if (!flood_first) for (size_t i = seq.size(); i > 1; --i) std::swap(seq[i - 1], seq[rnd32() % i]);
+                strata::Options o;
+                o.keyed = keyed != 0;
+                o.key[0] = 0x6b657931u ^ rnd32();
+                o.key[1] = 0x6b657932u ^ rnd32();
+                o.index_slots = 4096;
+                o.max_probe = static_cast<uint32_t>(L);
+                strata::Table t(&buf[0], buf.size() * 4, o);
+                size_t evil_refused = 0, honest_refused = 0;
+                bool ok = true;
+                for (size_t i = 0; i < seq.size(); ++i) {
+                    strata::Status st = t.declare(seq[i].first->data(), seq[i].first->size(), static_cast<int32_t>(i));
+                    if (st != strata::kOk) { if (seq[i].second) ++evil_refused; else ++honest_refused; }
+                    if (st != strata::kOk && st != strata::kProbeLimit) ok = false;
+                }
+                if (!t.check_invariants()) ok = false;
+                std::fprintf(fo, "%s,%d,%d,%d,%zu,%zu,%zu,%zu,%d\n", flood_first ? "flood_first" : "random", keyed, L, rep, F, evil_refused, H, honest_refused, ok ? 1 : 0);
+            }
+    if (!out.empty()) std::fclose(fo);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     std::string mode, path, name, out;
     int reps = 5, words = 4;
@@ -394,6 +435,7 @@ int main(int argc, char** argv) {
     if (mode == "flood") return mode_flood(out, reps);
     if (mode == "traces") return mode_traces(path, name.empty() ? path : name, out);
     if (mode == "probes") return mode_probes(out, reps);
+    if (mode == "mixed") return mode_mixed(out, reps);
     if (mode == "names") {
         if (words < 2 || words > 50 || (words & 1) || count == 0 || (words / 2 < 40 && count > (static_cast<size_t>(1) << (words / 2)))) {
             std::fprintf(stderr, "--words must be even, 2..50, and --count at most 2^(words/2)\n");
@@ -403,6 +445,6 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < n.size(); ++i) std::printf("%s\n", n[i].c_str());
         return 0;
     }
-    std::fprintf(stderr, "usage: hardening --mode flood|traces|probes|names ...\n");
+    std::fprintf(stderr, "usage: hardening --mode flood|traces|probes|mixed|names ...\n");
     return 2;
 }
