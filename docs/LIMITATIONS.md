@@ -6,7 +6,7 @@
    compiler. The traces are what TCC's own tables were asked to do; replaying them measures
    the table, not a compile. No end-to-end compile time or compiler memory figure exists,
    and symbol tables are a small part of both.
-2. **No hardware target.** Measurements ran on an x86-64 laptop under Linux (WSL 2). STRATA
+2. **No hardware target.** Measurements ran on an x86-64 laptop under Linux (WSL 2) and, for the repeated sessions and the instruction counts, on a native Linux desktop. STRATA
    was also built for a bare-metal Cortex-M3 and run under QEMU with 64 KiB of RAM and no
    heap, where five traces replay with results identical to the host's. That shows the code
    is correct and fits on a 32-bit target; an emulator gives no timing, and no physical
@@ -16,7 +16,15 @@
    list). GCC or Clang would produce different event streams.
 4. **C only.** No C++ traces; names with `::` take the unpacked path.
 
-## Where STRATA is worse (measured; see `RESULTS.md`)
+## Where STRATA is worse (measured; see `docs/EVIDENCE.md`, parts 8 and 10)
+
+**Current state (2026-10-27).** In five repeated timing sessions on a second machine STRATA was slower than the
+conventional table with a stored hash word on all 8 traces (8 to 20 percent) and slower than the one without it on
+6 of 8 (0 to 13 percent); it executes 31 to 41 and 21 to 29 percent more instructions than the two. The buffer
+saving is 16.4 to 17.9 percent against the first and 5.3 to 9.0 percent against the second, almost all of it name
+packing. Attempts to close the gap (cheaper hash, a lookup cache, prepared names, faster packing) are in part 10 of
+the evidence document; the kept ones give 6 to 8 percent fewer instructions. The older paragraphs below describe
+earlier runs and are kept for the record.
 
 * **Speed against a conventional allocator-free table.** In the reported run
   (`20261011-165103-v3`) `arena_chain`, a plain chained table over an entry arena, was faster
@@ -47,7 +55,7 @@
   opt-in defences exist: a keyed hash (`Options::keyed`) and, in fixed mode, a static index
   with a probe limit (`Options::index_slots`, `Options::max_probe`) that refuses instead of
   slowing down. They are off by default, the key must be supplied by the caller, and the
-  keyed hash costs replay time (see `docs/RESULTS.md`). The baseline
+  keyed hash costs replay time (see `docs/EVIDENCE.md`). The baseline
   `arena_chain` uses the same unkeyed mixer and has no such option.
 
 ## Design limits
@@ -61,7 +69,7 @@
   choose the index size in advance.
 * One declaration record per name and scope: no overloading, no separate tag or label name
   spaces. A front end would use one table per name space.
-* Not thread-safe; the character-code table is initialised on first use.
+* Not thread-safe (the table has no locking; the character-code table is a compile-time constant).
 
 ## Measurement
 

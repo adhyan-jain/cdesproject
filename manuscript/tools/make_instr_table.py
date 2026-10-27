@@ -3,7 +3,7 @@
 
     python3 manuscript/tools/make_instr_table.py
 
-The CSV is written by benchmarks/instr_count.cpp (see docs/REVIEW_MANIFEST.md).
+The CSV is written by benchmarks/instr_count.cpp (see docs/EVIDENCE.md, part 7).
 """
 import collections
 import csv

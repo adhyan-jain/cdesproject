@@ -19,7 +19,15 @@ output except by running the programs listed below, and it can be wrong.
 
 ## 2. What the AI did in the 2026-10-17 session
 
-A later session (October 2026, Claude Code, model Sonnet 5.5, with subagents) revised the IEEE Access manuscript in response to an instructor's reviewer report: it extended the refusal-law experiment, wrote `tests/test_review.cpp`, the stronger baseline `benchmarks/baselines/arena_chain_nohash.hpp`, the timing-session scripts, `docs/EVIDENCE.md` and `docs/REVIEW_MANIFEST.md`, rewrote parts of the article, and cleaned the repository. Each result was produced by a program that can be re-run; the authors must read and verify the text before submission.
+A later session (October 2026, Claude Code, model Sonnet 5.5, with subagents) revised the IEEE Access manuscript in response to an instructor's reviewer report: it extended the refusal-law experiment, wrote `tests/test_review.cpp`, the stronger baseline `benchmarks/baselines/arena_chain_nohash.hpp`, the timing-session scripts, `docs/EVIDENCE.md` and `docs/EVIDENCE.md` part 7, rewrote parts of the article, and cleaned the repository. Each result was produced by a program that can be re-run; the authors must read and verify the text before submission.
+
+A final session (2026-10-27, Claude Code) added deterministic instruction counts (`benchmarks/instr_count.cpp`,
+`prepared_count.cpp`), tried several changes to make the table faster (parts 8 and 10 of `docs/EVIDENCE.md`), kept the
+ones that lowered the instruction count without changing results, added `tests/test_review.cpp` T4, reran the tests,
+fuzzing and mutation check on the final code, reviewed the manuscript against the reviewer report, and rewrote parts of
+the text. It was used for planning, for writing code, for help with the literature review and for drafting and editing
+text, at the direction of the authors; the manuscript's disclosure says the same. The authors are Adhyan Jain,
+Shubhi Singh and Prof. Bhuvaneshwari M.; the assistant did not decide the authorship.
 
 | Output | What the AI did | How it was checked, by running programs (not by reading) |
 |---|---|---|

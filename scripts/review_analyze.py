@@ -6,7 +6,7 @@
 Reads   results/review/sessions/s*/replays.csv   (trace,impl,rep,replay_ns; one row per table per round)
         results/review/r13_minbuf.csv
 Writes  results/review/analysis_per_session.csv, analysis_pooled.csv, analysis.json, r13_savings.csv,
-        p95_latency.csv, and prints the markdown tables used in docs/REVIEW_EXPERIMENTS_BENCH.md.
+        p95_latency.csv, and prints the markdown tables used in docs/EVIDENCE.md, part 8.
 
 Statistic: for a pair (num, den) the ratio num/den of the two replay times of the SAME round (paired).
 Per session: median of the 31 ratios, 95% percentile bootstrap CI (10 000 resamples of rounds).

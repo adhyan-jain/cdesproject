@@ -945,11 +945,41 @@ static void test_T3() {
     t3_max_buffer();
 }
 
+// T4: a name prepared once with make_key() gives the same results as the plain call, in every mode.
+static void test_T4() {
+    const char* names[] = {"a", "count", "counter_1", "long_identifier_name_x", "x-y", "caf\xc3\xa9", "A9_", "zz"};
+    for (int mode = 0; mode < 3; ++mode) {
+        std::vector<uint32_t> b1(4096), b2(4096);
+        strata::Options o;
+        if (mode == 1) { o.index_slots = 256; o.max_probe = 64; }
+        if (mode == 2) { o.keyed = true; o.key[0] = 0x1234; o.key[1] = 0x5678; o.index_slots = 256; o.max_probe = 64; }
+        strata::Table plain(&b1[0], b1.size() * 4, o), prep(&b2[0], b2.size() * 4, o);
+        strata::Key k;
+        for (int round = 0; round < 3; ++round) {
+            for (size_t i = 0; i < sizeof names / sizeof *names; ++i) {
+                const char* n = names[i];
+                const size_t len = std::strlen(n);
+                CHECK(prep.make_key(n, len, k) == strata::kOk);
+                int32_t v1 = -1, v2 = -2;
+                uint8_t t1 = 0, t2 = 0;
+                CHECK(plain.resolve(n, len, &v1, &t1) == prep.resolve(k, &v2, &t2));
+                CHECK(v1 == v2 || v1 == -1);
+                CHECK(plain.declare(n, len, static_cast<int32_t>(i + round), static_cast<uint8_t>(i)) == prep.declare(k, static_cast<int32_t>(i + round), static_cast<uint8_t>(i)));
+                CHECK(plain.resolve(n, len, &v1, &t1) && prep.resolve(k, &v2, &t2) && v1 == v2 && t1 == t2);
+            }
+            CHECK(plain.enter_scope() == prep.enter_scope());
+        }
+        CHECK(plain.state_digest() == prep.state_digest());
+        CHECK(prep.check_invariants());
+    }
+}
+
 int main(int argc, char** argv) {
     if (argc > 1) g_rng ^= static_cast<uint64_t>(std::strtoull(argv[1], 0, 0)) * 0x9E3779B97F4A7C15ull;
     test_T1();
     test_T2();
     test_T3();
+    test_T4();
     std::printf("%d checks, %d failed\n", g_checks, g_failed);
     return g_failed ? 1 : 0;
 }

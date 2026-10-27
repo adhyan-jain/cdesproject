@@ -2,7 +2,7 @@
 # Reviewer experiments R15/R16: independent timing sessions (separate process launches,
 # separated in time), rotating start order, pinned to one core.
 #   scripts/review_sessions.sh [SESSIONS=5] [GAP_SECONDS=300] [CORE=4] [REPS=31]
-# Needs build/review_bench/bench (see docs/REVIEW_EXPERIMENTS_BENCH.md for the build commands)
+# Needs build/review_bench/bench (see docs/EVIDENCE.md, part 8 for the build commands)
 # and build/review_bench/traces/*.trace. Writes results/review/sessions/sN/.
 set -e
 cd "$(dirname "$0")/.."
