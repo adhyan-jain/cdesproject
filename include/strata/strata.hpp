@@ -323,7 +323,7 @@ public:
         uint32_t* rec = ident(ref);
         rec[0] = static_cast<uint32_t>(value);
         rec[1] = k.meta | tag;
-        std::memcpy(rec + 2, k.w, k.n * 4);
+        for (uint32_t j = 0; j < k.n; ++j) rec[2 + j] = k.w[j];   // names are short: a loop beats a memcpy call
         itop_ += 2 + k.n;
         ++nident_;
         // The search above ended at the first empty slot of the name's probe path. Unless
@@ -610,6 +610,10 @@ private:
     // Makes room for `words` more stack words and `new_idents` more index entries.
     // On failure nothing has changed.
     bool ensure(uint32_t words, uint32_t new_idents) {
+        // fast path: the index stays within its maximum load and the free gap is large enough
+        if (static_cast<uint64_t>(nident_ + new_idents) * 4 <= static_cast<uint64_t>(idx_) * (opt_.sparse_index ? 2 : 3) &&
+            free_words() >= words)
+            return true;
         uint32_t idx = idx_;
         const uint64_t num = opt_.sparse_index ? 2 : 3;   // maximum load factor num/4
         if (opt_.index_slots)                             // static index: never rebuilt

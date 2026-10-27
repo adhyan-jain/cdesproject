@@ -1,8 +1,8 @@
-cjson     strata 4.54 -> prepared 2.77 | c0 3.00 -> prepared 1.97 | ratio plain 1.51 prepared 1.40
-freertos  strata 9.63 -> prepared 5.45 | c0 6.13 -> prepared 3.72 | ratio plain 1.57 prepared 1.47
-littlefs  strata 4.55 -> prepared 2.76 | c0 2.92 -> prepared 1.94 | ratio plain 1.56 prepared 1.43
-lua       strata 45.37 -> prepared 28.54 | c0 29.69 -> prepared 19.60 | ratio plain 1.53 prepared 1.46
-mbedtls   strata 268.87 -> prepared 153.37 | c0 170.88 -> prepared 103.08 | ratio plain 1.57 prepared 1.49
-sqlite    strata 49.67 -> prepared 27.78 | c0 34.15 -> prepared 22.98 | ratio plain 1.45 prepared 1.21
-tinycc    strata 18.41 -> prepared 11.14 | c0 11.99 -> prepared 7.97 | ratio plain 1.54 prepared 1.40
-zlib      strata 13.14 -> prepared 8.17 | c0 8.87 -> prepared 5.81 | ratio plain 1.48 prepared 1.41
+cjson     strata 4.43 -> prepared 2.66 | c0 2.99 -> prepared 1.97 | ratio plain 1.48 prepared 1.35
+freertos  strata 9.47 -> prepared 5.29 | c0 6.13 -> prepared 3.72 | ratio plain 1.54 prepared 1.42
+littlefs  strata 4.46 -> prepared 2.68 | c0 2.92 -> prepared 1.94 | ratio plain 1.53 prepared 1.38
+lua       strata 44.17 -> prepared 27.35 | c0 29.83 -> prepared 19.60 | ratio plain 1.48 prepared 1.40
+mbedtls   strata 263.88 -> prepared 148.37 | c0 171.07 -> prepared 103.08 | ratio plain 1.54 prepared 1.44
+sqlite    strata 48.99 -> prepared 27.09 | c0 34.32 -> prepared 22.98 | ratio plain 1.43 prepared 1.18
+tinycc    strata 18.12 -> prepared 10.85 | c0 12.00 -> prepared 7.97 | ratio plain 1.51 prepared 1.36
+zlib      strata 12.82 -> prepared 7.85 | c0 8.86 -> prepared 5.81 | ratio plain 1.45 prepared 1.35
