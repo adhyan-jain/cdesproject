@@ -114,8 +114,7 @@ Details and the expected run-to-run variation: `docs/REPRODUCIBILITY.md`.
 
 ## Authors and provenance
 
-Authors of the IEEE Access manuscript: Adhyan Jain and Shubhi Singh (Vellore Institute of Technology), under the
-guidance of Prof. Bhuvaneshwari M. The implementation, experiments, proofs and text were produced with AI coding
+Authors of the IEEE Access manuscript: Adhyan Jain, Shubhi Singh and Prof. Bhuvaneshwari M. (corresponding author), Vellore Institute of Technology. The implementation, experiments, proofs and text were produced with AI coding
 assistants working at the authors' direction; `docs/AI_USE_DISCLOSURE.md` records what was done and how it was checked.
 
 ## Licence
