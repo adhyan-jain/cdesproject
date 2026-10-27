@@ -71,8 +71,7 @@ M.~A. Bender, B.~C. Kuszmaul, and W.~Kuszmaul, ``Linear probing revisited:
 \bibitem{fkk2024}
 M.~Farach-Colton, A.~Krapivin, and W.~Kuszmaul, ``Optimal bounds for open
   addressing without reordering,'' in \emph{Proc. 65th IEEE Symposium on
-  Foundations of Computer Science (FOCS)}, 2024, pp. 594--605, statements used
-  here were read in the arXiv version 2501.02305.
+  Foundations of Computer Science (FOCS)}, 2024, pp. 594--605.
 
 \bibitem{fraserhanson1995}
 C.~W. Fraser and D.~R. Hanson, \emph{A Retargetable {C} Compiler: Design and
@@ -96,8 +95,7 @@ R.~M. Jim{\'e}nez and C.~Mart{\'\i}nez, ``On deletions in open addressing
 
 \bibitem{sanders2018}
 P.~Sanders, ``Hashing with linear probing and referential integrity,''
-  arXiv:1808.04602, 2018, full text read; it contains no statement of
-  stack-ordered deletion.
+  arXiv:1808.04602, 2018.
 
 \bibitem{celis1985}
 P.~Celis, P.-{\AA}. Larson, and J.~I. Munro, ``Robin {Hood} hashing,'' in
@@ -199,11 +197,6 @@ M.~Naor and E.~Yogev, ``Bloom filters in adversarial environments,'' in
   algorithm used by rustc,'' [Online]. Available:
   \url{https://github.com/rust-lang/rustc-hash}. Accessed: Oct. 13, 2026.
 
-\bibitem{strata}
-S.~Singh, A.~Jain, A.~Venkatataramana, and Arjuman, ``{STRATA}: Source code,
-  traces, and measurements,'' 2026, [Online]. Available:
-  \url{https://github.com/shubhisingh1510/cdesproject}.
-
 \bibitem{dwass1969}
 M.~Dwass, ``The total progeny in a branching process and a related random
   walk,'' \emph{Journal of Applied Probability}, vol.~6, no.~3, pp. 682--686,
@@ -212,6 +205,11 @@ M.~Dwass, ``The total progeny in a branching process and a related random
 \bibitem{tanner1961}
 J.~C. Tanner, ``A derivation of the {Borel} distribution,'' \emph{Biometrika},
   vol.~48, no. 1--2, pp. 222--224, 1961.
+
+\bibitem{strata}
+A.~Jain and S.~Singh, ``{STRATA}: Source code, traces, and measurements,''
+  2026, [Online]. Available:
+  \url{https://github.com/shubhisingh1510/cdesproject}.
 
 \bibitem{murmur3}
 A.~Appleby, ``{MurmurHash3}, in {SMHasher},'' [Online]. Available:
