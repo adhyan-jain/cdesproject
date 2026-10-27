@@ -61,6 +61,11 @@ m["SessSZeroLo"], m["SessSZeroHi"] = "%.0f" % ((min(sc0) - 1) * 100), "%.0f" % (
 m["SessSZeroSlower"] = str(cnt("STRATA / arena C0", "slower"))
 m["SessSOneLo"], m["SessSOneHi"] = "%.0f" % max(0, (min(sc1) - 1) * 100), "%.0f" % ((max(sc1) - 1) * 100)
 m["SessSOneSlower"] = str(cnt("STRATA / arena C1", "slower"))
+slow1 = [(r - 1) * 100 for t, r in zip(ORDER, sc1) if pooled[("STRATA / arena C1", t)]["t_difference"] == "established" and r > 1]
+fast1 = [(1 - r) * 100 for t, r in zip(ORDER, sc1) if pooled[("STRATA / arena C1", t)]["t_difference"] == "established" and r < 1]
+m["SessSOneSlowLo"], m["SessSOneSlowHi"] = "%.0f" % min(slow1), "%.0f" % max(slow1)
+m["SessSOneFaster"] = str(len(fast1))
+m["SessSOneFasterHi"] = "%.0f" % max(fast1) if fast1 else "0"
 m["SessSOneEq"] = str(sum(1 for t in ORDER if pooled[("STRATA / arena C1", t)]["t_tost"] == "equivalent"))
 m["SessCCSlower"] = str(cnt("arena C1 / arena C0", "slower"))
 m["SessCCLo"], m["SessCCHi"] = "%.0f" % ((min(c1c0) - 1) * 100), "%.0f" % ((max(c1c0) - 1) * 100)

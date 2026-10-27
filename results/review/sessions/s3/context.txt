@@ -1,13 +1,13 @@
 session: 3 of 5
-start_utc: 2026-10-26T19:40:47Z
+start_utc: 2026-10-27T07:55:51Z
 core: 4 (sibling hardware thread: 5)
 rotation_offset (--rot): 2
-loadavg_start: 1.09 1.04 1.45 1/3136 508921
+loadavg_start: 0.74 1.48 2.01 1/3206 2987764
 governor: powersave  epp: performance  no_turbo: 0
-cur_freq_khz_start: 3430728
+cur_freq_khz_start: 400130
 busy_processes_start (>=20% cpu, excluding this script):
-end_utc: 2026-10-26T19:41:00Z
-loadavg_end: 1.30 1.09 1.46 8/3127 510299
-cur_freq_khz_end: 3123973
-pinned_cpu4_busy_fraction_over_session: 0.998
-sibling_cpu5_busy_fraction_over_session: 0.058
+end_utc: 2026-10-27T07:56:00Z
+loadavg_end: 0.85 1.48 2.01 1/3208 2988580
+cur_freq_khz_end: 3754312
+pinned_cpu4_busy_fraction_over_session: 0.996
+sibling_cpu5_busy_fraction_over_session: 0.025

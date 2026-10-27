@@ -17,7 +17,7 @@ analysis, an interactive demo, and the IEEE Access manuscript.
 | Popping the newest key is an exact undo (index cells), so the index equals the insertion-only index of the live names; for linear probing LIFO is the only deletion order safe for every table | article Section V, `theory/verify/` |
 | Exact refusal probability of a probe limit in the ideal-hash model (first capped query), with proved bounds for the refusal-filtered process | article Section VI and appendix, `theory/verify/` |
 | About one sixth smaller fixed buffer than a conventional single-buffer table that stores a hash word (16.4-17.9%), but 5.3-9.0% against one that does not; almost all of the latter is name packing | article Section IX, `docs/EVIDENCE.md` parts 7-8, `results/review/` |
-| **Slower** than both conventional tables: 8-20% in five timing sessions, 31-41% more instructions executed; faster than its heap-based predecessor METIS-X | article Section IX, `docs/EVIDENCE.md` parts 8 and 10 |
+| **Slower** than the conventional table with a stored hash on all 8 traces (5-18% in five timing sessions on the final code) and than the one without on 6 of 8 (4-13%); 31-41% more instructions executed; faster than its heap-based predecessor METIS-X | article Section IX, `docs/EVIDENCE.md` parts 8 and 10 |
 | No end-to-end speedup in a hosted compiler (chibicc); emulated Cortex-M3 runs only, no physical-device timing | article Sections IX-J, K |
 
 Numbers are produced by programs from the raw files in `results/`; the article's tables are generated, not typed.

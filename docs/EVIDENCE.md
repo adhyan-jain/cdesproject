@@ -1078,6 +1078,16 @@ files; only Python files contain it), and no implementation of it outside Python
 
 ## 8. The stronger baseline, monotonicity scan and timing sessions
 
+> **Update of 2026-10-28.** The five timing sessions below (2026-10-26/27) used the library before three small changes lowered its
+> instruction count by 6-8 percent. They were repeated on the final library (same script, `scripts/review_sessions.sh 5 300 4 31`,
+> sessions of 2026-10-28) and `results/review/sessions/` now holds the new data; the numbers in this part describe the first
+> sessions and the paper's tables and macros the new ones: STRATA / C0 slower on 8 of 8 traces by 5 to 18 percent (six outside the
+> +-10 percent margin); STRATA / C1 slower on 6 of 8 by 4 to 13 percent, faster on zlib (2 percent), not established on SQLite,
+> equivalent on 6; C1 / C0 slower on 8 of 8 by 3 to 9 percent; STRATA faster than METIS-X on 8 of 8 by 9 to 31 percent; keyed 19 to
+> 30 percent slower. Session context: core frequency at start 0.4 to 4.2 GHz, sibling busy 1.2 to 7.7 percent, load 0.3 to 3.9,
+> absolute times up to a factor 2.0 apart. The old data stays in git history (commit `40ff877` and earlier).
+
+
 
 All of this was run on 2026-10-26/27 (UTC) on branch `reviewer-report-revision`, code base commit `c5d8eb8` plus the uncommitted changes listed in section 1.
 Nothing here was copied from the paper; every number comes from `results/review/`. Where a result differs from the paper it is said so in section 0.

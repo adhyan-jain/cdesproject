@@ -11,3 +11,5 @@ CPU min MHz:                             400.0000
 L1d cache:                               416 KiB (10 instances)
 L2 cache:                                9.5 MiB (7 instances)
 L3 cache:                                24 MiB (1 instance)
+
+sessions rerun on the final library: 2026-10-27T08:08Z, commit 40ff877, g++ g++ (GCC) 16.2.1 20260810

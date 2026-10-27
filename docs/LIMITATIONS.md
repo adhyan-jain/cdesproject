@@ -19,8 +19,8 @@
 ## Where STRATA is worse (measured; see `docs/EVIDENCE.md`, parts 8 and 10)
 
 **Current state (2026-10-27).** In five repeated timing sessions on a second machine STRATA was slower than the
-conventional table with a stored hash word on all 8 traces (8 to 20 percent) and slower than the one without it on
-6 of 8 (0 to 13 percent); it executes 31 to 41 and 21 to 29 percent more instructions than the two. The buffer
+conventional table with a stored hash word on all 8 traces (5 to 18 percent; sessions rerun on the final code on
+2026-10-28) and slower than the one without it on 6 of 8 (4 to 13 percent; faster on zlib, not established on SQLite); it executes 31 to 41 and 21 to 29 percent more instructions than the two. The buffer
 saving is 16.4 to 17.9 percent against the first and 5.3 to 9.0 percent against the second, almost all of it name
 packing. Attempts to close the gap (cheaper hash, a lookup cache, prepared names, faster packing) are in part 10 of
 the evidence document; the kept ones give 6 to 8 percent fewer instructions. The older paragraphs below describe
