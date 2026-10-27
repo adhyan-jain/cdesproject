@@ -60,9 +60,20 @@ public:
         return true;
     }
     // 0 new, 1 redeclared in this scope, -1 refused (nothing changed)
+    struct Prep { uint32_t key[64], n, h; size_t len; };   // a name whose words and hash are computed once
+    bool prepare(const char* name, size_t len, Prep& p) const {
+        if (len == 0 || len > 255) return false;
+        p.len = len; p.n = words(len); p.h = hash(name, len, p.key, p.n);
+        return true;
+    }
     int declare(const char* name, size_t len, int32_t value) {
         if (!valid_ || len == 0 || len > 255) return -1;
-        uint32_t key[64], n = words(len), h = hash(name, len, key, n);
+        Prep p; prepare(name, len, p);
+        return declare(p, value);
+    }
+    int declare(const Prep& p, int32_t value) {
+        if (!valid_) return -1;
+        const uint32_t* key = p.key; const uint32_t n = p.n, h = p.h; const size_t len = p.len;
         for (uint32_t r = w_[h & (nb_ - 1)]; r; r = entry(r)[0]) {
             uint32_t* e = entry(r);
             if (e[1] == h && (e[3] & 0xFFFF) == len && std::memcmp(e + 4, key, n * 4) == 0) {
@@ -87,7 +98,12 @@ public:
     }
     bool resolve(const char* name, size_t len, int32_t* value) const {
         if (!valid_ || len == 0 || len > 255) return false;
-        uint32_t key[64], n = words(len), h = hash(name, len, key, n);
+        Prep p; prepare(name, len, p);
+        return resolve(p, value);
+    }
+    bool resolve(const Prep& p, int32_t* value) const {
+        if (!valid_) return false;
+        const uint32_t* key = p.key; const uint32_t n = p.n, h = p.h; const size_t len = p.len;
         for (uint32_t r = w_[h & (nb_ - 1)]; r; r = entry(r)[0]) {
             const uint32_t* e = entry(r);
             if (e[1] == h && (e[3] & 0xFFFF) == len && std::memcmp(e + 4, key, n * 4) == 0) {

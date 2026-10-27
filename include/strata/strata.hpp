@@ -110,19 +110,24 @@ struct Key {
 };
 
 namespace detail {
-// 0 = not an identifier character; otherwise a 6-bit code 1..63.
-inline const uint8_t* code_table() {
-    static uint8_t t[256];
-    static bool ready = false;
-    if (!ready) {
+// 0x80 = not an identifier character; otherwise a 6-bit code 1..63. Built at compile time,
+// so a lookup pays no initialization check, and the invalid marker lets a whole word be
+// validated with one test.
+enum : uint8_t { kBadChar = 0x80 };
+struct CodeTable {
+    uint8_t v[256];
+    constexpr CodeTable() : v() {
+        for (int i = 0; i < 256; ++i) v[i] = kBadChar;
         uint8_t c = 1;
-        for (int ch = 'a'; ch <= 'z'; ++ch) t[ch] = c++;
-        for (int ch = 'A'; ch <= 'Z'; ++ch) t[ch] = c++;
-        for (int ch = '0'; ch <= '9'; ++ch) t[ch] = c++;
-        t[static_cast<unsigned char>('_')] = c;  // 63
-        ready = true;
+        for (int ch = 'a'; ch <= 'z'; ++ch) v[ch] = c++;
+        for (int ch = 'A'; ch <= 'Z'; ++ch) v[ch] = c++;
+        for (int ch = '0'; ch <= '9'; ++ch) v[ch] = c++;
+        v['_'] = c;  // 63
     }
-    return t;
+};
+inline const uint8_t* code_table() {
+    static constexpr CodeTable t;
+    return t.v;
 }
 inline uint32_t rotl(uint32_t x, int r) { return (x << r) | (x >> (32 - r)); }
 // MurmurHash3 x86_32 (Austin Appleby, public domain) over whole words; the meta word
@@ -280,6 +285,12 @@ public:
         Key k;
         Status s = make_key(name, len, k);
         if (s != kOk) return s;
+        return declare(k, value, type);
+    }
+    // Same as above for a name already prepared by make_key() on this table (same options,
+    // and the same key in keyed mode): the packing and hashing are paid once, not per use.
+    Status declare(const Key& k, int32_t value, uint8_t type = 0) {
+        if (!valid_) return kNoMemory;
         const uint32_t tag = static_cast<uint32_t>(type) << kTypeShift | depth_ << kDepthShift;
         uint32_t stop = kNoSlot;                       // where the search for the name ended
         uint32_t ref = find(k, &stop);
@@ -342,6 +353,10 @@ public:
         if (!valid_) return false;
         Key k;
         if (make_key(name, len, k) != kOk) return false;
+        return resolve(k, value, type);
+    }
+    bool resolve(const Key& k, int32_t* value = 0, uint8_t* type = 0) const {
+        if (!valid_) return false;
         uint32_t ref = find(k);
         if (!ref) return false;
         const uint32_t* rec = ident(ref);
@@ -440,20 +455,25 @@ public:
             size_t i = 0;
             for (; i + 5 <= len; i += 5) {
                 uint32_t a = code[s[i]], b = code[s[i + 1]], c = code[s[i + 2]], d = code[s[i + 3]], e = code[s[i + 4]];
-                if (!(a && b && c && d && e)) { raw = 1; break; }
+                if ((a | b | c | d | e) & detail::kBadChar) { raw = 1; break; }
                 uint32_t word = a | b << 6 | c << 12 | d << 18 | e << 24;
                 k.w[n++] = word;
                 h = detail::hash_step(h, word);
             }
             if (!raw && i < len) {
-                uint32_t word = 0;
-                for (int sh = 0; i < len; ++i, sh += 6) {
-                    uint32_t a = code[s[i]];
-                    if (!a) { raw = 1; break; }
-                    word |= a << sh;
+                uint32_t word = 0, bad = 0;
+                switch (len - i) {   // 1..4 characters left
+                case 4: { uint32_t x = code[s[i + 3]]; bad |= x; word |= x << 18; }  // fall through
+                case 3: { uint32_t x = code[s[i + 2]]; bad |= x; word |= x << 12; }  // fall through
+                case 2: { uint32_t x = code[s[i + 1]]; bad |= x; word |= x << 6; }   // fall through
+                default: { uint32_t x = code[s[i]]; bad |= x; word |= x; }
                 }
-                k.w[n++] = word;
-                h = detail::hash_step(h, word);
+                if (bad & detail::kBadChar) {
+                    raw = 1;
+                } else {
+                    k.w[n++] = word;
+                    h = detail::hash_step(h, word);
+                }
             }
         } else {
             raw = 1;
