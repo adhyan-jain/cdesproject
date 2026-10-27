@@ -648,7 +648,9 @@ still fits. Largest |z| = 1.96, 0 mismatches, 0 coupling violations (3.7 million
 (`fig_lawz`) had plotted the exact probabilities instead of the z-scores after the table gained a `trials` column; fixed in
 `theory/template/make_figures.py`. Real identifiers with the default hash: `theory/verify/law_real_names.cpp`,
 `run_real_names.py` -> `results/hardening/law_real_names.csv` (only rows with `pool_at_least_4n` = True are meaningful):
-observed frequency within 19 percent of the law at L = 48 and 0.72-1.44 times the law at L = 96 (21-42 events).
+observed frequency within 19 percent of the law at L = 48 and 0.72-1.44 times the law at L = 96 (21-42 events). Null spread:
+`run_real_names_null.py` -> `results/hardening/law_real_names_null.csv` (100 random keyed hashes on the same subsets): sd 12-19 percent
+of the law at L = 48 and 37-50 percent at L = 96; the unkeyed values are within 1.1 sd of the keyed mean in all eight cases.
 
 ### Colliding and honest names in one table (added 2026-10-28)
 

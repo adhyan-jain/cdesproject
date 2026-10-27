@@ -1,6 +1,8 @@
 // The exact refusal law against REAL identifiers and the DEFAULT (unkeyed) hash.
 //
-//   law_real_names NAMES.txt m n L trials seed
+//   law_real_names NAMES.txt m n L trials seed [keyseed]
+//   With keyseed the table uses a keyed hash with a key drawn from that seed: the same names and subsets under a
+//   hash that is random by construction, which gives the spread that one fixed hash realization alone produces.
 //
 // law_vs_table.cpp draws random names under a fresh random key, so every hash looks random by construction.
 // Here the hash is the library's default mixer and the names are the distinct identifiers of a compiler
@@ -34,7 +36,8 @@ int main(int argc, char** argv) {
     for (long t = 0; t < trials; ++t) {
         for (uint32_t i = 0; i <= n; ++i) std::swap(pool[i], pool[i + rng() % (pool.size() - i)]);   // partial shuffle
         strata::Options o;
-        o.index_slots = m;                                    // default (unkeyed) hash, no probe limit
+        o.index_slots = m;                                    // default (unkeyed) hash unless keyseed is given; no probe limit
+        if (argc > 7) { o.keyed = true; std::mt19937_64 kr(strtoull(argv[7], 0, 10)); o.key[0] = (uint32_t)kr(); o.key[1] = (uint32_t)kr(); }
         strata::Table A(buf.data(), buf.size() * 4, o);
         for (uint32_t i = 0; i < n; ++i) A.declare(pool[i].data(), pool[i].size(), 1);
         const std::string& f = pool[n];
