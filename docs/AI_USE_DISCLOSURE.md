@@ -27,7 +27,7 @@ ones that lowered the instruction count without changing results, added `tests/t
 fuzzing and mutation check on the final code, reviewed the manuscript against the reviewer report, and rewrote parts of
 the text. It was used for planning, for writing code, for help with the literature review and for drafting and editing
 text, at the direction of the authors; the manuscript's disclosure says the same. The authors are Adhyan Jain,
-Shubhi Singh and Prof. Bhuvaneshwari M.; the assistant did not decide the authorship.
+Shubhi Singh and Prof. Bhuvaneswari M.; the assistant did not decide the authorship.
 
 | Output | What the AI did | How it was checked, by running programs (not by reading) |
 |---|---|---|

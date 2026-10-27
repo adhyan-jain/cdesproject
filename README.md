@@ -133,7 +133,7 @@ under `theory/verify/` that checks it by enumeration in exact arithmetic.
 
 ## Authors and provenance
 
-Authors of the IEEE Access manuscript: Adhyan Jain, Shubhi Singh and Prof. Bhuvaneshwari M. (corresponding author),
+Authors of the IEEE Access manuscript: Adhyan Jain, Shubhi Singh and Prof. Bhuvaneswari M. (corresponding author),
 Vellore Institute of Technology. AI coding assistants were used at the authors' direction for planning, writing code,
 help with the literature review, and drafting and editing text; `docs/AI_USE_DISCLOSURE.md` records what was done and how
 it was checked.
